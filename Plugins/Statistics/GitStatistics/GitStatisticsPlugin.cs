@@ -8,7 +8,7 @@ namespace GitStatistics
     public class GitStatisticsPlugin : GitPluginBase, IGitPluginForRepository
     {
         StringSetting CodeFiles = new StringSetting("Code files",
-                                "*.c;*.cpp;*.cc;*.h;*.hpp;*.inl;*.idl;*.asm;*.inc;*.cs;*.xsd;*.wsdl;*.xml;*.htm;*.html;*.css;" + 
+                                "*.c;*.cpp;*.cc;*.h;*.hpp;*.inl;*.idl;*.asm;*.inc;*.cs;*.xsd;*.wsdl;*.xml;*.xaml;*.htm;*.html;*.css;" + 
                                 "*.vbs;*.vb;*.sql;*.aspx;*.asp;*.php;*.nav;*.pas;*.py;*.rb;*.js");
         StringSetting IgnoreDirectories = new StringSetting("Directories to ignore (EndsWith)", "\\Debug;\\Release;\\obj;\\bin;\\lib");
         BoolSetting IgnoreSubmodules = new BoolSetting("Ignore submodules", true);
