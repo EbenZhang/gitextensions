@@ -212,7 +212,8 @@ namespace GitUI.CommandsDialogs
             }
 
             LocalChangesAction changes = ChangesMode;
-            AppSettings.CheckoutBranchAction = changes;
+            AppSettings.CheckoutBranchAction = changes == LocalChangesAction.Reset
+                || changes == LocalChangesAction.Merge? LocalChangesAction.DontChange : changes;
 
             if ((Visible || AppSettings.UseDefaultCheckoutBranchAction) && IsThereUncommittedChanges())
                 cmd.LocalChanges = changes;
