@@ -1,10 +1,17 @@
 ﻿using System.IO;
 using GitUIPluginInterfaces;
+using ResourceManager;
 
 namespace GitStatistics
 {
     public class GitStatisticsPlugin : GitPluginBase, IGitPluginForRepository
     {
+        public GitStatisticsPlugin()
+        {
+            Description = "Statistics";
+            Translate();
+        }
+
         StringSetting CodeFiles = new StringSetting("Code files",
                                 "*.c;*.cpp;*.cc;*.h;*.hpp;*.inl;*.idl;*.asm;*.inc;*.cs;*.xsd;*.wsdl;*.xml;*.xaml;*.htm;*.html;*.css;" + 
                                 "*.vbs;*.vb;*.sql;*.aspx;*.asp;*.php;*.nav;*.pas;*.py;*.rb;*.js");
@@ -12,10 +19,6 @@ namespace GitStatistics
         BoolSetting IgnoreSubmodules = new BoolSetting("Ignore submodules", true);
 
         #region IGitPlugin Members
-        public override string Description
-        {
-            get { return "Statistics"; }
-        }
 
         public override System.Collections.Generic.IEnumerable<ISetting> GetSettings()
         {
