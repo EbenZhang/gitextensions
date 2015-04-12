@@ -162,25 +162,6 @@ namespace GitCommands
             return startProcess;
         }
 
-        internal static bool UseSsh(string arguments)
-        {
-            var x = !Plink() && GetArgumentsRequiresSsh(arguments);
-            return x || arguments.Contains("plink");
-        }
-
-        private static bool GetArgumentsRequiresSsh(string arguments)
-        {
-            return (arguments.Contains("@") && arguments.Contains("://")) ||
-                   (arguments.Contains("@") && arguments.Contains(":")) ||
-                   (arguments.Contains("ssh://")) ||
-                   (arguments.Contains("http://")) ||
-                   (arguments.Contains("git://")) ||
-                   (arguments.Contains("push")) ||
-                   (arguments.Contains("remote")) ||
-                   (arguments.Contains("fetch")) ||
-                   (arguments.Contains("pull"));
-        }
-
         /// <summary>
         /// Transforms the given input Url to make it compatible with Plink, if necessary
         /// </summary>
