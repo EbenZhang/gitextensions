@@ -583,7 +583,7 @@ namespace GitUI
             return StartCreateBranchDialog(null, null);
         }
 
-        public bool StartCloneDialog(IWin32Window owner, string url, bool openedFromProtocolHandler, GitModuleChangedEventHandler GitModuleChanged)
+        public bool StartCloneDialog(IWin32Window owner, string url, bool openedFromProtocolHandler, EventHandler<GitModuleEventArgs> GitModuleChanged)
         {
             Func<bool> action = () =>
             {
@@ -595,7 +595,7 @@ namespace GitUI
             return DoActionOnRepo(owner, false, false, PreClone, PostClone, action);
         }
 
-        public bool StartCloneDialog(IWin32Window owner, string url, GitModuleChangedEventHandler GitModuleChanged)
+        public bool StartCloneDialog(IWin32Window owner, string url, EventHandler<GitModuleEventArgs> GitModuleChanged)
         {
             return StartCloneDialog(owner, url, false, GitModuleChanged);
         }
@@ -620,7 +620,7 @@ namespace GitUI
             return StartCloneDialog(null, null, false, null);
         }
 
-        public bool StartSvnCloneDialog(IWin32Window owner, GitModuleChangedEventHandler GitModuleChanged)
+        public bool StartSvnCloneDialog(IWin32Window owner, EventHandler<GitModuleEventArgs> GitModuleChanged)
         {
             Func<bool> action = () =>
             {
@@ -758,7 +758,7 @@ namespace GitUI
             return StartSvnFetchDialog(null);
         }
 
-        public bool StartInitializeDialog(IWin32Window owner, GitModuleChangedEventHandler GitModuleChanged)
+        public bool StartInitializeDialog(IWin32Window owner, EventHandler<GitModuleEventArgs> GitModuleChanged)
         {
             return StartInitializeDialog(owner, null, GitModuleChanged);
         }
@@ -768,7 +768,7 @@ namespace GitUI
             return StartInitializeDialog((IWin32Window)null, null);
         }
 
-        public bool StartInitializeDialog(IWin32Window owner, string dir, GitModuleChangedEventHandler GitModuleChanged)
+        public bool StartInitializeDialog(IWin32Window owner, string dir, EventHandler<GitModuleEventArgs> GitModuleChanged)
         {
             Func<bool> action = () =>
             {
@@ -1073,6 +1073,7 @@ namespace GitUI
             return DoActionOnRepo(owner, true, true, PreCherryPick, PostCherryPick, action);
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Justification = "It seems that all prevForm variable values are different so there is not a double dispose here. However the logic is better to be rewritten")]
         public bool StartCherryPickDialog(IWin32Window owner, IEnumerable<GitRevision> revisions)
         {
             if (revisions == null)
@@ -1716,7 +1717,7 @@ namespace GitUI
             }
         }
 
-        public void StartCloneForkFromHoster(IWin32Window owner, IRepositoryHostPlugin gitHoster, GitModuleChangedEventHandler GitModuleChanged)
+        public void StartCloneForkFromHoster(IWin32Window owner, IRepositoryHostPlugin gitHoster, EventHandler<GitModuleEventArgs> GitModuleChanged)
         {
             WrapRepoHostingCall("View pull requests", gitHoster, gh =>
             {
