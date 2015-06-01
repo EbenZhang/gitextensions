@@ -1119,6 +1119,10 @@ Do you want to open it?</source>
         <source>Files</source>
         
       </trans-unit>
+      <trans-unit id="CombinedDiff.Text">
+        <source>Combined Diff</source>
+
+      </trans-unit>
     </body>
   </file>
   <file datatype="plaintext" original="FileViewer" source-language="en">
