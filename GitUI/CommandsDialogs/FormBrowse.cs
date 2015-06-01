@@ -1719,7 +1719,18 @@ namespace GitUI.CommandsDialogs
 
             IList<GitRevision> items = RevisionGrid.GetSelectedRevisions();
             if (items.Count() == 1)
+            {
                 items.Add(new GitRevision(Module, DiffFiles.SelectedItemParent));
+
+                if (!string.IsNullOrWhiteSpace(DiffFiles.SelectedItemParent)
+                    && DiffFiles.SelectedItemParent == DiffFiles.CombinedDiff.Text)
+                {
+                    var diffOfConflict = Module.GetCombinedDiffContent(items.First(), DiffFiles.SelectedItem.Name);
+
+                    DiffText.ViewPatch(diffOfConflict);
+                    return;
+                }
+            }
             DiffText.ViewChanges(items, DiffFiles.SelectedItem, String.Empty);
         }
 

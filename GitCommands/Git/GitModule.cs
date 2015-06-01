@@ -3168,5 +3168,53 @@ namespace GitCommands
             }
             return branchName;
         }
+
+        public IList<GitItemStatus> GetCombinedDiffFileList(string shaOfMergeCommit)
+        {
+            var resultWithFileList = RunGitCmdResult("show " + shaOfMergeCommit + " --name-only");
+            var resultWithOnlySummary = RunGitCmdResult("show " + shaOfMergeCommit + " --summary");
+            var fileList = resultWithFileList.GetString()
+                .Remove(0, resultWithOnlySummary.GetString().Length);
+
+            var ret = new List<GitItemStatus>();
+            if (string.IsNullOrWhiteSpace(fileList))
+            {
+                return ret;
+            }
+
+            var files = fileList.Split(new []{'\n'}, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var file in files)
+            {
+                var item = new GitItemStatus
+                {
+                    IsChanged = true,
+                    IsConflict = true,
+                    IsTracked = true,
+                    IsDeleted = false,
+                    IsStaged = false,
+                    IsNew = false,
+                    Name = file
+                };
+                ret.Add(item);
+            }
+            
+            return ret;
+        }
+
+        public string GetCombinedDiffContent(GitRevision revisionOfMergeCommit, string filePath)
+        {
+            if (!Path.IsPathRooted(filePath))
+            {
+                filePath = Path.Combine(WorkingDir, filePath);
+            }
+
+            var cmd = string.Format("show {0} {1} {2}",
+                AppSettings.IgnoreWhitespaceChanges ? "--ignore-space-change" : "",
+                revisionOfMergeCommit.Guid, 
+                filePath);
+            var result = RunGitCmd(cmd);
+            var diffOffset = result.IndexOf("\ndiff --cc", StringComparison.Ordinal);
+            return result.Substring(diffOffset + 1);
+        }
     }
 }
