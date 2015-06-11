@@ -182,7 +182,7 @@ namespace GitStatistics
             }
 
             //Send 'changed' event when done
-            lineCounter_LinesOfCodeUpdated(lineCounter, EventArgs.Empty);
+            lineCounter_LinesOfCodeUpdated(_lineCounter, EventArgs.Empty);
         }
 
         private void LoadLinesOfCodeForModule(IGitModule module)
@@ -195,7 +195,7 @@ namespace GitStatistics
                     .Select(file => Path.Combine(module.WorkingDir, file)));
             }
 
-            lineCounter.FindAndAnalyzeCodeFiles(_codeFilePattern, DirectoriesToIgnore);
+            _lineCounter.FindAndAnalyzeCodeFiles(_codeFilePattern, DirectoriesToIgnore, filesToCheck);
         }
 
         void lineCounter_LinesOfCodeUpdated(object sender, EventArgs e)
