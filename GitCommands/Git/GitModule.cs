@@ -3206,7 +3206,7 @@ namespace GitCommands
                 filePath = Path.Combine(WorkingDir, filePath);
             }
 
-            var cmd = string.Format("diff-tree -p -c --no-commit-id {0} {1} {2} -- {3}",
+            var cmd = string.Format("diff-tree --cc --no-commit-id {0} {1} {2} -- {3}",
                 AppSettings.IgnoreWhitespaceChanges ? "--ignore-space-change" : "",
                 revisionOfMergeCommit.Guid,
                 AppSettings.UsePatienceDiffAlgorithm? "--patience" : "",
