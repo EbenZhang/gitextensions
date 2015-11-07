@@ -345,7 +345,7 @@ namespace GitCommands
         /// <summary>"(no branch)"</summary>
         public static readonly string DetachedBranch = "(no branch)";
 
-        private static readonly string[] DetachedPrefixes = { "(no branch", "(detached from " };
+        private static readonly string[] DetachedPrefixes = { "(no branch", "(detached from ", "(HEAD detached at " };
 
         public AppSettings.PullAction LastPullAction
         {
@@ -2540,6 +2540,24 @@ namespace GitCommands
         public static bool IsDetachedHead(string branch)
         {
             return DetachedPrefixes.Any(a => branch.StartsWith(a, StringComparison.Ordinal));
+        }
+
+        private static Regex detachedHeadRegex = new Regex(@"^\(.* (?<sha1>.*)\)$");
+
+        public static bool TryParseDetachedHead(string text, out string sha1)
+        {
+            sha1 = null;
+            if (IsDetachedHead(text))
+                return false;
+
+            var sha1Match = detachedHeadRegex.Match(text);
+            if (!sha1Match.Success)
+            {
+                return false;
+            }
+
+            sha1 = sha1Match.Groups["sha1"].Value;
+            return true;
         }
 
         /// <summary>Gets the remote of the current branch; or "origin" if no remote is configured.</summary>
