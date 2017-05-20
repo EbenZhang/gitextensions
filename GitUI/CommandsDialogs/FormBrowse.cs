@@ -3828,7 +3828,8 @@ namespace GitUI.CommandsDialogs
                 }
                 else
                 {
-                    if(AppSettings.ConEmuTerminal.ValueOrDefault == "bash")
+                    cmdPath = cmdPath.Quote();
+                    if (AppSettings.ConEmuTerminal.ValueOrDefault == "bash")
                         startinfo.ConsoleProcessCommandLine = cmdPath + " --login -i";
                     else
                         startinfo.ConsoleProcessCommandLine = cmdPath;
