@@ -70,6 +70,7 @@ namespace GitExtensions
             Application.DoEvents();
 
             AppSettings.LoadSettings();
+            SettingsOptimizer.Optimize();
             if (EnvUtils.RunningOnWindows())
             {
               WebBrowserEmulationMode.SetBrowserFeatureControl();
