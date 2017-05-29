@@ -31,7 +31,6 @@ namespace GitExtensions
                 _optimizedItems = new List<string>();
             }
 
-            Optimize(nameof(AppSettings.ShowConEmuTab), false, x => AppSettings.ShowConEmuTab.Value = x);
             Optimize(nameof(AppSettings.UseConsoleEmulatorForCommands), false, x => AppSettings.UseConsoleEmulatorForCommands = x);
             Optimize(nameof(AppSettings.AlwaysShowAdvOpt), true, x => AppSettings.AlwaysShowAdvOpt = x);
             Optimize(nameof(AppSettings.CloseCommitDialogAfterCommit), true, x => AppSettings.CloseCommitDialogAfterCommit = x);
