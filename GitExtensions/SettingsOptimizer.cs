@@ -40,6 +40,7 @@ namespace GitExtensions
             Optimize(nameof(AppSettings.DontConfirmCommitAfterConflictsResolved), true, x => AppSettings.DontConfirmCommitAfterConflictsResolved = x);
             Optimize(nameof(AppSettings.DontConfirmResolveConflicts), true, x => AppSettings.DontConfirmResolveConflicts = x);
             Optimize(nameof(AppSettings.DontConfirmSecondAbortConfirmation), true, x => AppSettings.DontConfirmSecondAbortConfirmation = x);
+            Optimize(nameof(AppSettings.ConEmuStyle), "<Ubuntu>", x => AppSettings.ConEmuStyle.Value = x);
 
             if (hasChange)
             {
