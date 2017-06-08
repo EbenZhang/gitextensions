@@ -13,8 +13,8 @@
 // Version
 //
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,50,99,13
- PRODUCTVERSION 2,50,99,13
+ FILEVERSION 2,50,99,14
+ PRODUCTVERSION 2,50,99,14
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -30,12 +30,12 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "FileDescription", "Git Extensions"
-            VALUE "FileVersion", "2.50.99.13"
+            VALUE "FileVersion", "2.50.99.14"
             VALUE "InternalName", "Git Extensions"
             VALUE "LegalCopyright", "Copyright 2013-2016"
             VALUE "OriginalFilename", "GitExtSshAskPass.exe"
             VALUE "ProductName", "Git Extensions"
-            VALUE "ProductVersion", "2.50.99.13"
+            VALUE "ProductVersion", "2.50.99.14"
         END
     END
     BLOCK "VarFileInfo"
