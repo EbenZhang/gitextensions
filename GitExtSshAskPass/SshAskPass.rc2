@@ -30,9 +30,9 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "FileDescription", "Git Extensions"
-            VALUE "FileVersion", "2.50.99.13"
+            VALUE "FileVersion", "2.49.03"
             VALUE "InternalName", "Git Extensions"
-            VALUE "LegalCopyright", "Copyright 2013-2016"
+            VALUE "LegalCopyright", "Copyright 2013-2017"
             VALUE "OriginalFilename", "GitExtSshAskPass.exe"
             VALUE "ProductName", "Git Extensions"
             VALUE "ProductVersion", "2.50.99.13"
