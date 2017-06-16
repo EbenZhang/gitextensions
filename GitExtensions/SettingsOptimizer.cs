@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace GitExtensions
 {
@@ -33,7 +34,14 @@ namespace GitExtensions
 
             Optimize(nameof(AppSettings.UseConsoleEmulatorForCommands), false, x => AppSettings.UseConsoleEmulatorForCommands = x);
             Optimize(nameof(AppSettings.AlwaysShowAdvOpt), true, x => AppSettings.AlwaysShowAdvOpt = x);
-            Optimize(nameof(AppSettings.CloseCommitDialogAfterCommit), true, x => AppSettings.CloseCommitDialogAfterCommit = x);
+            var enabledByMistake = nameof(AppSettings.CloseCommitDialogAfterCommit) + "_fix_enabled_by_mistake";
+            if (!_optimizedItems.Any(x => x == enabledByMistake))
+            {
+                AppSettings.CloseCommitDialogAfterCommit = false;
+                _optimizedItems.Add(enabledByMistake);
+                hasChange = true;
+            }
+            Optimize(nameof(AppSettings.CloseCommitDialogAfterLastCommit), true, x => AppSettings.CloseCommitDialogAfterLastCommit = x);
             Optimize(nameof(AppSettings.DontConfirmPushNewBranch), true, x => AppSettings.DontConfirmPushNewBranch = x);
             Optimize(nameof(AppSettings.CloseProcessDialog), true, x => AppSettings.CloseProcessDialog = x);
             Optimize(nameof(AppSettings.RememberIgnoreWhiteSpacePreference), true, x => AppSettings.RememberIgnoreWhiteSpacePreference = x);
