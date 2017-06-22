@@ -17,6 +17,7 @@ namespace GitExtensionsTest
         [TestMethod]
         public void CanCreateCommitInformationFromFormatedData()
         {
+            LinkFactory linkFactory = new LinkFactory();
             var commitGuid = Guid.NewGuid();
             var treeGuid = Guid.NewGuid();
             var parentGuid1 = Guid.NewGuid().ToString();
@@ -58,7 +59,7 @@ namespace GitExtensionsTest
                                "\tP4@547123";
 
             var commitData = CommitData.CreateFromFormatedData(rawData, new GitModule(""));
-            var commitInformation = CommitInformation.GetCommitInfo(commitData, true, revisionProvider);
+            var commitInformation = CommitInformation.GetCommitInfo(commitData, true, linkFactory, revisionProvider);
 
             Assert.AreEqual(expectedHeader, commitInformation.Header);
             Assert.AreEqual(expectedBody, commitInformation.Body);
@@ -68,13 +69,13 @@ namespace GitExtensionsTest
         [ExpectedException(typeof(ArgumentNullException))]
         public void CanCreateCommitInformationFromFormatedDataThrowsException()
         {
-            CommitInformation.GetCommitInfo(null, true, new GitModule(""));
+            CommitInformation.GetCommitInfo(null, true, new LinkFactory(), new GitModule(""));
         }
 
         [TestMethod]
         public void GetCommitInfoTestWhenDataIsNull()
         {
-            var actualResult = CommitInformation.GetCommitInfo(new GitModule(""), "fakesha1");
+            var actualResult = CommitInformation.GetCommitInfo(new GitModule(""), new LinkFactory(), "fakesha1");
             Assert.AreEqual("Cannot find commit fakesha1", actualResult.Header);
         }
 

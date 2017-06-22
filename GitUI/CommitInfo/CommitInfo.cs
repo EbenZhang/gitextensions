@@ -26,6 +26,7 @@ namespace GitUI.CommitInfo
         private readonly TranslationString trsLinksRelatedToRevision = new TranslationString("Related links:");
 
         private const int MaximumDisplayedRefs = 20;
+        private LinkFactory _linkFactory = new LinkFactory();
 
         public CommitInfo()
         {
@@ -53,7 +54,7 @@ namespace GitUI.CommitInfo
 
         private void RevisionInfoLinkClicked(object sender, LinkClickedEventArgs e)
         {
-            string link = LinkFactory.ParseLink(e.LinkText);
+            string link = _linkFactory.ParseLink(e.LinkText);
             HandleLink(link, sender);
         }
 
@@ -164,7 +165,7 @@ namespace GitUI.CommitInfo
                 ThreadPool.QueueUserWorkItem(_ => loadSortedRefs());
 
             data.ChildrenGuids = _children;
-            CommitInformation commitInformation = CommitInformation.GetCommitInfo(data, CommandClick != null, Module);
+            CommitInformation commitInformation = CommitInformation.GetCommitInfo(data, CommandClick != null, _linkFactory, Module);
 
             _RevisionHeader.SetXHTMLText(commitInformation.Header);
 
@@ -428,6 +429,7 @@ namespace GitUI.CommitInfo
             _branches = null;
             _annotatedTagsMessages = null;
             _tags = null;
+            _linkFactory.Clear();
             updateText();
             gravatar1.Visible = AppSettings.ShowAuthorGravatar;
             if (AppSettings.ShowAuthorGravatar)
@@ -485,7 +487,7 @@ namespace GitUI.CommitInfo
                 {
                     string branchText;
                     if (showBranchesAsLinks)
-                        branchText = LinkFactory.CreateBranchLink(noPrefixBranch);
+                        branchText = _linkFactory.CreateBranchLink(noPrefixBranch);
                     else
                         branchText = WebUtility.HtmlEncode(noPrefixBranch);
                     links.Add(branchText);
@@ -502,7 +504,7 @@ namespace GitUI.CommitInfo
         private string GetTagsWhichContainsThisCommit(IEnumerable<string> tags, bool showBranchesAsLinks)
         {
             var tagString = tags
-                .Select(s => showBranchesAsLinks ? LinkFactory.CreateTagLink(s) : WebUtility.HtmlEncode(s)).Join(", ");
+                .Select(s => showBranchesAsLinks ? _linkFactory.CreateTagLink(s) : WebUtility.HtmlEncode(s)).Join(", ");
 
             if (!String.IsNullOrEmpty(tagString))
                 return Environment.NewLine + WebUtility.HtmlEncode(containedInTags.Text) + " " + tagString;
@@ -517,7 +519,7 @@ namespace GitUI.CommitInfo
 
             foreach (var link in links)
             {
-                linksString = linksString.Combine(", ", LinkFactory.CreateLink(link.Caption, link.URI));
+                linksString = linksString.Combine(", ", _linkFactory.CreateLink(link.Caption, link.URI));
             }
 
             if (linksString.IsNullOrEmpty())

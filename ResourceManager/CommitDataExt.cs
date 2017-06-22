@@ -50,14 +50,14 @@ namespace ResourceManager
         /// Generate header.
         /// </summary>
         /// <returns></returns>
-        public static string GetHeader(this CommitData commitData, IGitRevisionProvider module, bool showRevisionsAsLinks)
+        public static string GetHeader(this CommitData commitData, IGitRevisionProvider module,
+            LinkFactory linkFactory, bool showRevisionsAsLinks)
         {
             StringBuilder header = new StringBuilder();
             string authorEmail = GetEmail(commitData.Author);
             header.AppendLine(
                 FillToLength(WebUtility.HtmlEncode(Strings.GetAuthorText()) + ":", COMMITHEADER_STRING_LENGTH) +
-                "<a href='mailto:" + WebUtility.HtmlEncode(authorEmail) + "'>" +
-                WebUtility.HtmlEncode(commitData.Author) + "</a>");
+                linkFactory.CreateLink(commitData.Author, "mailto:" + authorEmail));
             header.AppendLine(
                 FillToLength(WebUtility.HtmlEncode(Strings.GetAuthorDateText()) + ":",
                     COMMITHEADER_STRING_LENGTH) +
@@ -68,8 +68,7 @@ namespace ResourceManager
             header.AppendLine(
                 FillToLength(WebUtility.HtmlEncode(Strings.GetCommitterText()) + ":",
                     COMMITHEADER_STRING_LENGTH) +
-                "<a href='mailto:" + WebUtility.HtmlEncode(committerEmail) + "'>" +
-                WebUtility.HtmlEncode(commitData.Committer) + "</a>");
+                linkFactory.CreateLink(commitData.Committer, "mailto:" + committerEmail));
             header.AppendLine(
                 FillToLength(WebUtility.HtmlEncode(Strings.GetCommitDateText()) + ":",
                     COMMITHEADER_STRING_LENGTH) +
@@ -88,7 +87,7 @@ namespace ResourceManager
                 if (showRevisionsAsLinks)
                 {
                     commitsString = commitData.ChildrenGuids
-                        .Select(g => LinkFactory.CreateCommitLink(g) + " " + GetCommitSubject(g, module))
+                        .Select(g => linkFactory.CreateCommitLink(g) + " " + GetCommitSubject(g, module))
                         .Join(Environment.NewLine + indent);
                 }
                 else
@@ -110,7 +109,7 @@ namespace ResourceManager
                 if (showRevisionsAsLinks)
                 {
                     commitsString = parentGuids
-                        .Select(g => LinkFactory.CreateCommitLink(g) + " " + GetCommitSubject(g, module))
+                        .Select(g => linkFactory.CreateCommitLink(g) + " " + GetCommitSubject(g, module))
                         .Join(Environment.NewLine + indent);
                 }
                 else

@@ -183,7 +183,7 @@ namespace GitUI.Editor
         }
 
         [Browsable(false)]
-        public byte[] FilePreabmle { get; private set; }
+        public byte[] FilePreamble { get; private set; }
 
         private void WorkingDirChanged(object sender, GitUICommandsChangedEventArgs e)
         {
@@ -489,7 +489,7 @@ namespace GitUI.Editor
 
         private void ViewItem(string fileName, Func<Image> getImage, Func<string> getFileText, Func<string> getSubmoduleText)
         {
-            FilePreabmle = null;
+            FilePreamble = null;
 
             string fullPath = Path.GetFullPath(Path.Combine(Module.WorkingDir, fileName));
 
@@ -609,11 +609,22 @@ namespace GitUI.Editor
 
             if (File.Exists(path))
             {
-                using (var reader = new StreamReader(path, Module.FilesEncoding))
+                // StreamReader disposes of 'fileStream'.
+                // see: https://msdn.microsoft.com/library/ms182334.aspx
+                var fileStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                try
                 {
-                    var content = reader.ReadToEnd();
-                    FilePreabmle = reader.CurrentEncoding.GetPreamble();
-                    return content;
+                    using (var reader = new StreamReader(fileStream, Module.FilesEncoding))
+                    {
+                        fileStream = null;
+                        var content = reader.ReadToEnd();
+                        FilePreamble = reader.CurrentEncoding.GetPreamble();
+                        return content;
+                    }
+                }
+                finally
+                {
+                    fileStream?.Dispose();
                 }
             }
             else
