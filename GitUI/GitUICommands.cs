@@ -1384,17 +1384,27 @@ namespace GitUI
             return StartRemotesDialog(null);
         }
 
-        public bool StartRebaseDialog(IWin32Window owner, string branch)
+        public bool StartRebaseDialog(IWin32Window owner, string branch, bool interactive = false,
+            bool startRebaseImmediately = true)
         {
-            return StartRebaseDialog(owner, string.Empty, null, branch);
+            return StartRebaseDialog(owner, string.Empty, null, branch, interactive, startRebaseImmediately);
         }
 
-        public bool StartRebaseDialog(IWin32Window owner, string from, string to, string onto)
+        public bool StartRebaseDialogWithAdvOptions(IWin32Window owner, string branch)
+        {
+            return StartRebaseDialog(owner, from: string.Empty, to: null, onto: branch, interactive: false,
+                startRebaseImmediately: false);
+        }
+
+        public bool StartRebaseDialog(IWin32Window owner, string from, string to, string onto,
+            bool interactive = false, bool startRebaseImmediately = true)
         {
             Func<bool> action = () =>
             {
-                using (var form = new FormRebase(this, from, to, onto))
+                using (var form = new FormRebase(this, from, to, onto, interactive, startRebaseImmediately))
+                {
                     form.ShowDialog(owner);
+                }
 
                 return true;
             };
