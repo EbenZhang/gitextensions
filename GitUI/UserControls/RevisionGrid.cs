@@ -97,6 +97,8 @@ namespace GitUI
         private GitRevision _baseCommitToCompare = null;
 
         private IEnumerable<IGitRef> _LatestRefs = Enumerable.Empty<IGitRef>();
+
+        private string _rebaseOnTopOf;
         /// <summary>
         /// Refs loaded while the latest processing of git log
         /// </summary>
@@ -2306,11 +2308,11 @@ namespace GitUI
             var deleteBranchDropDown = new ContextMenuStrip();
             var checkoutBranchDropDown = new ContextMenuStrip();
             var mergeBranchDropDown = new ContextMenuStrip();
-            var rebaseDropDown = new ContextMenuStrip();
             var renameDropDown = new ContextMenuStrip();
 
             var revision = LatestSelectedRevision;
             var gitRefListsForRevision = new GitRefListsForRevision(revision);
+            _rebaseOnTopOf = null;
             foreach (var head in gitRefListsForRevision.AllTags)
             {
                 ToolStripItem toolStripItem = new ToolStripMenuItem(head.Name);
@@ -2339,21 +2341,11 @@ namespace GitUI
                     toolStripItem.Tag = GetRefUnambiguousName(head);
                     toolStripItem.Click += ToolStripItemClickMergeBranch;
                     mergeBranchDropDown.Items.Add(toolStripItem);
-
-                    toolStripItem = new ToolStripMenuItem(head.Name);
-                    toolStripItem.Tag = GetRefUnambiguousName(head);
-                    toolStripItem.Click += ToolStripItemClickRebaseBranch;
-                    rebaseDropDown.Items.Add(toolStripItem);
+                    if (_rebaseOnTopOf == null)
+                    {
+                        _rebaseOnTopOf = toolStripItem.Tag as string;
+                    }
                 }
-            }
-
-            //if there is no branch to rebase on, then allow user to rebase on selected commit
-            if (rebaseDropDown.Items.Count == 0 && !currentBranchPointsToRevision)
-            {
-                ToolStripItem toolStripItem = new ToolStripMenuItem(revision.Guid);
-                toolStripItem.Tag = revision.Guid;
-                toolStripItem.Click += ToolStripItemClickRebaseBranch;
-                rebaseDropDown.Items.Add(toolStripItem);
             }
 
             //if there is no branch to merge, then let user to merge selected commit into current branch
@@ -2363,6 +2355,10 @@ namespace GitUI
                 toolStripItem.Tag = revision.Guid;
                 toolStripItem.Click += ToolStripItemClickMergeBranch;
                 mergeBranchDropDown.Items.Add(toolStripItem);
+                if (_rebaseOnTopOf == null)
+                {
+                    _rebaseOnTopOf = toolStripItem.Tag as string;
+                }
             }
 
             // clipboard branch and tag menu handling
@@ -2427,8 +2423,7 @@ namespace GitUI
             mergeBranchToolStripMenuItem.DropDown = mergeBranchDropDown;
             mergeBranchToolStripMenuItem.Enabled = !bareRepository && mergeBranchDropDown.Items.Count > 0;
 
-            rebaseOnToolStripMenuItem.DropDown = rebaseDropDown;
-            rebaseOnToolStripMenuItem.Enabled = !bareRepository && rebaseDropDown.Items.Count > 0;
+            rebaseOnToolStripMenuItem.Enabled = !bareRepository;
 
             renameBranchToolStripMenuItem.DropDown = renameDropDown;
             renameBranchToolStripMenuItem.Enabled = renameDropDown.Items.Count > 0;
@@ -2526,12 +2521,19 @@ namespace GitUI
 
         private void ToolStripItemClickRebaseBranch(object sender, EventArgs e)
         {
-            var toolStripItem = sender as ToolStripItem;
+            if (_rebaseOnTopOf == null) return;
+            UICommands.StartRebaseDialog(this, _rebaseOnTopOf);
+        }
+        private void OnRebaseInteractivelyClicked(object sender, EventArgs e)
+        {
+            if (_rebaseOnTopOf == null) return;
+            UICommands.StartRebaseDialog(this, _rebaseOnTopOf, interactive: true);
+        }
 
-            if (toolStripItem == null)
-                return;
-
-            UICommands.StartRebaseDialog(this, toolStripItem.Tag as string);
+        private void OnRebaseWithAdvOptionsClicked(object sender, System.EventArgs e)
+        {
+            if (_rebaseOnTopOf == null) return;
+            UICommands.StartRebaseDialog(this, _rebaseOnTopOf, interactive: false, startRebaseImmediately: false);
         }
 
         private void ToolStripItemClickRenameBranch(object sender, EventArgs e)
