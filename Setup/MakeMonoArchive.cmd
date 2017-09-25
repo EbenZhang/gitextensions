@@ -31,15 +31,13 @@ xcopy /y ..\GitExtensions\bin\Release\GitExtensions.exe.config GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\GitExtensions\bin\Release\GitUI.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
+xcopy /y ..\GitExtensions\bin\Release\System.IO.Abstractions.dll GitExtensions\
+IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\GitExtensions\bin\Release\GitUIPluginInterfaces.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\GitExtensions\bin\Release\Gravatar.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\Plugins\BuildServerIntegration\TeamCityIntegration\bin\Release\TeamCityIntegration.dll GitExtensions\Plugins\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y ..\Plugins\BuildServerIntegration\TeamCityIntegration\bin\Release\System.Net.Http.dll GitExtensions\Plugins\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y ..\Plugins\BuildServerIntegration\TeamCityIntegration\bin\Release\System.Net.Http.Primitives.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\bin\ICSharpCode.SharpZipLib.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1

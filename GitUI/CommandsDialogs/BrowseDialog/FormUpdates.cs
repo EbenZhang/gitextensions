@@ -4,6 +4,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
 using Git.hub;
@@ -87,9 +88,15 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                     return;
                 CheckForNewerVersion(configData);
             }
+            catch (InvalidAsynchronousStateException)
+            {
+                // InvalidAsynchronousStateException (The destination thread no longer exists) is thrown
+                // if a UI component gets disposed or the UI thread EXITs while a 'check for updates' thread
+                // is in the middle of its run... Ignore it, likely the user has closed the app
+            }
             catch (Exception ex)
             {
-                this.InvokeSync((state) =>
+                this.InvokeSync(state =>
                     {
                         if (Visible)
                         {

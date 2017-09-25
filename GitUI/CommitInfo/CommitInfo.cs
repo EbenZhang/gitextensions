@@ -434,7 +434,7 @@ namespace GitUI.CommitInfo
             gravatar1.Visible = AppSettings.ShowAuthorGravatar;
             if (AppSettings.ShowAuthorGravatar)
             {
-                gravatar1.LoadImageForEmail("");
+                gravatar1.LoadImage("");
             }
         }
 
@@ -447,7 +447,7 @@ namespace GitUI.CommitInfo
 
             if (AppSettings.ShowAuthorGravatar)
             {
-                gravatar1.LoadImageForEmail(matches[0].Groups[1].Value);
+                gravatar1.LoadImage(matches[0].Groups[1].Value);
             }
         }
 
