@@ -2354,6 +2354,12 @@ namespace GitUI
                 }
             }
 
+            //if there is no branch to rebase on, then allow user to rebase on selected commit
+            if (_rebaseOnTopOf == null && !currentBranchPointsToRevision)
+            {
+                _rebaseOnTopOf = revision.Guid;
+            }
+
             //if there is no branch to merge, then let user to merge selected commit into current branch
             if (mergeBranchDropDown.Items.Count == 0 && !currentBranchPointsToRevision)
             {
