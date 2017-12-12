@@ -130,6 +130,20 @@ namespace ResourceManager
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        protected Keys GetShortcutKeys(int commandCode)
+        {
+            var hotkey = GetHotkeyCommand(commandCode);
+            return hotkey == null ? Keys.None : hotkey.KeyData;
+        }
+
+        protected HotkeyCommand GetHotkeyCommand(int commandCode)
+        {
+            if (Hotkeys == null)
+                return null;
+
+            return Hotkeys.FirstOrDefault(h => h.CommandCode == commandCode);
+        }
+
         /// <summary>
         /// Override this method to handle form-specific Hotkey commands.
         /// <remarks>This base method does nothing and returns false.</remarks>
