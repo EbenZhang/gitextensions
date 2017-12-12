@@ -31,8 +31,6 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
-    <RestorePackages>true</RestorePackages>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
   </PropertyGroup>
@@ -92,9 +90,6 @@
     <Compile Include="IGitModule.cs" />
     <Compile Include="IGitRef.cs" />
     <Compile Include="IGitRemoteCommand.cs" />
-    <Compile Include="Notifications\ContextAction.cs" />
-    <Compile Include="Notifications\INotifications.cs" />
-    <Compile Include="Notifications\Notification.cs" />
     <Compile Include="ILockableNotifier.cs" />
     <Compile Include="ISettingsValueGetter.cs" />
     <Compile Include="Settings\BoolSetting.cs" />
@@ -112,7 +107,6 @@
     <Compile Include="RepositoryHosts\IPasswordHelper.cs" />
     <Compile Include="RepositoryHosts\IHostedRemote.cs" />
     <Compile Include="RepositoryHosts\IPullRequestInformation.cs" />
-    <Compile Include="Notifications\StatusSeverity.cs" />
     <Compile Include="Settings\NumberSetting.cs" />
     <Compile Include="Settings\ChoiceSetting.cs" />
     <Compile Include="Settings\PasswordSetting.cs" />
@@ -146,12 +140,4 @@
   </ItemGroup>
   <Import Project="..\..\FxCop.targets" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>

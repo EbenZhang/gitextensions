@@ -94,36 +94,41 @@ namespace GitCommands
         const char LineSeparator = '\n';
         /// <summary>"*" indicates the current branch</summary>
         public static char ActiveBranchIndicator = '*';
-        /// <summary>"*" indicates the current branch</summary>
-        public static string ActiveBranchIndicatorStr = ActiveBranchIndicator.ToString();
 
         private static readonly Regex DefaultHeadPattern = new Regex("refs/remotes/[^/]+/HEAD", RegexOptions.Compiled);
         private static readonly Regex AnsiCodePattern = new Regex(@"\u001B[\u0040-\u005F].*?[\u0040-\u007E]", RegexOptions.Compiled);
         private static readonly Regex CpEncodingPattern = new Regex("cp\\d+", RegexOptions.Compiled);
         private readonly object _lock = new object();
+        private readonly IIndexLockManager _indexLockManager;
+        private static readonly IGitDirectoryResolver GitDirectoryResolverInstance = new GitDirectoryResolver();
+        private readonly IGitTreeParser _gitTreeParser = new GitTreeParser();
 
         public const string NoNewLineAtTheEnd = "\\ No newline at end of file";
-        private const string DiffCommandWithStandardArgs = "diff --no-color ";
+        private const string DiffCommandWithStandardArgs = " -c diff.submodule=short diff --no-color ";
 
         public GitModule(string workingdir)
         {
             _superprojectInit = false;
             _workingDir = (workingdir ?? "").EnsureTrailingPathSeparator();
+            WorkingDirGitDir = GitDirectoryResolverInstance.Resolve(_workingDir);
+            _indexLockManager = new IndexLockManager(this);
         }
 
         #region IGitCommands
 
-        [NotNull]
         private readonly string _workingDir;
 
+        /// <summary>
+        /// Gets the directory which contains the git repository.
+        /// </summary>
         [NotNull]
-        public string WorkingDir
-        {
-            get
-            {
-                return _workingDir;
-            }
-        }
+        public string WorkingDir => _workingDir;
+
+        /// <summary>
+        /// Gets the location of .git directory for the current working folder.
+        /// </summary>
+        [NotNull]
+        public string WorkingDirGitDir { get; private set; }
 
         /// <summary>Gets the path to the git application executable.</summary>
         public string GitCommand
@@ -445,35 +450,14 @@ namespace GitCommands
         }
 
         /// <summary>Gets the ".git" directory path.</summary>
-        public string GetGitDirectory()
+        private string GetGitDirectory()
         {
             return GetGitDirectory(_workingDir);
         }
 
         public static string GetGitDirectory(string repositoryPath)
         {
-            var gitpath = Path.Combine(repositoryPath, ".git");
-            if (File.Exists(gitpath))
-            {
-                var lines = File.ReadLines(gitpath);
-                foreach (string line in lines)
-                {
-                    if (line.StartsWith("gitdir:"))
-                    {
-                        string path = line.Substring(7).Trim().ToNativePath();
-                        if (Path.IsPathRooted(path))
-                            return path.EnsureTrailingPathSeparator();
-                        else
-                            return
-                                Path.GetFullPath(Path.Combine(repositoryPath,
-                                    path.EnsureTrailingPathSeparator()));
-                    }
-                }
-            }
-            gitpath = gitpath.EnsureTrailingPathSeparator();
-            if (!Directory.Exists(gitpath))
-                return repositoryPath;
-            return gitpath;
+            return GitDirectoryResolverInstance.Resolve(repositoryPath);
         }
 
         public bool IsBareRepository()
@@ -752,8 +736,7 @@ namespace GitCommands
         public void EditNotes(string revision)
         {
             string editor = GetEffectiveSetting("core.editor").ToLower();
-            if (editor.Contains("gitextensions") || editor.Contains("notepad") ||
-                editor.Contains("notepad++"))
+            if (editor.Contains("gitextensions") || editor.Contains("notepad"))
             {
                 RunGitCmd("notes edit " + revision);
             }
@@ -1008,8 +991,7 @@ namespace GitCommands
         private IGitItem GetSubmoduleCommitHash(string filename, string refName)
         {
             string str = RunGitCmd("ls-tree " + refName + " \"" + filename + "\"");
-
-            return GitItem.CreateGitItemFromString(this, str);
+            return _gitTreeParser.ParseSingle(str);
         }
 
         public int? GetCommitCount(string parentHash, string childHash)
@@ -1131,7 +1113,9 @@ namespace GitCommands
 
         public string Init(bool bare, bool shared)
         {
-            return RunGitCmd(Smart.Format("init{0: --bare|}{1: --shared=all|}", bare, shared));
+            var result = RunGitCmd(Smart.Format("init{0: --bare|}{1: --shared=all|}", bare, shared));
+            WorkingDirGitDir = GitDirectoryResolverInstance.Resolve(_workingDir);
+            return result;
         }
 
         public bool IsMerge(string commit)
@@ -1315,6 +1299,11 @@ namespace GitCommands
 
         public string GetSubmoduleFullPath(string localPath)
         {
+            if (localPath == null)
+            {
+                Debug.Assert(true, "No path for submodule - incorrectly parsed status?");
+                return "";
+            }
             string dir = Path.Combine(_workingDir, localPath.EnsureTrailingPathSeparator());
             return Path.GetFullPath(dir); // fix slashes
         }
@@ -1442,47 +1431,6 @@ namespace GitCommands
             return RunGitCmd(arguments);
         }
 
-        /// <summary>Show the changes recorded in the stash as a diff between the stashed state and its original parent.</summary>
-        public string StashShowDiff(string stash = null)
-        {
-            return RunGitCmd(string.Format("stash show {0}", stash));
-        }
-
-        /// <summary>Remove a single stashed state from the stash list and apply it on top of the current working tree state.</summary>
-        /// <param name="stash">Stash to pop.</param>
-        /// <param name="includeIndex">Try to reinstate both working tree and index changes.</param>
-        public string StashPop(string stash = null, bool includeIndex = false)
-        {
-            return RunGitCmd(
-                string.Format(
-                    "stash pop {0} {1}",
-                    includeIndex ? "--index" : "",
-                    stash
-                )
-            );
-        }
-
-        /// <summary>Creates and checks out a new branch starting from the commit at which the stash was originally created.
-        /// Applies the changes recorded in the stash to the new working tree and index.</summary>
-        public string StashBranch(string branchName, string stash = null)
-        {
-            return RunGitCmd(
-                string.Format(
-                    "stash branch {0} {1}",
-                    branchName,
-                    stash
-                )
-            );
-        }
-
-        /// <summary>Remove a single stashed state from the stash list.
-        /// <remarks>When no stash is given, removes the latest one.</remarks></summary>
-        public GitCommandResult StashDelete(string stash = null)
-        {
-            string stashDelete = RunGitCmd(string.Format("stash drop {0}", stash));
-            return new GitCommandResult(stashDelete, stashDelete.Contains("Dropped"));
-        }
-
         public string ResetSoft(string commit)
         {
             return ResetSoft(commit, "");
@@ -1543,6 +1491,26 @@ namespace GitCommands
             return RunGitCmd("checkout-index --index --force -- \"" + file + "\"");
         }
 
+        /// <summary>
+        /// Determines whether the given repository has index.lock file.
+        /// </summary>
+        /// <returns><see langword="true"/> is index is locked; otherwise <see langword="false"/>.</returns>
+        public bool IsIndexLocked()
+        {
+            return _indexLockManager.IsIndexLocked();
+        }
+
+        /// <summary>
+        /// Delete index.lock in the current working folder.
+        /// </summary>
+        /// <param name="includeSubmodules">
+        ///     If <see langword="true"/> all submodules will be scanned for index.lock files and have them delete, if found.
+        /// </param>
+        /// <exception cref="FileDeleteException">Unable to delete specific index.lock.</exception>
+        public void UnlockIndex(bool includeSubmodules)
+        {
+            _indexLockManager.UnlockIndex(includeSubmodules);
+        }
 
         public string FormatPatch(string from, string to, string output, int start)
         {
@@ -2168,118 +2136,6 @@ namespace GitCommands
             return allowEmpty ? remotes.Split('\n') : remotes.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
         }
 
-        /// <summary>Gets a key/value collection of branches with configured upstream branches.
-        /// Key: Local Branch; Value: (Upstream) Remote Branch</summary>
-        public IDictionary<string, string> GetConfiguredUpstreamBranches()
-        {
-            // foreach ref: sort descending on upstream value and output: {upstream}<{ref}
-            string output = RunGitCmd("for-each-ref --sort=-upstream --format='%(upstream:short)<%(refname:short)' refs/heads");
-            // example output:
-            // jberger/left-panel/-main<left-panel/-main
-            // origin/master<master
-            // <left-panel/dragdrops
-            // <some-branch
-
-            const string separator = "<";
-            var upstreams =
-                output
-                    .Split('\n') // delimit by new-line
-                    .TakeWhile(branch => !branch.StartsWith(separator))// take only branches w/ upstream
-                    .Select(branch =>
-                    {
-                        // {upstream}<{local}
-                        string line = branch.Trim();// trim each line
-                        return new { Line = line, IndexOf = line.IndexOf(separator) };
-                    }).ToDictionary(
-                        line => line.Line.Substring(line.IndexOf + 1),// local
-                        line => line.Line.Substring(0, line.IndexOf)) // upstream
-                ;
-
-            return upstreams;
-        }
-
-        /// <summary>Gets information for all remotes.</summary>
-        public IEnumerable<RemoteInfo> GetRemotesInfo()
-        {
-            return
-                GetRemotes(false)
-                .Select(remote =>
-                    new RemoteInfo(
-                        RunGitCmd(string.Format("remote show {0}", remote)),
-                        RunGitCmd(string.Format("ls-remote --heads {0}", remote))));
-        }
-
-        /// <summary>Executes the specified 'git remote' command.</summary>
-        public string RemoteCmd(GitRemote remoteCommand)
-        {
-            return RunGitCmd(remoteCommand.ToString());
-        }
-
-        /// <summary>Gets the number of commits which appear in a branch/revision that are NOT in another branch/revision.
-        /// <example>If a feature branch is behind master by 2 commits; '2' will be returned.</example></summary>
-        /// <param name="behindRevision">Commits in <paramref name="aheadRevision"/> but NOT in this branch/revision.</param>
-        /// <param name="aheadRevision">Commits in this branch/revision.</param>
-        public int GetCommitDiffCount(string behindRevision, string aheadRevision)
-        {
-            string n = RunGitCmd(string.Format("rev-list {0} ^{1} --count", aheadRevision, behindRevision));
-            return int.Parse(n);
-        }
-
-        /// <summary>Gets the number of commits which appear in a remote branch that are NOT in another branch/revision.
-        /// <remarks>Indicates how many commits the local branch is behind the remote branch; possibly for pulling.</remarks></summary>
-        /// <param name="behindRevision">Revision/branch to check how many commits it's behind.</param>
-        /// <param name="remoteTrackingBranch">Remote branch.</param>
-        public int GetCommitDiffCount(string behindRevision, RemoteInfo.RemoteTrackingBranch remoteTrackingBranch)
-        {
-            return GetCommitDiffCount(behindRevision, remoteTrackingBranch.FullPath);
-        }
-
-        /// <summary>Gets the number of commits which appear in a local branch/revision that are NOT in a remote branch.
-        /// <remarks>Indicates how many commits the local branch is ahead of the remote branch.</remarks></summary>
-        /// <param name="remoteTrackingBranch">Remote branch to check the number of commits it's behind.</param>
-        /// <param name="aheadRevision">Local revision/branch.</param>
-        public int GetCommitDiffCount(RemoteInfo.RemoteTrackingBranch remoteTrackingBranch, string aheadRevision)
-        {
-            return GetCommitDiffCount(remoteTrackingBranch.FullPath, aheadRevision);
-        }
-
-        /// <summary>Indicates whether a branch/revision is behind another branch/revision.</summary>
-        /// <param name="behindRevision">Local branch/revision to check if it's behind.</param>
-        /// <param name="aheadRevision">Local branch/revision that may be ahead.</param>
-        public bool IsBranchBehind(string behindRevision, string aheadRevision)
-        {
-            return GetCommitDiffCount(behindRevision, aheadRevision) != 0;
-        }
-
-        /// <summary>Indicates whether a local branch/revision is behind a remote branch; possibly for pulling.</summary>
-        /// <param name="behindRevision">Local branch/revision to check if it's behind.</param>
-        /// <param name="remoteTrackingBranch">Remote branch.</param>
-        public bool IsBranchBehind(string behindRevision, RemoteInfo.RemoteTrackingBranch remoteTrackingBranch)
-        {
-            return IsBranchBehind(behindRevision, remoteTrackingBranch.FullPath);
-        }
-
-        /// <summary>Indicates whether a remote branch is lacking commits that are in a local branch/revision.</summary>
-        /// <param name="aheadRevision">Local branch/revision.</param>
-        /// <param name="remoteTrackingBranch">Remote branch to check if it's behind.</param>
-        public bool IsRemoteBranchBehind(RemoteInfo.RemoteTrackingBranch remoteTrackingBranch, string aheadRevision)
-        {
-            return IsBranchBehind(remoteTrackingBranch.FullPath, aheadRevision);
-        }
-
-        /// <summary>Compares commits between a (control) branch and another (test) branch.</summary>
-        public BranchComparison CompareCommits(string branch, string otherBranch)
-        {
-            string output = RunGitCmd(string.Format("rev-list {0}...{1} --count", branch, otherBranch));
-            // "2    0"
-
-            var splits = output.SplitThenTrim(" ").ToArray();
-            int nBranch = int.Parse(splits[0]);
-            int nOther = int.Parse(splits[1]);
-
-            return new BranchComparison(branch, nBranch, otherBranch, nOther);
-        }
-
         /// <summary>Gets the local config file.</summary>
         public IEnumerable<string> GetSettings(string setting)
         {
@@ -2353,6 +2209,7 @@ namespace GitCommands
             var patchManager = new PatchManager();
             var arguments = String.Format(DiffCommandWithStandardArgs + "{0} -M -C {1} -- {2} {3}", extraDiffArguments, commitRange,
                 fileName.Quote(), oldFileName.Quote());
+            cacheResult = cacheResult && !GitRevision.IsArtificial(to) && !GitRevision.IsArtificial(from) && !to.IsNullOrEmpty() && !from.IsNullOrEmpty();
             string patch;
             if (cacheResult)
                 patch = RunCacheableCmd(AppSettings.GitCommand, arguments, LosslessEncoding);
@@ -3007,7 +2864,7 @@ namespace GitCommands
             return tree.Split(new char[] { '\0', '\n' });
         }
 
-        public IList<IGitItem> GetTree(string id, bool full)
+        public IEnumerable<IGitItem> GetTree(string id, bool full)
         {
             string args = "-z";
             if (full)
@@ -3024,7 +2881,7 @@ namespace GitCommands
                 tree = this.RunCmd(AppSettings.GitCommand, "ls-tree " + args + " \"" + id + "\"", SystemEncoding);
             }
 
-            return GitItem.CreateIGitItemsFromString(this, tree);
+            return _gitTreeParser.Parse(tree);
         }
 
         public GitBlame Blame(string filename, string from, Encoding encoding)
@@ -3299,22 +3156,9 @@ namespace GitCommands
             return fullBranchName;
         }
 
-        public bool IsLockedIndex()
-        {
-            return IsLockedIndex(_workingDir);
-        }
-
-        public static bool IsLockedIndex(string repositoryPath)
-        {
-            var gitDir = GetGitDirectory(repositoryPath);
-            var indexLockFile = Path.Combine(gitDir, "index.lock");
-
-            return File.Exists(indexLockFile);
-        }
-
         public bool IsRunningGitProcess()
         {
-            if (IsLockedIndex())
+            if (_indexLockManager.IsIndexLocked())
             {
                 return true;
             }

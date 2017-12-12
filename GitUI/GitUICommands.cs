@@ -10,10 +10,7 @@ using GitUI.CommandsDialogs;
 using GitUI.CommandsDialogs.CommitDialog;
 using GitUI.CommandsDialogs.RepoHosting;
 using GitUI.CommandsDialogs.SettingsDialog;
-using GitUI.Blame;
-using GitUI.Notifications;
 using GitUIPluginInterfaces;
-using GitUIPluginInterfaces.Notifications;
 using GitUIPluginInterfaces.RepositoryHosts;
 using Gravatar;
 using JetBrains.Annotations;
@@ -33,7 +30,6 @@ namespace GitUI
             _commitTemplateManager = new CommitTemplateManager(module);
             RepoChangedNotifier = new ActionNotifier(
                 () => InvokeEvent(null, PostRepositoryChanged));
-            Notifications = NotificationManager.Get(this);
             IImageCache avatarCache = new DirectoryImageCache(AppSettings.GravatarCachePath, AppSettings.AuthorImageCacheDays);
             _gravatarService = new GravatarService(avatarCache);
         }
@@ -228,9 +224,6 @@ namespace GitUI
         }
 
         public Icon FormIcon { get { return GitExtensionsForm.ApplicationIcon; } }
-
-        /// <summary>Gets notifications implementation.</summary>
-        public INotifications Notifications { get; private set; }
 
         public bool StartBatchFileProcessDialog(object owner, string batchFile)
         {
@@ -1544,6 +1537,8 @@ namespace GitUI
 
                     if (showBlame)
                         form.SelectBlameTab();
+                    else
+                        form.SelectDiffTab();
 
                     return form;
                 };

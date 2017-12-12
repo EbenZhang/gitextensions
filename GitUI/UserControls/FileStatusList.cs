@@ -90,7 +90,7 @@ namespace GitUI
                 Name = "openSubmoduleMenuItem",
                 Tag = "1",
                 Text = "Open with Git Extensions",
-                Image = Resources.IconFolderSubmodule
+                Image = Resources.gitex
             };
             _openSubmoduleMenuItem.Click += (s, ea) => { OpenSubmodule(); };
         }
@@ -602,8 +602,8 @@ namespace GitUI
 
             if (isSubmoduleSelected)
             {
-                _openSubmoduleMenuItem.Font = AppSettings.OpenSubmoduleDiffInSeparateWindow ? 
-                    new Font(_openSubmoduleMenuItem.Font,  FontStyle.Bold) : 
+                _openSubmoduleMenuItem.Font = AppSettings.OpenSubmoduleDiffInSeparateWindow ?
+                    new Font(_openSubmoduleMenuItem.Font,  FontStyle.Bold) :
                     new Font(_openSubmoduleMenuItem.Font, FontStyle.Regular);
             }
         }
@@ -858,7 +858,7 @@ namespace GitUI
                 if (sortedFirstGroupItem != null)
                     sortedFirstGroupItem.Selected = true;
             }
-            else if (FileStatusListView.Items.Count > 0)
+            else
                 FileStatusListView.Items[0].Selected = true;
         }
 
@@ -1025,7 +1025,7 @@ namespace GitUI
 
             if (revision == null)
                 GitItemStatuses = null;
-            else if (revision.ParentGuids == null || revision.ParentGuids.Length == 0)
+            else if (!revision.HasParent)
                 GitItemStatuses = Module.GetTreeFiles(revision.TreeGuid, true);
             else
             {

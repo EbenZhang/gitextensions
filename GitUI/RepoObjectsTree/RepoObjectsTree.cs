@@ -20,7 +20,6 @@ namespace GitUI.UserControls
 
         List<Tree> rootNodes = new List<Tree>();
         /// <summary>Image key for a head branch.</summary>
-        static readonly string headBranchKey = Guid.NewGuid().ToString();
         private SearchControl<string> txtBranchCriterion;
         private readonly HashSet<string> _branchCriterionAutoCompletionSrc = new HashSet<string>();
 
@@ -88,14 +87,14 @@ namespace GitUI.UserControls
 
             var localBranchesRootNode = new TreeNode(Strings.branches.Text)
             {
-                ImageKey = "RemoteRepo.png",
+                ImageKey = "LocalRepo.png",
             };
             localBranchesRootNode.SelectedImageKey = localBranchesRootNode.ImageKey;
             AddTree(new BranchTree(localBranchesRootNode, newSource));
 
             var remoteBranchesRootNode = new TreeNode(Strings.remotes.Text)
             {
-                ImageKey = "RemoteMirror.png",
+                ImageKey = "RemoteRepo.png",
             };
             remoteBranchesRootNode.SelectedImageKey = remoteBranchesRootNode.ImageKey;
             _remoteTree = new RemoteBranchTree(remoteBranchesRootNode, newSource)
