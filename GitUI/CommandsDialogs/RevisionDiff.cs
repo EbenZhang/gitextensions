@@ -39,6 +39,7 @@ namespace GitUI.CommandsDialogs
             InitializeComponent();
             Translate();
             this.HotkeysEnabled = true;
+            DiffText.OnViewLineOnGitHub = OnViewLineOnGitHub;
         }
 
         public void ForceRefreshRevisions()
@@ -266,6 +267,7 @@ namespace GitUI.CommandsDialogs
             }
 
             var items = _revisionGrid.GetSelectedRevisions();
+            var onlyOneRevisionSelected = items.Count == 1;
             if (items.Count() == 1)
             {
                 items.Add(new GitRevision(Module, DiffFiles.SelectedItemParent));
@@ -281,11 +283,11 @@ namespace GitUI.CommandsDialogs
                         diffOfConflict = Strings.GetUninterestingDiffOmitted();
                     }
 
-                    DiffText.ViewPatch(diffOfConflict);
+                    DiffText.ViewPatch(diffOfConflict, canViewLineOnGitHubForThisRevision: onlyOneRevisionSelected);
                     return;
                 }
             }
-            DiffText.ViewChanges(items, DiffFiles.SelectedItem, String.Empty);
+            DiffText.ViewChanges(items, DiffFiles.SelectedItem, String.Empty, canViewLineOnGitHubForThisRevision: onlyOneRevisionSelected);
         }
 
 
@@ -869,6 +871,14 @@ namespace GitUI.CommandsDialogs
         {
             string summary = Module.GetSubmoduleSummary(DiffFiles.SelectedItem.Name);
             using (var frm = new FormEdit(summary)) frm.ShowDialog(this);
+        }
+
+        private void OnViewLineOnGitHub(string githubLineUrlFormat)
+        {
+            var url = string.Format(githubLineUrlFormat,
+                _revisionGrid.GetSelectedRevisions().Last().Guid,
+                MD5.Create().GetMd5HashString(DiffFiles.SelectedItem.Name));
+            Process.Start(url);
         }
     }
 }
