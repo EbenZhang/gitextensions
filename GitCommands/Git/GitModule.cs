@@ -3111,7 +3111,6 @@ namespace GitCommands
             return messages.Select(cm =>
                 {
                     int idx = cm.IndexOf("\n");
-                    if (idx <= 0) return null;
                     string encodingName = cm.Substring(0, idx);
                     cm = cm.Substring(idx + 1, cm.Length - idx - 1);
                     cm = ReEncodeCommitMessage(cm, encodingName);
