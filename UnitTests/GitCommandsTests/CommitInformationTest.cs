@@ -44,14 +44,14 @@ namespace GitCommandsTests
                           "Notes (p4notes):\n" +
                           "\tP4@547123";
 
-            var expectedHeader = "Author:\t\t<a href='mailto:John.Doe@test.com'>John Doe (Acme Inc) &lt;John.Doe@test.com&gt;</a>" + Environment.NewLine +
-                                 "Author date:\t3 days ago (" + LocalizationHelpers.GetFullDateString(authorTime) + ")" + Environment.NewLine +
-                                 "Committer:\t<a href='mailto:Jane.Doe@test.com'>Jane Doe (Acme Inc) &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
-                                 "Commit date:\t2 days ago (" + LocalizationHelpers.GetFullDateString(commitTime) + ")" + Environment.NewLine +
-                                 "Commit hash:\t" + commitGuid + Environment.NewLine +
-                                 "Parent(s):\t<a href='gitext://gotocommit/" + parentGuid1 + "'>" + parentGuid1.Substring(0, 10) + "</a> " + parent1Rev.Subject +
+            var expectedHeader = "Author:      <a href='mailto:John.Doe@test.com'>John Doe (Acme Inc) &lt;John.Doe@test.com&gt;</a>" + Environment.NewLine +
+                                 "Author date: 3 days ago (" + LocalizationHelpers.GetFullDateString(authorTime) + ")" + Environment.NewLine +
+                                 "Committer:   <a href='mailto:Jane.Doe@test.com'>Jane Doe (Acme Inc) &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
+                                 "Commit date: 2 days ago (" + LocalizationHelpers.GetFullDateString(commitTime) + ")" + Environment.NewLine +
+                                 "Commit hash: " + commitGuid + Environment.NewLine +
+                                 "Parent(s):   <a href='gitext://gotocommit/" + parentGuid1 + "'>" + parentGuid1.Substring(0, 10) + "</a> " + parent1Rev.Subject +
                                  Environment.NewLine +
-                                 " \t\t<a href='gitext://gotocommit/" + parentGuid2 + "'>" + parentGuid2.Substring(0, 10) + "</a> " + parent2Rev.Subject;
+                                 "      <a href='gitext://gotocommit/" + parentGuid2 + "'>" + parentGuid2.Substring(0, 10) + "</a> " + parent2Rev.Subject;
 
             var expectedBody = "\nI made a really neato change." + Environment.NewLine + Environment.NewLine +
                                "Notes (p4notes):" + Environment.NewLine +
