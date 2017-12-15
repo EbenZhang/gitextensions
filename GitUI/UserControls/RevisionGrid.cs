@@ -2424,6 +2424,26 @@ namespace GitUI
                 }
             }
 
+            bool firstRemoteBranchForDelete = true;
+            foreach (var head in allBranches)
+            {
+                if (head.IsRemote)
+                {
+                    if (firstRemoteBranchForDelete)
+                    {
+                        firstRemoteBranchForDelete = false;
+                        if (deleteBranchDropDown.Items.Count > 0)
+                        {
+                            deleteBranchDropDown.Items.Add(new ToolStripSeparator());
+                        }
+                    }
+
+                    ToolStripItem toolStripItem = new ToolStripMenuItem(head.Name);
+                    toolStripItem.Click += ToolStripItemClickDeleteRemoteBranch;
+                    deleteBranchDropDown.Items.Add(toolStripItem); //Add to delete branch
+                }
+            }
+
             bool bareRepositoryOrArtificial = Module.IsBareRepository() || revision.IsArtificial();
             deleteTagToolStripMenuItem.DropDown = deleteTagDropDown;
             deleteTagToolStripMenuItem.Enabled = deleteTagDropDown.Items.Count > 0;
@@ -2506,6 +2526,16 @@ namespace GitUI
                 return;
 
             UICommands.StartDeleteBranchDialog(this, toolStripItem.Tag as string);
+        }
+
+        private void ToolStripItemClickDeleteRemoteBranch(object sender, EventArgs e)
+        {
+            var toolStripItem = sender as ToolStripItem;
+
+            if (toolStripItem == null)
+                return;
+
+            UICommands.StartDeleteRemoteBranchDialog(this, toolStripItem.Text);
         }
 
         private void ToolStripItemClickCheckoutBranch(object sender, EventArgs e)
@@ -2683,7 +2713,6 @@ namespace GitUI
                 Revisions.Prune();
                 return;
             }
-
 
             if (_filtredCurrentCheckout == null)
             {
