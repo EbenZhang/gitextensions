@@ -1,3 +1,5 @@
+[![Github Releases (by Release)](https://img.shields.io/github/downloads/ebenzhang/gitextensions/latest/total.svg?maxAge=86400)](https://github.com/ebenzhang/gitextensions/releases/latest)
+
 # Git Extensions
 
 ## Introduction
