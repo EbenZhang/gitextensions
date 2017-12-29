@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Config;
 using GitCommands.Git;
 using GitUI.BuildServerIntegration;
 using GitUI.CommandsDialogs;
@@ -68,6 +69,7 @@ namespace GitUI
         private readonly IImageCache _avatarCache;
         private readonly IAvatarService _gravatarService;
         private readonly IImageNameProvider _avatarImageNameProvider;
+        private readonly ICommitDataManager _commitDataManager;
         private readonly FormRevisionFilter _revisionFilter = new FormRevisionFilter();
 
         private RefsFiltringOptions _refsOptions = RefsFiltringOptions.All | RefsFiltringOptions.Boundary;
@@ -133,6 +135,8 @@ namespace GitUI
             _avatarCache = new DirectoryImageCache(AppSettings.GravatarCachePath, AppSettings.AuthorImageCacheDays);
             _avatarCache.Invalidated += (s, e) => Revisions.Invalidate();
             _gravatarService = new GravatarService(_avatarCache, _avatarImageNameProvider);
+
+            _commitDataManager = new CommitDataManager(() => Module);
 
             _revisionGridMenuCommands = new RevisionGridMenuCommands(this);
             _revisionGridMenuCommands.CreateOrUpdateMenuCommands();
@@ -1923,11 +1927,11 @@ namespace GitUI
         private void LoadIsMultilineMessageInfo(GitRevision revision, int colIndex, int rowIndex, int totalRowCount, GitModule aModule)
         {
             // code taken from CommitInfo.cs
-            CommitData commitData = CommitData.CreateFromRevision(revision);
+            CommitData commitData = _commitDataManager.CreateFromRevision(revision);
             string error = "";
             if (revision.Body == null)
             {
-                CommitData.UpdateCommitMessage(commitData, aModule, revision.Guid, ref error);
+                _commitDataManager.UpdateCommitMessage(commitData, revision.Guid, ref error);
                 revision.Body = commitData.Body;
             }
 
@@ -2772,18 +2776,33 @@ namespace GitUI
                 stageCount = "";
             }
 
-            //Add working directory as virtual commit
+            var userName = Module.GetEffectiveSetting(SettingKeyString.UserName);
+            var userEmail = Module.GetEffectiveSetting(SettingKeyString.UserEmail);
+
+            // Add working directory as virtual commit
             var workingDir = new GitRevision(Module, GitRevision.UnstagedGuid)
             {
+                Author = userName,
+                AuthorDate = DateTime.MaxValue,
+                AuthorEmail = userEmail,
+                Committer = userName,
+                CommitDate = DateTime.MaxValue,
+                CommitterEmail = userEmail,
                 SubjectCount = unstageCount,
                 Subject = Strings.GetCurrentUnstagedChanges(),
                 ParentGuids = new[] { GitRevision.IndexGuid }
             };
             Revisions.Add(workingDir.Guid, workingDir.ParentGuids, DvcsGraph.DataType.Normal, workingDir);
 
-            //Add index as virtual commit
+            // Add index as virtual commit
             var index = new GitRevision(Module, GitRevision.IndexGuid)
             {
+                Author = userName,
+                AuthorDate = DateTime.MaxValue,
+                AuthorEmail = userEmail,
+                Committer = userName,
+                CommitDate = DateTime.MaxValue,
+                CommitterEmail = userEmail,
                 SubjectCount = stageCount,
                 Subject = Strings.GetCurrentIndex(),
                 ParentGuids = new[] { filtredCurrentCheckout }
