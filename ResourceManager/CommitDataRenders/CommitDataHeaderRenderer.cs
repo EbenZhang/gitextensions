@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using GitCommands;
+using GitCommands.Git;
 
 namespace ResourceManager.CommitDataRenders
 {
@@ -21,7 +22,7 @@ namespace ResourceManager.CommitDataRenders
         /// Generate header.
         /// </summary>
         /// <returns></returns>
-        string Render(CommitData commitData, bool showRevisionsAsLinks);
+        string Render(CommitData commitData, bool showRevisionsAsLinks, IGitRevisionProvider revisionProvider);
 
         /// <summary>
         /// Generate header.
@@ -65,7 +66,8 @@ namespace ResourceManager.CommitDataRenders
         /// Generate header.
         /// </summary>
         /// <returns></returns>
-        public string Render(CommitData commitData, bool showRevisionsAsLinks)
+        public string Render(CommitData commitData, bool showRevisionsAsLinks,
+            IGitRevisionProvider revisionProvider)
         {
             if (commitData == null)
             {
@@ -104,13 +106,15 @@ namespace ResourceManager.CommitDataRenders
 
             if (commitData.ChildrenGuids != null && commitData.ChildrenGuids.Count != 0)
             {
-                header.AppendLine(_labelFormatter.FormatLabel(Strings.GetChildrenText(), padding) + RenderHashCollection(commitData.ChildrenGuids, showRevisionsAsLinks));
+                header.AppendLine(_labelFormatter.FormatLabel(Strings.GetChildrenText(), padding) +
+                    RenderHashCollection(commitData.ChildrenGuids, showRevisionsAsLinks, revisionProvider, padding));
             }
 
             var parentGuids = commitData.ParentGuids.Where(s => !string.IsNullOrEmpty(s)).ToList();
             if (parentGuids.Any())
             {
-                header.AppendLine(_labelFormatter.FormatLabel(Strings.GetParentsText(), padding) + RenderHashCollection(parentGuids, showRevisionsAsLinks));
+                header.AppendLine(_labelFormatter.FormatLabel(Strings.GetParentsText(), padding) +
+                    RenderHashCollection(parentGuids, showRevisionsAsLinks, revisionProvider, padding));
             }
 
             // remove the trailing newline character
@@ -168,18 +172,30 @@ namespace ResourceManager.CommitDataRenders
             return author.Substring(ind, author.LastIndexOf(">", StringComparison.Ordinal) - ind);
         }
 
-        private  string RenderHashCollection(IEnumerable<string> hashes, bool showRevisionsAsLinks)
+        private  string RenderHashCollection(IEnumerable<string> hashes, bool showRevisionsAsLinks,
+            IGitRevisionProvider revisionProvider, int padding)
         {
             string commitsString;
             if (showRevisionsAsLinks)
             {
-                commitsString = hashes.Select(g => _linkFactory.CreateCommitLink(g)).Join(" ");
+                commitsString = hashes
+                    .Select(g => _linkFactory.CreateCommitLink(g) + " " + GetCommitSubject(g, revisionProvider))
+                    .Join(Environment.NewLine + _labelFormatter.FormatLabel("", padding, appendColon: false));
             }
             else
             {
-                commitsString = hashes.Select(guid => guid.Substring(0, 10)).Join(" ");
+                commitsString = hashes
+                    .Select(guid => guid.Substring(0, 10) + " " + GetCommitSubject(guid, revisionProvider))
+                    .Join(Environment.NewLine + _labelFormatter.FormatLabel("", padding, appendColon: false));
             }
             return commitsString;
+        }
+
+        private static string GetCommitSubject(string sha, IGitRevisionProvider module)
+        {
+            return GitRevision.IsArtificial(sha)
+                ? ""
+                : module.GetRevision(sha, shortFormat: true).Subject;
         }
     }
 }

@@ -194,7 +194,7 @@ namespace GitUI.CommitInfo
                 ThreadPool.QueueUserWorkItem(_ => loadSortedRefs());
 
             data.ChildrenGuids = _children;
-            var header = _commitDataHeaderRenderer.Render(data, CommandClick != null);
+            var header = _commitDataHeaderRenderer.Render(data, CommandClick != null, Module);
             var body = _commitDataBodyRenderer.Render(data, CommandClick != null);
 
             _RevisionHeader.SetXHTMLText(header);

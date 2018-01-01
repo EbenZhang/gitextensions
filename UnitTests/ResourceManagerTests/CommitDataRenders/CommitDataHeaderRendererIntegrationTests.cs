@@ -6,6 +6,8 @@ using GitCommands;
 using NUnit.Framework;
 using ResourceManager;
 using ResourceManager.CommitDataRenders;
+using GitCommands.Git;
+using NSubstitute;
 
 namespace ResourceManagerTests.CommitDataRenders
 {
@@ -17,6 +19,12 @@ namespace ResourceManagerTests.CommitDataRenders
         private CommitData _data;
         private CommitDataHeaderRenderer _rendererTabs;
         private CommitDataHeaderRenderer _rendererSpaces;
+        private GitRevision _parent1Rev;
+        private GitRevision _parent2Rev;
+        private GitRevision _child1Rev;
+        private GitRevision _child2Rev;
+        private GitRevision _child3Rev;
+        private IGitRevisionProvider _revisionProvider;
 
         [SetUp]
         public void Setup()
@@ -28,12 +36,26 @@ namespace ResourceManagerTests.CommitDataRenders
             var authorTime = DateTime.UtcNow.AddDays(-3);
             var commitTime = DateTime.UtcNow.AddDays(-2);
 
+            _revisionProvider = Substitute.For<IGitRevisionProvider>();
+            _parent1Rev = new GitRevision(aModule: null, guid: parentGuid1) { Subject = "Parent1" };
+            _parent2Rev = new GitRevision(aModule: null, guid: parentGuid2) { Subject = "Parent2" };
+            _revisionProvider.GetRevision(parentGuid1, shortFormat: true).Returns(_parent1Rev);
+            _revisionProvider.GetRevision(parentGuid2, shortFormat: true).Returns(_parent2Rev);
+
+            var childGuids = new List<string> { "3b6ce324e30ed7fda24483fd56a180c34a262202", "2a8788ff15071a202505a96f80796dbff5750ddf", "8e66fa8095a86138a7c7fb22318d2f819669831e" };
+            _child1Rev = new GitRevision(aModule: null, guid: childGuids[0]) { Subject = "Child1" };
+            _child2Rev = new GitRevision(aModule: null, guid: childGuids[1]) { Subject = "Child2" };
+            _child3Rev = new GitRevision(aModule: null, guid: childGuids[2]) { Subject = "Child3" };
+            _revisionProvider.GetRevision(childGuids[0], shortFormat: true).Returns(_child1Rev);
+            _revisionProvider.GetRevision(childGuids[1], shortFormat: true).Returns(_child2Rev);
+            _revisionProvider.GetRevision(childGuids[2], shortFormat: true).Returns(_child3Rev);
+
             _data = new CommitData(commitGuid, treeGuid,
                 new ReadOnlyCollection<string>(new List<string> { parentGuid1, parentGuid2 }),
                 "John Doe (Acme Inc) <John.Doe@test.com>", authorTime,
                 "Jane Doe <Jane.Doe@test.com>", commitTime,
                 "\tI made a really neato change.\n\nNotes (p4notes):\n\tP4@547123");
-            _data.ChildrenGuids = new List<string> { "3b6ce324e30ed7fda24483fd56a180c34a262202", "2a8788ff15071a202505a96f80796dbff5750ddf", "8e66fa8095a86138a7c7fb22318d2f819669831e" };
+            _data.ChildrenGuids = childGuids;
 
             _rendererTabs = new CommitDataHeaderRenderer(new TabbedHeaderLabelFormatter(), new DateFormatter(), new TabbedHeaderRenderStyleProvider(), new LinkFactory());
             _rendererSpaces = new CommitDataHeaderRenderer(new MonospacedHeaderLabelFormatter(), new DateFormatter(), new MonospacedHeaderRenderStyleProvider(), new LinkFactory());
@@ -47,10 +69,13 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Committer:		<a href='mailto:Jane.Doe@test.com'>Jane Doe &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
                                  "Commit date:	2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
                                  "Commit hash:	" + _data.Guid + Environment.NewLine +
-                                 "Children:		<a href='gitext://gotocommit/" + _data.ChildrenGuids[0] + "'>" + _data.ChildrenGuids[0].Substring(0, 10) + "</a> <a href='gitext://gotocommit/" + _data.ChildrenGuids[1] + "'>" + _data.ChildrenGuids[1].Substring(0, 10) + "</a> <a href='gitext://gotocommit/" + _data.ChildrenGuids[2] + "'>" + _data.ChildrenGuids[2].Substring(0, 10) + "</a>" + Environment.NewLine +
-                                 "Parent(s):		<a href='gitext://gotocommit/" + _data.ParentGuids[0] + "'>" + _data.ParentGuids[0].Substring(0, 10) + "</a> <a href='gitext://gotocommit/" + _data.ParentGuids[1] + "'>" + _data.ParentGuids[1].Substring(0, 10) + "</a>";
+                                 "Children:		<a href='gitext://gotocommit/" + _data.ChildrenGuids[0] + "'>" + _data.ChildrenGuids[0].Substring(0, 10) + "</a>" + Environment.NewLine +
+                                               "<a href='gitext://gotocommit/" + _data.ChildrenGuids[1] + "'>" + _data.ChildrenGuids[1].Substring(0, 10) + "</a>" + Environment.NewLine +
+                                               "<a href='gitext://gotocommit/" + _data.ChildrenGuids[2] + "'>" + _data.ChildrenGuids[2].Substring(0, 10) + "</a>" + Environment.NewLine +
+                                 "Parent(s):		<a href='gitext://gotocommit/" + _data.ParentGuids[0] + "'>" + _data.ParentGuids[0].Substring(0, 10) + "</a>" + _parent1Rev.Subject + Environment.NewLine +
+                                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[1] + "'>" + _data.ParentGuids[1].Substring(0, 10) + "</a>" + _parent2Rev.Subject;
 
-            var result = _rendererTabs.Render(_data, true);
+            var result = _rendererTabs.Render(_data, true, _revisionProvider);
 
             result.Should().Be(expectedHeader);
         }
@@ -66,7 +91,7 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Children:		" + _data.ChildrenGuids[0].Substring(0, 10) + " " + _data.ChildrenGuids[1].Substring(0, 10) + " " + _data.ChildrenGuids[2].Substring(0, 10) + Environment.NewLine +
                                  "Parent(s):		" + _data.ParentGuids[0].Substring(0, 10) + " " + _data.ParentGuids[1].Substring(0, 10);
 
-            var result = _rendererTabs.Render(_data, false);
+            var result = _rendererTabs.Render(_data, false, _revisionProvider);
 
             result.Should().Be(expectedHeader);
         }
@@ -82,7 +107,7 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Children:    <a href='gitext://gotocommit/" + _data.ChildrenGuids[0] + "'>" + _data.ChildrenGuids[0].Substring(0, 10) + "</a> <a href='gitext://gotocommit/" + _data.ChildrenGuids[1] + "'>" + _data.ChildrenGuids[1].Substring(0, 10) + "</a> <a href='gitext://gotocommit/" + _data.ChildrenGuids[2] + "'>" + _data.ChildrenGuids[2].Substring(0, 10) + "</a>" + Environment.NewLine +
                                  "Parent(s):   <a href='gitext://gotocommit/" + _data.ParentGuids[0] + "'>" + _data.ParentGuids[0].Substring(0, 10) + "</a> <a href='gitext://gotocommit/" + _data.ParentGuids[1] + "'>" + _data.ParentGuids[1].Substring(0, 10) + "</a>";
 
-            var result = _rendererSpaces.Render(_data, true);
+            var result = _rendererSpaces.Render(_data, true, _revisionProvider);
 
             result.Should().Be(expectedHeader);
         }
@@ -98,7 +123,7 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Children:    " + _data.ChildrenGuids[0].Substring(0, 10) + " " + _data.ChildrenGuids[1].Substring(0, 10) + " " +_data.ChildrenGuids[2].Substring(0, 10) + Environment.NewLine +
                                  "Parent(s):   " + _data.ParentGuids[0].Substring(0, 10) + " " + _data.ParentGuids[1].Substring(0, 10);
 
-            var result = _rendererSpaces.Render(_data, false);
+            var result = _rendererSpaces.Render(_data, false, _revisionProvider);
 
             result.Should().Be(expectedHeader);
         }
