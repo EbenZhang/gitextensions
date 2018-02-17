@@ -80,6 +80,11 @@ Inactive remote is completely invisible to git.");
             new TranslationString("Inactive");
         #endregion
 
+        public delegate void EventRemoteChange(string remoteName);
+        public delegate void EventRemoteRenamed(string orgName, string newName);
+
+        public EventRemoteChange OnRemoteDeleted;
+        public EventRemoteRenamed OnRemoteRenamedOrAdded;
 
         public FormRemotes(GitUICommands aCommands)
             : base(aCommands)
@@ -187,13 +192,13 @@ Inactive remote is completely invisible to git.");
         private void InitialiseTabRemotes(string preselectRemote = null)
         {
             // because the binding the same BindingList to multiple controls,
-            // and changes in one of the bound control automatically get reflected 
+            // and changes in one of the bound control automatically get reflected
             // in the other control, which causes rather frustrating UX.
             // to address that, re-create binding lists for each individual control
             var repos = Repositories.RemoteRepositoryHistory.Repositories.OrderBy(x => x.Path);
             try
             {
-                // to stop the flicker binding the lists and 
+                // to stop the flicker binding the lists and
                 // when the selected remote is getting reset and then selected again
                 Url.BeginUpdate();
                 comboBoxPushUrl.BeginUpdate();
@@ -338,6 +343,11 @@ Inactive remote is completely invisible to git.");
                                                        remoteUrl,
                                                        checkBoxSepPushUrl.Checked ? remotePushUrl : null,
                                                        PuttySshKey.Text);
+                if (OnRemoteRenamedOrAdded != null)
+                {
+                    OnRemoteRenamedOrAdded(
+                        _selectedRemote != null? _selectedRemote.Name : remote, remote);
+                }
 
                 if (!string.IsNullOrEmpty(result.UserMessage))
                 {
@@ -354,7 +364,7 @@ Inactive remote is completely invisible to git.");
                     Repositories.SaveSettings();
                 }
 
-                // if the user has just created a fresh new remote 
+                // if the user has just created a fresh new remote
                 // there may be a need to configure it
                 if (result.ShouldUpdateRemote && !string.IsNullOrEmpty(remoteUrl) &&
                 DialogResult.Yes == MessageBox.Show(this,
@@ -364,6 +374,7 @@ Inactive remote is completely invisible to git.");
                 {
                     FormRemoteProcess.ShowDialog(this, "remote update");
                     _remoteManager.ConfigureRemotes(remote);
+                    UICommands.RepoChangedNotifier.Notify();
                 }
             }
             finally
@@ -396,6 +407,13 @@ Inactive remote is completely invisible to git.");
                 if (!string.IsNullOrEmpty(output))
                 {
                     MessageBox.Show(this, output, _gitMessage.Text);
+                }
+                else
+                {
+                    if (OnRemoteDeleted != null)
+                    {
+                        OnRemoteDeleted(_selectedRemote.Name);
+                    }
                 }
 
                 // Deleting a remote from the history list may be undesirable as

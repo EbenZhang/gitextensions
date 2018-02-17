@@ -87,6 +87,7 @@ namespace GitUI
         private int _rowHeigth;
         public event EventHandler<GitModuleEventArgs> GitModuleChanged;
         public event EventHandler<DoubleClickRevisionEventArgs> DoubleClickRevision;
+        public Action OnToggleLeftPanelRequested;
         public event EventHandler<EventArgs> ShowFirstParentsToggled;
 
         private readonly ParentChildNavigationHistory _parentChildNavigationHistory;
@@ -566,7 +567,7 @@ namespace GitUI
         {
             if (_navigationHistory.CanNavigateBackward)
             {
-                InternalSetSelectedRevision(_navigationHistory.NavigateBackward());
+                SetSelectedRevision(_navigationHistory.NavigateBackward());
             }
         }
 
@@ -574,8 +575,13 @@ namespace GitUI
         {
             if (_navigationHistory.CanNavigateForward)
             {
-                InternalSetSelectedRevision(_navigationHistory.NavigateForward());
+                SetSelectedRevision(_navigationHistory.NavigateForward());
             }
+        }
+
+        private void ToggleLeftPanel()
+        {
+            OnToggleLeftPanelRequested();
         }
 
         private void FindNextMatch(int startIndex, string searchString, bool reverse)
@@ -767,7 +773,7 @@ namespace GitUI
         private bool InternalSetSelectedRevision(string revision)
         {
             int index = FindRevisionIndex(revision);
-            if (index >= 0)
+            if (index >= 0 && index < Revisions.RowCount)
             {
                 SetSelectedIndex(index);
                 return true;
@@ -3238,6 +3244,7 @@ namespace GitUI
             CompareToBase,
             CreateFixupCommit,
             ToggleShowTags,
+            ToggleLeftPanel,
         }
 
         protected override bool ExecuteCommand(int cmd)
@@ -3273,6 +3280,7 @@ namespace GitUI
                 case Commands.SelectAsBaseToCompare: selectAsBaseToolStripMenuItem_Click(null, null); break;
                 case Commands.CompareToBase: compareToBaseToolStripMenuItem_Click(null, null); break;
                 case Commands.CreateFixupCommit: FixupCommitToolStripMenuItemClick(null, null); break;
+                case Commands.ToggleLeftPanel: ToggleLeftPanel(); break;
                 default:
                     {
                         bool result = base.ExecuteCommand(cmd);
@@ -3376,10 +3384,21 @@ namespace GitUI
 
         public void GoToRef(string refName, bool showNoRevisionMsg)
         {
+            string sha1;
+            if (GitModule.TryParseDetachedHead(refName, out sha1))
+            {
+                refName = sha1;
+            }
+
             string revisionGuid = Module.RevParse(refName);
             if (!string.IsNullOrEmpty(revisionGuid))
             {
-                SetSelectedRevision(new GitRevision(revisionGuid));
+                if (_isLoading || !SetSelectedRevision(new GitRevision(revisionGuid)))
+                {
+                    _initialSelectedRevision = revisionGuid;
+                    Revisions.SelectedIds = null;
+                    LastSelectedRows = null;
+                }
             }
             else if (showNoRevisionMsg)
             {

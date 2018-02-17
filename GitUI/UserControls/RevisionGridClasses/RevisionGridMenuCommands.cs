@@ -443,6 +443,15 @@ namespace GitUI.UserControls.RevisionGridClasses
                 resultList.Add(menuCommand);
             }
 
+            {
+                var menuCommand = new MenuCommand();
+                menuCommand.Name = "ToggleLeftPanel";
+                menuCommand.Text = "Toggle left panel";
+                menuCommand.ExecuteAction = () => _revisionGrid.OnToggleLeftPanelRequested();
+
+                resultList.Add(menuCommand);
+            }
+
             return resultList;
         }
 
