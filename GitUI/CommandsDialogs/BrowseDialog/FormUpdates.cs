@@ -23,6 +23,8 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             new TranslationString("There is a new version {0} of Git Extensions available");
         private readonly TranslationString _noUpdatesFound =
             new TranslationString("No updates found");
+        private readonly TranslationString _downloading =
+            new TranslationString("Trying to download {0}, please wait...");
         #endregion
 
         public IWin32Window OwnerWindow;
@@ -137,6 +139,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                     }
                     _releasePageUrl = release.html_url;
                     InstallerPath = Path.Combine(downloadToFolder, setupFileName);
+                    this.InvokeAsync(() =>
+                    {
+                        if (!Visible)
+                        {
+                            return;
+                        }
+                        UpdateLabel.Text = string.Format(_downloading.Text, release.tag_name);
+                    });
                     DownloadNewRelease(release, setupFileName);
                     NewVersion = release.tag_name;
                     Done();
