@@ -192,7 +192,7 @@ namespace GitUI.UserControls
             /// <summary>Create a local branch from the remote branch.</summary>
             public void CreateBranch()
             {
-                UICommands.StartCreateBranchDialog(this.TreeViewNode.TreeView, new GitRevision(Module, FullPath));
+                UICommands.StartCreateBranchDialog(this.TreeViewNode.TreeView, new GitRevision(FullPath));
             }
 
             /// <summary>Delete the branch on the remote repository.</summary>

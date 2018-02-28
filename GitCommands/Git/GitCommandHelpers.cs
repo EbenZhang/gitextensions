@@ -153,18 +153,18 @@ namespace GitCommands
             var startProcess = Process.Start(startInfo);
             startProcess.EnableRaisingEvents = true;
 
-            EventHandler processExited = null;
-            processExited = (sender, args) =>
+            void ProcessExited(object sender, EventArgs args)
             {
-                startProcess.Exited -= processExited;
+                startProcess.Exited -= ProcessExited;
 
                 string quotedCmd = fileName;
                 if (quotedCmd.IndexOf(' ') != -1)
                     quotedCmd = quotedCmd.Quote();
                 var executionEndTimestamp = DateTime.Now;
                 AppSettings.GitLog.Log(quotedCmd + " " + arguments, executionStartTimestamp, executionEndTimestamp);
-            };
-            startProcess.Exited += processExited;
+            }
+
+            startProcess.Exited += ProcessExited;
 
             return startProcess;
         }
@@ -666,15 +666,20 @@ namespace GitCommands
             return sforce;
         }
 
-        public static string StashSaveCmd(bool untracked, bool keepIndex, string message)
+        public static string StashSaveCmd(bool untracked, bool keepIndex, string message, IEnumerable<string> selectedFiles)
         {
-            var cmd = "stash save";
+            var isPartialStash = selectedFiles != null && selectedFiles.Any();
+            var cmd = isPartialStash ? "stash push" : "stash save";
             if (untracked && VersionInUse.StashUntrackedFilesSupported)
                 cmd += " -u";
             if (keepIndex)
                 cmd += " --keep-index";
             cmd = cmd.Combine(" ", message.QuoteNE());
 
+            if (isPartialStash)
+            {
+                cmd += " -- " + string.Join(" ", selectedFiles);
+            }
             return cmd;
         }
 
@@ -1151,6 +1156,7 @@ namespace GitCommands
             gitItemStatus.IsSkipWorktree = x == 'S';
             gitItemStatus.IsRenamed = false;
             gitItemStatus.IsTracked = x != '?' && x != '!' && x != ' ' || !gitItemStatus.IsNew;
+            gitItemStatus.IsIgnored = x == '!';
             gitItemStatus.IsConflict = x == 'U';
             return gitItemStatus;
         }
@@ -1246,7 +1252,6 @@ namespace GitCommands
             return FindRenamesOpt() + findCopies;
         }
 
-#if !__MonoCS__
         static class NativeMethods
         {
             [DllImport("kernel32.dll")]
@@ -1261,11 +1266,9 @@ namespace GitCommands
             public static extern bool GenerateConsoleCtrlEvent(uint dwCtrlEvent,
                int dwProcessGroupId);
         }
-#endif
 
         public static void TerminateTree(this Process process)
         {
-#if !__MonoCS__
             if (EnvUtils.RunningOnWindows())
             {
                 // Send Ctrl+C
@@ -1275,7 +1278,6 @@ namespace GitCommands
                 if (!process.HasExited)
                     System.Threading.Thread.Sleep(500);
             }
-#endif
             if (!process.HasExited)
                 process.Kill();
         }

@@ -2,9 +2,6 @@
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
-#if !__MonoCS__
-using Cyotek.ApplicationServices.Windows.Forms;
-#endif
 using GitCommands;
 using GitCommands.Utils;
 using GitUI;
@@ -25,65 +22,52 @@ namespace GitExtensions
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            if (!EnvUtils.IsMonoRuntime())
+            try
             {
-                try
-                {
-                    NBug.Settings.UIMode = NBug.Enums.UIMode.Full;
+                NBug.Settings.UIMode = NBug.Enums.UIMode.Full;
 
-                    // Uncomment the following after testing to see that NBug is working as configured
-                    NBug.Settings.ReleaseMode = true;
-                    NBug.Settings.ExitApplicationImmediately = false;
-                    NBug.Settings.WriteLogToDisk = false;
-                    NBug.Settings.MaxQueuedReports = 10;
-                    NBug.Settings.StopReportingAfter = 90;
-                    NBug.Settings.SleepBeforeSend = 30;
-                    NBug.Settings.StoragePath = NBug.Enums.StoragePath.WindowsTemp;
+                // Uncomment the following after testing to see that NBug is working as configured
+                NBug.Settings.ReleaseMode = true;
+                NBug.Settings.ExitApplicationImmediately = false;
+                NBug.Settings.WriteLogToDisk = false;
+                NBug.Settings.MaxQueuedReports = 10;
+                NBug.Settings.StopReportingAfter = 90;
+                NBug.Settings.SleepBeforeSend = 30;
+                NBug.Settings.StoragePath = NBug.Enums.StoragePath.WindowsTemp;
 
-                    AppDomain.CurrentDomain.UnhandledException += NBug.Handler.UnhandledException;
-                    Application.ThreadException += NBug.Handler.ThreadException;
-#if !__MonoCS__
-                    if (!InternetExplorerBrowserEmulation.IsBrowserEmulationSet())
-                    {
-                        InternetExplorerBrowserEmulation.SetBrowserEmulationVersion();
-                    }
-#endif
-                }
-                catch (TypeInitializationException tie)
+                AppDomain.CurrentDomain.UnhandledException += NBug.Handler.UnhandledException;
+                Application.ThreadException += NBug.Handler.ThreadException;
+
+            }
+            catch (TypeInitializationException tie)
+            {
+                // is this exception caused by the configuration?
+                if (tie.InnerException != null
+                    && tie.InnerException.GetType()
+                        .IsSubclassOf(typeof(System.Configuration.ConfigurationException)))
                 {
-                    // is this exception caused by the configuration?
-                    if (tie.InnerException != null
-                        && tie.InnerException.GetType()
-                            .IsSubclassOf(typeof(System.Configuration.ConfigurationException)))
-                    {
-                        HandleConfigurationException((System.Configuration.ConfigurationException)tie.InnerException);
-                    }
+                    HandleConfigurationException((System.Configuration.ConfigurationException)tie.InnerException);
                 }
             }
 
             string[] args = Environment.GetCommandLineArgs();
-            FormSplash.ShowSplash();
-            //Store here SynchronizationContext.Current, because later sometimes it can be null
-            //see http://stackoverflow.com/questions/11621372/synchronizationcontext-current-is-null-in-continuation-on-the-main-ui-thread
-            GitUIExtensions.UISynchronizationContext = SynchronizationContext.Current;
-            AsyncLoader.DefaultContinuationTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext();
-            Application.DoEvents();
+
+            //This form created for obtain UI synchronization context only
+            using (new Form())
+            {
+                //Store here SynchronizationContext.Current, because later sometimes it can be null
+                //see http://stackoverflow.com/questions/11621372/synchronizationcontext-current-is-null-in-continuation-on-the-main-ui-thread
+                GitUIExtensions.UISynchronizationContext = SynchronizationContext.Current;
+                AsyncLoader.DefaultContinuationTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext();
+            }
 
             AppSettings.LoadSettings();
             SettingsOptimizer.Optimize();
             if (EnvUtils.RunningOnWindows())
             {
-              WebBrowserEmulationMode.SetBrowserFeatureControl();
-
-              //Quick HOME check:
-                FormSplash.SetAction("Checking home path...");
-                Application.DoEvents();
-
+                WebBrowserEmulationMode.SetBrowserFeatureControl();
                 FormFixHome.CheckHomePath();
             }
-            //Register plugins
-            FormSplash.SetAction("Loading plugins...");
-            Application.DoEvents();
 
             if (string.IsNullOrEmpty(AppSettings.Translation))
             {
@@ -100,9 +84,6 @@ namespace GitExtensions
                     || string.IsNullOrEmpty(AppSettings.GitCommandValue)
                     || !File.Exists(AppSettings.GitCommandValue)))
                 {
-                    FormSplash.SetAction("Checking settings...");
-                    Application.DoEvents();
-
                     GitUICommands uiCommands = new GitUICommands(string.Empty);
                     var commonLogic = new CommonLogic(uiCommands.Module);
                     var checkSettingsLogic = new CheckSettingsLogic(commonLogic);
@@ -123,8 +104,6 @@ namespace GitExtensions
             {
                 // TODO: remove catch-all
             }
-
-            FormSplash.HideSplash();
 
             if (EnvUtils.RunningOnWindows())
                 MouseWheelRedirector.Active = true;

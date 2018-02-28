@@ -1,6 +1,6 @@
-version: 2.50.90.{build}
+version: 3.00.00.{build}
 
-os: Visual Studio 2015
+os: Visual Studio 2017
 
 branches:
   except:
@@ -9,8 +9,7 @@ branches:
 
 environment:
   matrix:
-  - IdeVersion: VS2015
-  #- IdeVersion: Mono
+  - IdeVersion: VS2017
   SKIP_PAUSE: TRUE
   ARCHIVE_WITH_PDB: TRUE
 
@@ -32,6 +31,34 @@ install:
 build_script:
 - ps: |
     Write-Output "Platform: $env:IdeVersion"
-    & Setup\BuildInstallers.$env:IdeVersion.cmd
+    & Setup\BuildInstallers.cmd
     if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
-    Get-ChildItem Setup\GitExtensions-*-Mono.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+    & Setup\MakePortableArchive.cmd Release %APPVEYOR_BUILD_VERSION%
+    #Upload a portable archive, not a installer
+    Get-ChildItem Setup\GitExtensions-Portable-*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+
+test_script:
+- ps: |
+    $testAssemblies = @(
+        "UnitTests\GitCommandsTests\bin\Release\GitCommandsTests.dll"
+        "UnitTests\GitUITests\bin\Release\GitUITests.dll"
+        "UnitTests\GravatarTests\bin\Release\GravatarTests.dll"
+        "UnitTests\Plugins\ReleaseNotesGeneratorTests\bin\Release\ReleaseNotesGeneratorTests.dll"
+        "UnitTests\ResourceManagerTests\bin\Release\ResourceManagerTests.dll"
+    )
+    $packageConfig = [xml](Get-Content .nuget\packages.config)
+    $opencover_version = $packageConfig.SelectSingleNode('/packages/package[@id="OpenCover"]').version
+    $opencover_console = "packages\OpenCover.$opencover_version\tools\OpenCover.Console.exe"
+    &$opencover_console `
+        -register:user `
+        -returntargetcode `
+        -hideskipped:All `
+        -filter:"+[*]*" `
+        -excludebyattribute:*.ExcludeFromCodeCoverage* `
+        -excludebyfile:*\*Designer.cs `
+        -output:"OpenCover.GitExtensions.xml" `
+        -target:"nunit3-console.exe" `
+        -targetargs:"$testAssemblies"
+    $codecov_version = $packageConfig.SelectSingleNode('/packages/package[@id="Codecov"]').version
+    $codecov = "packages\Codecov.$codecov_version\tools\codecov.exe"
+    &$codecov -f ".\OpenCover.GitExtensions.xml"

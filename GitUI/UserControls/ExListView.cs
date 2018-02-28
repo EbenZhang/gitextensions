@@ -48,14 +48,13 @@ namespace GitUI.UserControls
         SubSetLinkFocused = 128
     }
 
-    class ExListView : ListView
+    class ExListView : NativeListView
     {
         public ExListView()
         {
             DoubleBuffered = true;
         }
 
-#if !__MonoCS__
         #region Win32 Apis
 
         protected class NativeMethods
@@ -277,17 +276,14 @@ namespace GitUI.UserControls
                 NativeMethods.LVM_SETGROUPINFO, (IntPtr)group.IGroupId, ref group);
             Refresh();
         }
-#endif
 
         public void SetGroupState(ListViewGroupState state)
         {
-#if !__MonoCS__
             if (!EnvUtils.RunningOnWindows() || Environment.OSVersion.Version.Major < 6)   //Only Vista and forward 
                 // allows collapse of ListViewGroups
                 return;
             foreach (ListViewGroup lvg in Groups)
                 setGrpState(lvg, state);
-#endif
         }
     }
 }

@@ -9,8 +9,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.GitExtLinks;
-using GitCommands.Utils;
+using GitCommands.ExternalLinks;
+using GitCommands.Remote;
 using GitUI.CommandsDialogs;
 using GitUI.Editor;
 using GitUI.Editor.RichTextBoxExtension;
@@ -34,6 +34,11 @@ namespace GitUI.CommitInfo
         private readonly ICommitDataManager _commitDataManager;
         private readonly ICommitDataHeaderRenderer _commitDataHeaderRenderer;
         private readonly ICommitDataBodyRenderer _commitDataBodyRenderer;
+        private readonly IExternalLinksLoader _externalLinksLoader;
+        private readonly IConfiguredLinkDefinitionsProvider _effectiveLinkDefinitionsProvider;
+        private readonly IGitRevisionExternalLinksParser _gitRevisionExternalLinksParser;
+        private readonly IExternalLinkRevisionParser _externalLinkRevisionParser;
+        private readonly IGitRemoteManager _gitRemoteManager;
 
 
         public CommitInfo()
@@ -50,19 +55,16 @@ namespace GitUI.CommitInfo
 
             IHeaderRenderStyleProvider headerRenderer;
             IHeaderLabelFormatter labelFormatter;
-            if (EnvUtils.IsMonoRuntime())
-            {
-                labelFormatter = new MonospacedHeaderLabelFormatter();
-                headerRenderer = new MonospacedHeaderRenderStyleProvider();
-            }
-            else
-            {
-                labelFormatter = new TabbedHeaderLabelFormatter();
-                headerRenderer = new TabbedHeaderRenderStyleProvider();
-            }
+            labelFormatter = new TabbedHeaderLabelFormatter();
+            headerRenderer = new TabbedHeaderRenderStyleProvider();
 
             _commitDataHeaderRenderer = new CommitDataHeaderRenderer(labelFormatter, _dateFormatter, headerRenderer, _linkFactory);
             _commitDataBodyRenderer = new CommitDataBodyRenderer(() => Module, _linkFactory);
+            _externalLinksLoader = new ExternalLinksLoader();
+            _effectiveLinkDefinitionsProvider = new ConfiguredLinkDefinitionsProvider(_externalLinksLoader);
+            _gitRemoteManager = new GitRemoteManager(() => Module);
+            _externalLinkRevisionParser = new ExternalLinkRevisionParser(_gitRemoteManager);
+            _gitRevisionExternalLinksParser = new GitRevisionExternalLinksParser(_effectiveLinkDefinitionsProvider, _externalLinkRevisionParser);
 
             RevisionInfo.Font = AppSettings.Font;
             using (Graphics g = CreateGraphics())
@@ -213,7 +215,7 @@ namespace GitUI.CommitInfo
             LoadAuthorImage(data.Author ?? data.Committer);
 
             //No branch/tag data for artificial commands
-            if (GitRevision.IsArtificial(_revision.Guid))
+            if (_revision.IsArtificial)
                 return;
 
             if (AppSettings.CommitInfoShowContainedInBranches)
@@ -228,9 +230,6 @@ namespace GitUI.CommitInfo
 
         private int GetRevisionHeaderHeight()
         {
-            if (EnvUtils.IsMonoRuntime())
-                return (int)(_RevisionHeader.Lines.Length * (0.8 + _RevisionHeader.Font.GetHeight()));
-
             return _headerResize.Height;
         }
 
@@ -434,7 +433,7 @@ namespace GitUI.CommitInfo
             }
 
             string body = _revisionInfo;
-            if (Revision != null && !Revision.IsArtificial())
+            if (Revision != null && !Revision.IsArtificial)
             {
                 body += "\n" + _annotatedTagsInfo + _linksInfo + _branchInfo + _tagInfo;
             }
@@ -560,8 +559,7 @@ namespace GitUI.CommitInfo
 
         private string GetLinksForRevision(GitRevision revision)
         {
-            GitExtLinksParser parser = new GitExtLinksParser(Module.EffectiveSettings);
-            var links = parser.Parse(revision).Distinct();
+            var links = _gitRevisionExternalLinksParser.Parse(revision, Module.EffectiveSettings).Distinct();
             var linksString = string.Empty;
 
             foreach (var link in links)
@@ -589,15 +587,7 @@ namespace GitUI.CommitInfo
 
         private void copyCommitInfoToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var commitInfo = string.Empty;
-            if (EnvUtils.IsMonoRuntime())
-            {
-                commitInfo = $"{_RevisionHeader.Text}{Environment.NewLine}{RevisionInfo.Text}";
-            }
-            else
-            {
-                commitInfo = $"{_RevisionHeader.GetPlaintText()}{Environment.NewLine}{RevisionInfo.GetPlaintText()}";
-            }
+            var commitInfo = $"{_RevisionHeader.GetPlaintText()}{Environment.NewLine}{RevisionInfo.GetPlaintText()}";
             Clipboard.SetText(commitInfo);
         }
 

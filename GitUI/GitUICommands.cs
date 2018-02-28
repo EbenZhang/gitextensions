@@ -7,7 +7,6 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Settings;
 using GitUI.CommandsDialogs;
-using GitUI.CommandsDialogs.CommitDialog;
 using GitUI.CommandsDialogs.RepoHosting;
 using GitUI.CommandsDialogs.SettingsDialog;
 using GitUIPluginInterfaces;
@@ -341,11 +340,11 @@ namespace GitUI
             return StartCheckoutRevisionDialog(null);
         }
 
-        public bool StashSave(IWin32Window owner, bool includeUntrackedFiles, bool keepIndex = false, string message = "")
+        public bool StashSave(IWin32Window owner, bool includeUntrackedFiles, bool keepIndex = false, string message = "", IEnumerable<string> selectedFiles = null)
         {
             Func<bool> action = () =>
             {
-                var arguments = GitCommandHelpers.StashSaveCmd(includeUntrackedFiles, keepIndex, message);
+                var arguments = GitCommandHelpers.StashSaveCmd(includeUntrackedFiles, keepIndex, message, selectedFiles);
                 FormProcess.ShowDialog(owner, Module, arguments);
                 return true;
             };
@@ -968,11 +967,11 @@ namespace GitUI
             return StartFormatPatchDialog(null);
         }
 
-        public bool StartStashDialog(IWin32Window owner)
+        public bool StartStashDialog(IWin32Window owner, bool manageStashes = true)
         {
             Func<bool> action = () =>
             {
-                using (var form = new FormStash(this))
+                using (var form = new FormStash(this) { ManageStashes = manageStashes })
                     form.ShowDialog(owner);
 
                 return true;
@@ -1389,16 +1388,34 @@ namespace GitUI
             return StartRemotesDialog(null);
         }
 
-        public bool StartRebaseDialog(IWin32Window owner, string branch, bool interactive = false,
+        private bool StartRebaseDialog(IWin32Window owner, string onto, bool interactive = false,
             bool startRebaseImmediately = true)
         {
-            return StartRebaseDialog(owner, string.Empty, null, branch, interactive, startRebaseImmediately);
+            return StartRebaseDialog(owner, string.Empty, null, onto, interactive, startRebaseImmediately);
         }
 
-        public bool StartRebaseDialogWithAdvOptions(IWin32Window owner, string branch)
+        public bool StartRebase(IWin32Window owner, string onto)
         {
-            return StartRebaseDialog(owner, from: string.Empty, to: null, onto: branch, interactive: false,
-                startRebaseImmediately: false);
+            return StartRebaseDialog(owner, onto,
+                interactive: false, startRebaseImmediately: true);
+        }
+
+        public bool ContinueRebase(IWin32Window owner)
+        {
+            return StartRebaseDialog(owner, onto: null,
+                interactive: false, startRebaseImmediately: true);
+        }
+
+        public bool StartInteractiveRebase(IWin32Window owner, string onto)
+        {
+            return StartRebaseDialog(owner, onto,
+                interactive: true, startRebaseImmediately: true);
+        }
+
+        public bool StartRebaseDialogWithAdvOptions(IWin32Window owner, string onto)
+        {
+            return StartRebaseDialog(owner, onto,
+                interactive: false, startRebaseImmediately: false);
         }
 
         public bool StartRebaseDialog(IWin32Window owner, string from, string to, string onto,
@@ -1417,11 +1434,10 @@ namespace GitUI
             return DoActionOnRepo(owner, true, true, PreRebase, PostRebase, action);
         }
 
-        public bool StartRebaseDialog(string branch)
+        public bool StartRebaseDialog(IWin32Window owner, string onto)
         {
-            return StartRebaseDialog(null, branch);
+            return StartRebaseDialog(owner, onto, interactive: false, startRebaseImmediately: false);
         }
-
 
         public bool StartRenameDialog(string branch)
         {
@@ -2114,7 +2130,7 @@ namespace GitUI
             string branch = null;
             if (arguments.ContainsKey("branch"))
                 branch = arguments["branch"];
-            StartRebaseDialog(branch);
+            StartRebaseDialog(owner: null, onto: branch);
         }
 
         public bool StartFileEditorDialog(string filename, bool showWarning = false)

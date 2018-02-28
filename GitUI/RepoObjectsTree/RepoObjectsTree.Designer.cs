@@ -35,7 +35,7 @@ namespace GitUI.UserControls
         {
 			this.components = new System.ComponentModel.Container();
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(RepoObjectsTree));
-			this.treeMain = new System.Windows.Forms.TreeView();
+			this.treeMain = new NativeTreeView();
 			this.menuMain = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.mnubtnCollapseAll = new System.Windows.Forms.ToolStripMenuItem();
 			this.mnubtnExpandAll = new System.Windows.Forms.ToolStripMenuItem();
@@ -531,7 +531,7 @@ namespace GitUI.UserControls
 
         #endregion
 
-        private TreeView treeMain;
+        private NativeTreeView treeMain;
         private ContextMenuStrip menuBranch;
         private ToolStripMenuItem mnubtnBranchCheckout;
         private ToolStripMenuItem mnubtnBranchDelete;

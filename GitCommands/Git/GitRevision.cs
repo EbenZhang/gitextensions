@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using GitCommands.Git.Extensions;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
 using JetBrains.Annotations;
@@ -23,15 +24,14 @@ namespace GitCommands
 
         public string[] ParentGuids;
         private readonly List<IGitRef> _refs = new List<IGitRef>();
-        public readonly GitModule Module;
         private BuildInfo _buildStatus;
 
-        public GitRevision(GitModule aModule, string guid)
+        public GitRevision(string guid)
         {
+            // TODO: this looks like an incorrect behaviour, rev.Guid must be validated and set to "" if null or empty.
             Guid = guid;
             Subject = "";
             SubjectCount = "";
-            Module = aModule;
         }
 
         public List<IGitRef> Refs { get { return _refs; } }
@@ -105,16 +105,11 @@ namespace GitCommands
                     Subject.ToLower().Contains(searchString);
         }
 
-        public bool IsArtificial()
-        {
-            return IsArtificial(Guid);
-        }
 
-        public static bool IsArtificial(string guid)
-        {
-            return guid == UnstagedGuid ||
-                    guid == IndexGuid;
-        }
+        /// <summary>
+        /// Indicates whether the commit is an artificial commit.
+        /// </summary>
+        public bool IsArtificial => Guid.IsArtificial();
 
         public bool HasParent
         {
@@ -141,19 +136,6 @@ namespace GitCommands
             if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        public static GitRevision CreateForShortSha1(GitModule aModule, string sha1)
-        {
-            if (!sha1.IsNullOrWhiteSpace() && sha1.Length < 40)
-            {
-                string fullSha1;
-                if (aModule.IsExistingCommitHash(sha1, out fullSha1))
-                {
-                    sha1 = fullSha1;
-                }
-            }
-
-            return new GitRevision(aModule, sha1);
-        }
 
         public static bool IsFullSha1Hash(string id)
         {

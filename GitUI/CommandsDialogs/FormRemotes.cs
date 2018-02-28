@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
-using GitCommands.Repository;
 using GitCommands.Remote;
+using GitCommands.Repository;
 using GitUIPluginInterfaces;
 using ResourceManager;
 
@@ -196,7 +195,7 @@ Inactive remote is completely invisible to git.");
             // and changes in one of the bound control automatically get reflected
             // in the other control, which causes rather frustrating UX.
             // to address that, re-create binding lists for each individual control
-            var repos = Repositories.RemoteRepositoryHistory.Repositories;
+            var repos = Repositories.RemoteRepositoryHistory.Repositories.OrderBy(x => x.Path);
             try
             {
                 // to stop the flicker binding the lists and
@@ -205,11 +204,11 @@ Inactive remote is completely invisible to git.");
                 comboBoxPushUrl.BeginUpdate();
                 Remotes.BeginUpdate();
 
-                Url.DataSource = new BindingList<Repository>(repos);
+                Url.DataSource = repos.ToList();
                 Url.DisplayMember = "Path";
                 Url.SelectedItem = null;
 
-                comboBoxPushUrl.DataSource = new BindingList<Repository>(repos);
+                comboBoxPushUrl.DataSource = repos.ToList();
                 comboBoxPushUrl.DisplayMember = "Path";
                 comboBoxPushUrl.SelectedItem = null;
 
@@ -244,6 +243,39 @@ Inactive remote is completely invisible to git.");
             }
         }
 
+        private static void RemoteDelete(IList<Repository> remotes, string oldRemoteUrl)
+        {
+            if (string.IsNullOrWhiteSpace(oldRemoteUrl))
+            {
+                return;
+            }
+
+            var oldRemote = remotes.FirstOrDefault(r => r.Path == oldRemoteUrl);
+            if (oldRemote != null)
+            {
+                remotes.Remove(oldRemote);
+            }
+        }
+
+        private static void RemoteUpdate(IList<Repository> remotes, string oldRemoteUrl, string newRemoteUrl)
+        {
+            if (string.IsNullOrWhiteSpace(newRemoteUrl))
+            {
+                return;
+            }
+
+            // if remote url was renamed - delete the old value
+            if (!string.Equals(oldRemoteUrl, newRemoteUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                RemoteDelete(remotes, oldRemoteUrl);
+            }
+
+            if (remotes.All(r => r.Path != newRemoteUrl))
+            {
+                remotes.Add(new Repository(newRemoteUrl, null, null));
+            }
+        }
+
 
         private void application_Idle(object sender, EventArgs e)
         {
@@ -266,7 +298,7 @@ Inactive remote is completely invisible to git.");
             {
                 return;
             }
-            _remoteManager = new GitRemoteManager(Module);
+            _remoteManager = new GitRemoteManager(() => Module);
             // load the data for the very first time
             Initialize(PreselectRemoteOnLoad);
         }
@@ -286,49 +318,62 @@ Inactive remote is completely invisible to git.");
 
         private void SaveClick(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(RemoteName.Text))
+            if (string.IsNullOrWhiteSpace(RemoteName.Text))
             {
                 return;
             }
 
+            var remote = RemoteName.Text.Trim();
+            var remoteUrl = Url.Text.Trim();
+            var remotePushUrl = comboBoxPushUrl.Text.Trim();
             try
             {
                 // disable the control while saving
                 tabControl1.Enabled = false;
 
-                if ((string.IsNullOrEmpty(comboBoxPushUrl.Text) && checkBoxSepPushUrl.Checked) ||
-                    (comboBoxPushUrl.Text.Equals(Url.Text, StringComparison.OrdinalIgnoreCase)))
+                if (string.IsNullOrEmpty(remotePushUrl) && checkBoxSepPushUrl.Checked ||
+                    remotePushUrl.Equals(remoteUrl, StringComparison.OrdinalIgnoreCase))
                 {
                     checkBoxSepPushUrl.Checked = false;
                 }
 
                 // update all other remote properties
                 var result = _remoteManager.SaveRemote(_selectedRemote,
-                                                             RemoteName.Text,
-                                                             Url.Text,
-                                                             checkBoxSepPushUrl.Checked ? comboBoxPushUrl.Text : null,
-                                                             PuttySshKey.Text);
+                                                       remote,
+                                                       remoteUrl,
+                                                       checkBoxSepPushUrl.Checked ? remotePushUrl : null,
+                                                       PuttySshKey.Text);
                 if (OnRemoteRenamedOrAdded != null)
                 {
                     OnRemoteRenamedOrAdded(
-                        _selectedRemote != null? _selectedRemote.Name : RemoteName.Text, RemoteName.Text);
+                        _selectedRemote != null? _selectedRemote.Name : remote, remote);
                 }
 
                 if (!string.IsNullOrEmpty(result.UserMessage))
                 {
                     MessageBox.Show(this, result.UserMessage, _gitMessage.Text);
                 }
+                else
+                {
+                    var remotes = Repositories.RemoteRepositoryHistory.Repositories;
+                    RemoteUpdate(remotes, _selectedRemote?.Url, remoteUrl);
+                    if (checkBoxSepPushUrl.Checked)
+                    {
+                        RemoteUpdate(remotes, _selectedRemote?.PushUrl, remotePushUrl);
+                    }
+                    Repositories.SaveSettings();
+                }
 
                 // if the user has just created a fresh new remote
                 // there may be a need to configure it
-                if (result.ShouldUpdateRemote && !string.IsNullOrEmpty(Url.Text) &&
-                    DialogResult.Yes == MessageBox.Show(this,
-                                                        _questionAutoPullBehaviour.Text,
-                                                        _questionAutoPullBehaviourCaption.Text,
-                                                        MessageBoxButtons.YesNo))
+                if (result.ShouldUpdateRemote && !string.IsNullOrEmpty(remoteUrl) &&
+                DialogResult.Yes == MessageBox.Show(this,
+                                                    _questionAutoPullBehaviour.Text,
+                                                    _questionAutoPullBehaviourCaption.Text,
+                                                    MessageBoxButtons.YesNo))
                 {
                     FormRemoteProcess.ShowDialog(this, "remote update");
-                    _remoteManager.ConfigureRemotes(RemoteName.Text);
+                    _remoteManager.ConfigureRemotes(remote);
                     UICommands.RepoChangedNotifier.Notify();
                 }
             }
@@ -336,7 +381,7 @@ Inactive remote is completely invisible to git.");
             {
                 // re-enable the control and re-initialize
                 tabControl1.Enabled = true;
-                Initialize(RemoteName.Text);
+                Initialize(remote);
             }
         }
 
@@ -370,6 +415,10 @@ Inactive remote is completely invisible to git.");
                         OnRemoteDeleted(_selectedRemote.Name);
                     }
                 }
+
+                // Deleting a remote from the history list may be undesirable as
+                // it would hinder user's ability to *quickly* clone the remote repository
+                // The flipside is that the history list may grow long without a UI to manage it
 
                 Initialize();
             }

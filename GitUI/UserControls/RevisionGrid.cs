@@ -363,9 +363,9 @@ namespace GitUI
         }
 
 
-        public void SetInitialRevision(GitRevision initialSelectedRevision)
+        public void SetInitialRevision(string initialSelectedRevision)
         {
-            _initialSelectedRevision = initialSelectedRevision != null ? initialSelectedRevision.Guid : null;
+            _initialSelectedRevision = initialSelectedRevision;
         }
 
         private bool _isRefreshingRevisions = false;
@@ -897,7 +897,7 @@ namespace GitUI
                 description = revision.Subject;
             }
 
-            if (!revision.IsArtificial())
+            if (!revision.IsArtificial)
             {
                 description += " @" + revision.Guid.Substring(0, 4);
             }
@@ -1749,7 +1749,7 @@ namespace GitUI
                 }
                 else if (columnIndex == idColIndex)
                 {
-                    if (!revision.IsArtificial()) //do not show artificial GUID
+                    if (!revision.IsArtificial) //do not show artificial GUID
                     {
                         var text = revision.Guid;
                         var rect = RevisionGridUtils.GetCellRectangle(e);
@@ -1863,7 +1863,7 @@ namespace GitUI
             int dateColIndex = DateDataGridViewColumn.Index;
             int isMsgMultilineColIndex = IsMessageMultilineDataGridViewColumn.Index;
 
-            if (columnIndex == graphColIndex && !revision.IsArtificial()) //Do not show artificial guid
+            if (columnIndex == graphColIndex && !revision.IsArtificial) //Do not show artificial guid
             {
                 e.Value = revision.Guid;
             }
@@ -1893,7 +1893,7 @@ namespace GitUI
             }
             else if (AppSettings.ShowIndicatorForMultilineMessage && columnIndex == isMsgMultilineColIndex)
             {
-                if (revision.Body == null && !revision.IsArtificial())
+                if (revision.Body == null && !revision.IsArtificial)
                 {
                     var moduleRef = Module;
                     ThreadPool.QueueUserWorkItem(o => LoadIsMultilineMessageInfo(revision, columnIndex, e.RowIndex, Revisions.RowCount, moduleRef));
@@ -2116,7 +2116,7 @@ namespace GitUI
         public void ViewSelectedRevisions()
         {
             var selectedRevisions = GetSelectedRevisions();
-            if (selectedRevisions.Any(rev => !GitRevision.IsArtificial(rev.Guid)))
+            if (selectedRevisions.Any(rev => !rev.IsArtificial))
             {
                 Func<Form> provideForm = () =>
                 {
@@ -2343,7 +2343,7 @@ namespace GitUI
             foreach (var head in branchesWithNoIdenticalRemotes)
             {
                 if (head.CompleteName.Equals(currentBranchRef))
-                    currentBranchPointsToRevision = !revision.IsArtificial();
+                    currentBranchPointsToRevision = !revision.IsArtificial;
                 else
                 {
                     ToolStripItem toolStripItem = new ToolStripMenuItem(head.Name);
@@ -2445,7 +2445,7 @@ namespace GitUI
                 }
             }
 
-            bool bareRepositoryOrArtificial = Module.IsBareRepository() || revision.IsArtificial();
+            bool bareRepositoryOrArtificial = Module.IsBareRepository() || revision.IsArtificial;
             deleteTagToolStripMenuItem.DropDown = deleteTagDropDown;
             deleteTagToolStripMenuItem.Enabled = deleteTagDropDown.Items.Count > 0;
 
@@ -2468,11 +2468,11 @@ namespace GitUI
             cherryPickCommitToolStripMenuItem.Enabled = !bareRepositoryOrArtificial;
             manipulateCommitToolStripMenuItem.Enabled = !bareRepositoryOrArtificial;
 
-            copyToClipboardToolStripMenuItem.Enabled = !revision.IsArtificial();
+            copyToClipboardToolStripMenuItem.Enabled = !revision.IsArtificial;
             createNewBranchToolStripMenuItem.Enabled = !bareRepositoryOrArtificial;
             resetCurrentBranchToHereToolStripMenuItem.Enabled = !bareRepositoryOrArtificial;
-            archiveRevisionToolStripMenuItem.Enabled = !revision.IsArtificial();
-            createTagToolStripMenuItem.Enabled = !revision.IsArtificial();
+            archiveRevisionToolStripMenuItem.Enabled = !revision.IsArtificial;
+            createTagToolStripMenuItem.Enabled = !revision.IsArtificial;
 
             toolStripSeparator6.Enabled = branchNameCopyToolStripMenuItem.Enabled || tagNameCopyToolStripMenuItem.Enabled;
 
@@ -2573,18 +2573,18 @@ namespace GitUI
         private void ToolStripItemClickRebaseBranch(object sender, EventArgs e)
         {
             if (_rebaseOnTopOf == null) return;
-            UICommands.StartRebaseDialog(this, _rebaseOnTopOf);
+            UICommands.StartRebase(this, _rebaseOnTopOf);
         }
         private void OnRebaseInteractivelyClicked(object sender, EventArgs e)
         {
             if (_rebaseOnTopOf == null) return;
-            UICommands.StartRebaseDialog(this, _rebaseOnTopOf, interactive: true);
+            UICommands.StartInteractiveRebase(this, _rebaseOnTopOf);
         }
 
-        private void OnRebaseWithAdvOptionsClicked(object sender, System.EventArgs e)
+        private void OnRebaseWithAdvOptionsClicked(object sender, EventArgs e)
         {
             if (_rebaseOnTopOf == null) return;
-            UICommands.StartRebaseDialog(this, _rebaseOnTopOf, interactive: false, startRebaseImmediately: false);
+            UICommands.StartRebaseDialogWithAdvOptions(this, _rebaseOnTopOf);
         }
 
         private void ToolStripItemClickRenameBranch(object sender, EventArgs e)
@@ -2788,7 +2788,7 @@ namespace GitUI
             var userEmail = Module.GetEffectiveSetting(SettingKeyString.UserEmail);
 
             // Add working directory as virtual commit
-            var unstagedRev = new GitRevision(Module, GitRevision.UnstagedGuid)
+            var unstagedRev = new GitRevision(GitRevision.UnstagedGuid)
             {
                 Author = userName,
                 AuthorDate = DateTime.MaxValue,
@@ -2802,7 +2802,7 @@ namespace GitUI
             Revisions.Add(unstagedRev.Guid, unstagedRev.ParentGuids, DvcsGraph.DataType.Normal, unstagedRev);
 
             // Add index as virtual commit
-            var stagedRev = new GitRevision(Module, GitRevision.IndexGuid)
+            var stagedRev = new GitRevision(GitRevision.IndexGuid)
             {
                 Author = userName,
                 AuthorDate = DateTime.MaxValue,
@@ -3256,6 +3256,7 @@ namespace GitUI
             SelectAsBaseToCompare,
             CompareToBase,
             CreateFixupCommit,
+            ToggleShowTags,
             ToggleLeftPanel,
         }
 
@@ -3274,12 +3275,13 @@ namespace GitUI
                 case Commands.ToggleShowGitNotes: ShowGitNotes_ToolStripMenuItemClick(null, null); break;
                 case Commands.ToggleRevisionCardLayout: ToggleRevisionCardLayout(); break;
                 case Commands.ToggleShowMergeCommits: ShowMergeCommits_ToolStripMenuItemClick(null, null); break;
+                case Commands.ToggleShowTags: ShowTags_ToolStripMenuItemClick(null, null); break;
                 case Commands.ShowAllBranches: ShowAllBranches_ToolStripMenuItemClick(null, null); break;
                 case Commands.ShowCurrentBranchOnly: ShowCurrentBranchOnly_ToolStripMenuItemClick(null, null); break;
                 case Commands.ShowFilteredBranches: ShowFilteredBranches_ToolStripMenuItemClick(null, null); break;
                 case Commands.ShowRemoteBranches: ShowRemoteBranches_ToolStripMenuItemClick(null, null); break;
                 case Commands.ShowFirstParent: ShowFirstParent_ToolStripMenuItemClick(null, null); break;
-                case Commands.SelectCurrentRevision: SetSelectedRevision(new GitRevision(Module, CurrentCheckout)); break;
+                case Commands.SelectCurrentRevision: SetSelectedRevision(new GitRevision(CurrentCheckout)); break;
                 case Commands.GoToCommit: _revisionGridMenuCommands.GotoCommitExcecute(); break;
                 case Commands.GoToParent: goToParentToolStripMenuItem_Click(null, null); break;
                 case Commands.GoToChild: goToChildToolStripMenuItem_Click(null, null); break;
@@ -3407,7 +3409,7 @@ namespace GitUI
             string revisionGuid = Module.RevParse(refName);
             if (!string.IsNullOrEmpty(revisionGuid))
             {
-                if (_isLoading || !SetSelectedRevision(new GitRevision(Module, revisionGuid)))
+                if (_isLoading || !SetSelectedRevision(new GitRevision(revisionGuid)))
                 {
                     _initialSelectedRevision = revisionGuid;
                     Revisions.SelectedIds = null;
