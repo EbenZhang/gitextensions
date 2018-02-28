@@ -1363,10 +1363,6 @@ Do you want to open it?</source>
         <source>Treat all files as text</source>
         <target />
       </trans-unit>
-      <trans-unit id="viewThisLineOnGitHubToolStripMenuItem.Text">
-        <source>View this line on GitHub</source>
-        <target />
-      </trans-unit>
     </body>
   </file>
   <file datatype="plaintext" original="FileViewerWindows" source-language="en">

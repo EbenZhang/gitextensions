@@ -8,8 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.Config;
-using GitCommands.GitExtLinks;
 using GitUI.CommandsDialogs;
 using GitUI.Hotkey;
 using PatchApply;
@@ -29,8 +27,6 @@ namespace GitUI.Editor
         private readonly IFileViewer _internalFileViewer;
         private GetNextFileFnc _fileLoader;
         private readonly IFullPathResolver _fullPathResolver;
-
-        public Action<string> OnViewLineOnGitHub;
 
         public FileViewer()
         {
@@ -317,10 +313,6 @@ namespace GitUI.Editor
             cherrypickSelectedLinesToolStripMenuItem.Visible = visible && !isStaging_diff && !Module.IsBareRepository();
             revertSelectedLinesToolStripMenuItem.Visible = visible && !isStaging_diff && !Module.IsBareRepository();
             copyPatchToolStripMenuItem.Visible = visible;
-
-            viewThisLineOnGitHubToolStripMenuItem.Visible = false;
-            viewThisLineOnGitHubToolStripMenuItem.ShortcutKeyDisplayString =
-                GetShortcutKeys((int) Commands.ViewLineOnGitHub).ToShortcutKeyDisplayString();
         }
 
         private void OnExtraDiffArgumentsChanged()
@@ -421,11 +413,10 @@ namespace GitUI.Editor
                         if (status.Result == null)
                             return string.Format("Submodule \"{0}\" has unresolved conflicts", fileName);
                         return LocalizationHelpers.ProcessSubmoduleStatus(Module, status.Result);
-                    }, txt => ViewPatch(txt));
+                    }, ViewPatch);
             else
                 _async.Load(() => LocalizationHelpers.ProcessSubmodulePatch(Module, fileName,
-                    Module.GetCurrentChanges(fileName, oldFileName, staged, GetExtraDiffArguments(), Encoding)),
-                    txt => ViewPatch(txt));
+                    Module.GetCurrentChanges(fileName, oldFileName, staged, GetExtraDiffArguments(), Encoding)), ViewPatch);
         }
 
         public void ViewStagingPatch(Patch patch)
@@ -440,13 +431,12 @@ namespace GitUI.Editor
             ViewPatch(text);
         }
 
-        public void ViewPatch(string text, bool canViewLineOnGitHubForThisRevision = false)
+        public void ViewPatch(string text)
         {
             ResetForDiff();
             _internalFileViewer.SetText(text, isDiff: true);
             TextLoaded?.Invoke(this, null);
             RestoreCurrentScrollPos();
-            UpdateVisibilityOfViewLineOnGitHubMenuItem(canViewLineOnGitHubForThisRevision);
         }
 
         public void ViewStagingPatch(Func<string> loadPatchText)
@@ -455,9 +445,9 @@ namespace GitUI.Editor
             Reset(true, true, true);
         }
 
-        public Task ViewPatch(Func<string> loadPatchText, bool canViewLineOnGitHubForThisRevision  = false)
+        public Task ViewPatch(Func<string> loadPatchText)
         {
-            return _async.Load(loadPatchText, text => ViewPatch(text, canViewLineOnGitHubForThisRevision));
+            return _async.Load(loadPatchText, ViewPatch);
         }
 
         public void ViewText(string fileName, string text)
@@ -682,7 +672,6 @@ namespace GitUI.Editor
         }
 
         private bool patchHighlighting;
-        private static string _gitHubCommitLinkFormat;
 
         private void ResetForDiff()
         {
@@ -990,8 +979,7 @@ namespace GitUI.Editor
             ShowEntireFile,
             TreatFileAsText,
             NextChange,
-            PreviousChange,
-            ViewLineOnGitHub,
+            PreviousChange
         }
 
         protected override bool ExecuteCommand(int cmd)
@@ -1008,7 +996,6 @@ namespace GitUI.Editor
                 case Commands.TreatFileAsText: this.TreatAllFilesAsTextToolStripMenuItemClick(null, null); break;
                 case Commands.NextChange: this.NextChangeButtonClick(null, null); break;
                 case Commands.PreviousChange: this.PreviousChangeButtonClick(null, null); break;
-                case Commands.ViewLineOnGitHub: this.viewThisLineOnGitHubToolStripMenuItem_Click(null, null);break;
                 default: return base.ExecuteCommand(cmd);
             }
 
@@ -1209,48 +1196,6 @@ namespace GitUI.Editor
             ignoreAllWhitespaceChangesToolStripMenuItem.Checked = newIgnoreValue;
             AppSettings.IgnoreAllWhitespaceChanges = newIgnoreValue;
             OnExtraDiffArgumentsChanged();
-        }
-
-        private void viewThisLineOnGitHubToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (OnViewLineOnGitHub != null && _gitHubCommitLinkFormat.IsNotNullOrWhitespace())
-            {
-                OnViewLineOnGitHub(_gitHubCommitLinkFormat + _internalFileViewer.GetDiffLineIdentity());
-            }
-        }
-
-        public void UpdateVisibilityOfViewLineOnGitHubMenuItem(bool canViewLineOnGitHubForThisRevision)
-        {
-            if (canViewLineOnGitHubForThisRevision && OnViewLineOnGitHub != null
-                && GitCommands.Utils.EnvUtils.RunningOnWindows())
-            {
-                var hasGitHubCommitFormatRevisionLink = ParseGitHubCommitFormatRevisionLink();
-                viewThisLineOnGitHubToolStripMenuItem.Visible = hasGitHubCommitFormatRevisionLink;
-            }
-            else
-            {
-                viewThisLineOnGitHubToolStripMenuItem.Visible = false;
-            }
-        }
-
-        private bool ParseGitHubCommitFormatRevisionLink()
-        {
-            var revisionLinks = new GitExtLinksParser(Module.EffectiveSettings);
-            bool hasGitHubCommitFormatRevisionLink = revisionLinks.EffectiveLinkDefs.Any(
-                r => r.LinkFormats.Any(IsGitHubCommitLinkFormat));
-            return hasGitHubCommitFormatRevisionLink;
-        }
-
-        private static bool IsGitHubCommitLinkFormat(GitExtLinkFormat format)
-        {
-            var ret = format.Format.IndexOf("github.com", StringComparison.InvariantCultureIgnoreCase) != -1
-                   && format.Format.EndsWith("/commit/%COMMIT_HASH%",
-                   StringComparison.InvariantCultureIgnoreCase);
-            if (ret)
-            {
-                _gitHubCommitLinkFormat = format.Format.Replace("%COMMIT_HASH%", "{0}#diff-{1}");
-            }
-            return ret;
         }
     }
 }

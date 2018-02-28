@@ -59,7 +59,6 @@
     </Compile>
     <Compile Include="GitUI\UIExtensions.cs" />
     <Compile Include="Linq\LinqExtensions.cs" />
-    <Compile Include="Md5Helper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

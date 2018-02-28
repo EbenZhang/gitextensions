@@ -66,7 +66,5 @@ namespace GitUI.Editor
         void FocusTextArea();
 
         void SetFileLoader(GetNextFileFnc fileLoader);
-
-        string GetDiffLineIdentity();
     }
 }

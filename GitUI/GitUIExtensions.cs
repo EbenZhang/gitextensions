@@ -69,8 +69,7 @@ namespace GitUI
             return patch.Text;
         }
 
-        public static Task ViewChanges(this FileViewer diffViewer, IList<GitRevision> revisions,
-            GitItemStatus file, string defaultText, bool canViewLineOnGitHubForThisRevision = false)
+        public static Task ViewChanges(this FileViewer diffViewer, IList<GitRevision> revisions, GitItemStatus file, string defaultText)
         {
             if (revisions.Count == 0)
                 return Task.FromResult(string.Empty);
@@ -80,18 +79,16 @@ namespace GitUI
             string firstRevision = revisions.Count >= 2 ? revisions[1].Guid : null;
             if (firstRevision == null && selectedRevision != null)
                 firstRevision = selectedRevision.FirstParentGuid;
-            return ViewChanges(diffViewer, firstRevision, secondRevision, file, defaultText,
-                canViewLineOnGitHubForThisRevision);
+            return ViewChanges(diffViewer, firstRevision, secondRevision, file, defaultText);
         }
 
-        public static Task ViewChanges(this FileViewer diffViewer, string firstRevision, string secondRevision, GitItemStatus file, string defaultText,
-            bool canViewLineOnGitHubForThisRevision = false)
+        public static Task ViewChanges(this FileViewer diffViewer, string firstRevision, string secondRevision, GitItemStatus file, string defaultText)
         {
             return diffViewer.ViewPatch(() =>
             {
                 string selectedPatch = diffViewer.GetSelectedPatch(firstRevision, secondRevision, file);
                 return selectedPatch ?? defaultText;
-            }, canViewLineOnGitHubForThisRevision);
+            });
         }
 
         public static void RemoveIfExists(this TabControl tabControl, TabPage page)

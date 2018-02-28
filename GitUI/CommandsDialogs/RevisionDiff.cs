@@ -11,7 +11,6 @@ using GitUI.HelperDialogs;
 using GitUI.Hotkey;
 using ResourceManager;
 using System.Threading.Tasks;
-using GitExtUtils;
 
 namespace GitUI.CommandsDialogs
 {
@@ -43,7 +42,6 @@ namespace GitUI.CommandsDialogs
             this.HotkeysEnabled = true;
             _fullPathResolver = new FullPathResolver(() => Module.WorkingDir);
             _findFilePredicateProvider = new FindFilePredicateProvider();
-            DiffText.OnViewLineOnGitHub = OnViewLineOnGitHub;
         }
 
         public void ForceRefreshRevisions()
@@ -248,7 +246,6 @@ namespace GitUI.CommandsDialogs
                 return;
             }
 
-            var onlyOneRevisionSelected = items.Count == 1;
             if (items.Count() == 1)
             {
                 items.Add(new GitRevision(DiffFiles.SelectedItemParent));
@@ -264,11 +261,11 @@ namespace GitUI.CommandsDialogs
                         diffOfConflict = Strings.GetUninterestingDiffOmitted();
                     }
 
-                    DiffText.ViewPatch(diffOfConflict, canViewLineOnGitHubForThisRevision: onlyOneRevisionSelected);
+                    DiffText.ViewPatch(diffOfConflict);
                     return;
                 }
             }
-            await DiffText.ViewChanges(items, DiffFiles.SelectedItem, String.Empty, canViewLineOnGitHubForThisRevision: onlyOneRevisionSelected);
+            await DiffText.ViewChanges(items, DiffFiles.SelectedItem, String.Empty);
         }
 
 
@@ -839,14 +836,6 @@ namespace GitUI.CommandsDialogs
         {
             string summary = Module.GetSubmoduleSummary(DiffFiles.SelectedItem.Name);
             using (var frm = new FormEdit(summary)) frm.ShowDialog(this);
-        }
-
-        private void OnViewLineOnGitHub(string githubLineUrlFormat)
-        {
-            var url = string.Format(githubLineUrlFormat,
-                _revisionGrid.GetSelectedRevisions().Last().Guid,
-                MD5.Create().GetMd5HashString(DiffFiles.SelectedItem.Name));
-            Process.Start(url);
         }
     }
 }
