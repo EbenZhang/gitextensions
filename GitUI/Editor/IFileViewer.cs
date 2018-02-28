@@ -65,7 +65,7 @@ namespace GitUI.Editor
         Font Font { get; set; }
         void FocusTextArea();
 
-        void SetFileLoader(Func<bool, Tuple<int, string>> fileLoader);
+        void SetFileLoader(GetNextFileFnc fileLoader);
 
         string GetDiffLineIdentity();
     }

@@ -48,39 +48,35 @@ namespace GitUI.Editor
 
         void TextArea_MouseEnter(object sender, EventArgs e)
         {
-            if (MouseEnter != null)
-                MouseEnter(sender, e);
+            MouseEnter?.Invoke(sender, e);
         }
 
         void TextArea_MouseLeave(object sender, EventArgs e)
         {
-            if (MouseLeave != null)
-                MouseLeave(sender, e);
+            MouseLeave?.Invoke(sender, e);
         }
 
         void TextArea_MouseMove(object sender, MouseEventArgs e)
         {
-            if (MouseMove != null)
-                MouseMove(sender, e);
+            MouseMove?.Invoke(sender, e);
         }
 
         public new event EventHandler DoubleClick;
 
         private void ActiveTextAreaControlDoubleClick(object sender, EventArgs e)
         {
-            if (DoubleClick != null)
-                DoubleClick(sender, e);
+            DoubleClick?.Invoke(sender, e);
         }
 
-        private void BlameFileKeyUp(object sender, KeyEventArgs e)
+        private async void BlameFileKeyUp(object sender, KeyEventArgs e)
         {
             if (e.Modifiers == Keys.Control && e.KeyCode == Keys.F)
                 Find();
 
             if (e.Modifiers == Keys.Shift && e.KeyCode == Keys.F3)
-                _findAndReplaceForm.FindNext(true, true, "Text not found");
+                await _findAndReplaceForm.FindNext(true, true, "Text not found");
             else if (e.KeyCode == Keys.F3)
-                _findAndReplaceForm.FindNext(true, false, "Text not found");
+                await _findAndReplaceForm.FindNext(true, false, "Text not found");
 
             VScrollBar_ValueChanged(this, e);
         }
@@ -99,20 +95,17 @@ namespace GitUI.Editor
 
         void OnSelectedLineChanged(int selectedLine)
         {
-            if (SelectedLineChanged != null)
-                SelectedLineChanged(this, new SelectedLineEventArgs(selectedLine));
+            SelectedLineChanged?.Invoke(this, new SelectedLineEventArgs(selectedLine));
         }
 
         void VScrollBar_ValueChanged(object sender, EventArgs e)
         {
-            if (ScrollPosChanged != null)
-                ScrollPosChanged(sender, e);
+            ScrollPosChanged?.Invoke(sender, e);
         }
 
         void TextEditor_TextChanged(object sender, EventArgs e)
         {
-            if (TextChanged != null)
-                TextChanged(sender, e);
+            TextChanged?.Invoke(sender, e);
         }
 
         #region IFileViewer Members
@@ -360,7 +353,7 @@ namespace GitUI.Editor
             }
         }
 
-        public void SetFileLoader(Func<bool, Tuple<int, string>> fileLoader)
+        public void SetFileLoader(GetNextFileFnc fileLoader)
         {
             _findAndReplaceForm.SetFileLoader(fileLoader);
         }

@@ -7,25 +7,23 @@ using System.Threading;
 using System.Windows.Forms;
 using GitCommands;
 using GitUI.Editor;
-using ICSharpCode.TextEditor.Util;
 using ResourceManager;
+using System.Threading.Tasks;
 
 namespace GitUI
 {
     public static class GitUIExtensions
     {
-
         public static SynchronizationContext UISynchronizationContext;
 
 
         public static void OpenWithDifftool(this RevisionGrid grid, string fileName, string oldFileName, GitUI.RevisionDiffKind diffKind, bool isTracked=true)
         {
             //Note: Order in revisions is that first clicked is last in array
-            string extraDiffArgs;
-            string firstRevision;
-            string secondRevision;
 
-            string error = RevisionDiffInfoProvider.Get(grid.GetSelectedRevisions(), diffKind, out extraDiffArgs, out firstRevision, out secondRevision);
+            string error = RevisionDiffInfoProvider.Get(grid.GetSelectedRevisions(), diffKind,
+                out var extraDiffArgs, out var firstRevision, out var secondRevision);
+
             if (!string.IsNullOrEmpty(error))
             {
                 MessageBox.Show(grid, error);
@@ -71,25 +69,25 @@ namespace GitUI
             return patch.Text;
         }
 
-        public static void ViewChanges(this FileViewer diffViewer, IList<GitRevision> revisions,
+        public static Task ViewChanges(this FileViewer diffViewer, IList<GitRevision> revisions,
             GitItemStatus file, string defaultText, bool canViewLineOnGitHubForThisRevision = false)
         {
             if (revisions.Count == 0)
-                return;
+                return Task.FromResult(string.Empty);
 
             var selectedRevision = revisions[0];
             string secondRevision = selectedRevision?.Guid;
             string firstRevision = revisions.Count >= 2 ? revisions[1].Guid : null;
             if (firstRevision == null && selectedRevision != null)
                 firstRevision = selectedRevision.FirstParentGuid;
-            ViewChanges(diffViewer, firstRevision, secondRevision, file, defaultText,
+            return ViewChanges(diffViewer, firstRevision, secondRevision, file, defaultText,
                 canViewLineOnGitHubForThisRevision);
         }
 
-        public static void ViewChanges(this FileViewer diffViewer, string firstRevision, string secondRevision, GitItemStatus file, string defaultText,
+        public static Task ViewChanges(this FileViewer diffViewer, string firstRevision, string secondRevision, GitItemStatus file, string defaultText,
             bool canViewLineOnGitHubForThisRevision = false)
         {
-            diffViewer.ViewPatch(() =>
+            return diffViewer.ViewPatch(() =>
             {
                 string selectedPatch = diffViewer.GetSelectedPatch(firstRevision, secondRevision, file);
                 return selectedPatch ?? defaultText;

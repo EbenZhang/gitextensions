@@ -27,6 +27,7 @@ namespace GitUI.Editor
         private int _currentScrollPos = -1;
         private bool _currentViewIsPatch;
         private readonly IFileViewer _internalFileViewer;
+        private GetNextFileFnc _fileLoader;
         private readonly IFullPathResolver _fullPathResolver;
 
         public Action<string> OnViewLineOnGitHub;
@@ -58,8 +59,7 @@ namespace GitUI.Editor
                     {
                         ResetForText(null);
                         _internalFileViewer.SetText("Unsupported file: \n\n" + args.Exception.ToString());
-                        if (TextLoaded != null)
-                            TextLoaded(this, null);
+                        TextLoaded?.Invoke(this, null);
                     }
                 };
 
@@ -225,8 +225,7 @@ namespace GitUI.Editor
         void ContextMenu_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
             copyToolStripMenuItem.Enabled = (_internalFileViewer.GetSelectionLength() > 0);
-            if (ContextMenuOpening != null)
-                ContextMenuOpening(sender, e);
+            ContextMenuOpening?.Invoke(sender, e);
         }
 
         void _internalFileViewer_MouseMove(object sender, MouseEventArgs e)
@@ -246,8 +245,7 @@ namespace GitUI.Editor
 
         void _internalFileViewer_SelectedLineChanged(object sender, SelectedLineEventArgs e)
         {
-            if (SelectedLineChanged != null)
-                SelectedLineChanged(sender, e);
+            SelectedLineChanged?.Invoke(sender, e);
         }
 
         public event EventHandler<SelectedLineEventArgs> SelectedLineChanged;
@@ -275,18 +273,12 @@ namespace GitUI.Editor
 
         protected virtual void OnRequestDiffView(EventArgs args)
         {
-            var handler = RequestDiffView;
-
-            if (handler != null)
-            {
-                handler(this, args);
-            }
+            RequestDiffView?.Invoke(this, args);
         }
 
         void _internalFileViewer_ScrollPosChanged(object sender, EventArgs e)
         {
-            if (ScrollPosChanged != null)
-                ScrollPosChanged(sender, e);
+            ScrollPosChanged?.Invoke(sender, e);
         }
 
         public void EnableScrollBars(bool enable)
@@ -299,8 +291,7 @@ namespace GitUI.Editor
             if (patchHighlighting)
                 _internalFileViewer.AddPatchHighlighting();
 
-            if (TextChanged != null)
-                TextChanged(sender, e);
+            TextChanged?.Invoke(sender, e);
         }
 
         private void UpdateEncodingCombo()
@@ -334,8 +325,7 @@ namespace GitUI.Editor
 
         private void OnExtraDiffArgumentsChanged()
         {
-            if (ExtraDiffArgumentsChanged != null)
-                ExtraDiffArgumentsChanged(this, new EventArgs());
+            ExtraDiffArgumentsChanged?.Invoke(this, new EventArgs());
         }
 
         public string GetExtraDiffArguments()
@@ -454,8 +444,7 @@ namespace GitUI.Editor
         {
             ResetForDiff();
             _internalFileViewer.SetText(text, isDiff: true);
-            if (TextLoaded != null)
-                TextLoaded(this, null);
+            TextLoaded?.Invoke(this, null);
             RestoreCurrentScrollPos();
             UpdateVisibilityOfViewLineOnGitHubMenuItem(canViewLineOnGitHubForThisRevision);
         }
@@ -466,9 +455,9 @@ namespace GitUI.Editor
             Reset(true, true, true);
         }
 
-        public void ViewPatch(Func<string> loadPatchText, bool canViewLineOnGitHubForThisRevision  = false)
+        public Task ViewPatch(Func<string> loadPatchText, bool canViewLineOnGitHubForThisRevision  = false)
         {
-            _async.Load(loadPatchText, (text) => ViewPatch(text, canViewLineOnGitHubForThisRevision));
+            return _async.Load(loadPatchText, text => ViewPatch(text, canViewLineOnGitHubForThisRevision));
         }
 
         public void ViewText(string fileName, string text)
@@ -479,14 +468,12 @@ namespace GitUI.Editor
             if (FileHelper.IsBinaryFileAccordingToContent(text))
             {
                 _internalFileViewer.SetText("Binary file: " + fileName + " (Detected)");
-                if (TextLoaded != null)
-                    TextLoaded(this, null);
+                TextLoaded?.Invoke(this, null);
                 return;
             }
 
             _internalFileViewer.SetText(text);
-            if (TextLoaded != null)
-                TextLoaded(this, null);
+            TextLoaded?.Invoke(this, null);
 
             RestoreCurrentScrollPos();
         }
@@ -1040,9 +1027,10 @@ namespace GitUI.Editor
             return (_internalFileViewer.GetText() != null && _internalFileViewer.GetText().Contains("@@"));
         }
 
-        public void SetFileLoader(Func<bool, Tuple<int, string>> fileLoader)
+        public void SetFileLoader(GetNextFileFnc fileLoader)
         {
             _internalFileViewer.SetFileLoader(fileLoader);
+            _fileLoader = fileLoader;
         }
 
         private void encodingToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -1195,8 +1183,7 @@ namespace GitUI.Editor
             {
                 GitUICommandsSourceSet -= FileViewer_GitUICommandsSourceSet;
                 _async.Dispose();
-                if (components != null)
-                    components.Dispose();
+                components?.Dispose();
                 if (IsUICommandsInitialized)
                 {
                     UICommands.PostSettings -= UICommands_PostSettings;

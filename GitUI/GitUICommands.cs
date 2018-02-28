@@ -22,6 +22,7 @@ namespace GitUI
         private readonly IAvatarService _gravatarService;
         private readonly ICommitTemplateManager _commitTemplateManager;
         private readonly IFullPathResolver _fullPathResolver;
+        private readonly IFindFilePredicateProvider _fildFilePredicateProvider;
 
         public GitUICommands(GitModule module)
         {
@@ -32,6 +33,7 @@ namespace GitUI
             IImageCache avatarCache = new DirectoryImageCache(AppSettings.GravatarCachePath, AppSettings.AuthorImageCacheDays);
             _gravatarService = new GravatarService(avatarCache);
             _fullPathResolver = new FullPathResolver(() => Module.WorkingDir);
+            _fildFilePredicateProvider = new FindFilePredicateProvider();
         }
 
         public GitUICommands(string workingDir)
@@ -1121,7 +1123,7 @@ namespace GitUI
         public bool StartCherryPickDialog(IWin32Window owner, IEnumerable<GitRevision> revisions)
         {
             if (revisions == null)
-                throw new ArgumentNullException("revisions");
+                throw new ArgumentNullException(nameof(revisions));
             Func<bool> action = () =>
             {
                 FormCherryPick prevForm = null;
@@ -1149,10 +1151,7 @@ namespace GitUI
                 }
                 finally
                 {
-                    if (prevForm != null)
-                    {
-                        prevForm.Dispose();
-                    }
+                    prevForm?.Dispose();
                 }
             };
 
@@ -1740,8 +1739,7 @@ namespace GitUI
             try
             {
                 var e = new GitUIEventArgs(ownerForm, this);
-                if (gitUIEventHandler != null)
-                    gitUIEventHandler(sender, e);
+                gitUIEventHandler?.Invoke(sender, e);
 
                 return !e.Cancel;
             }
@@ -2172,13 +2170,10 @@ namespace GitUI
             string filenameFromBlame = args[2].Replace(Module.WorkingDir, "").ToPosixPath();
 
             int? initialLine = null;
-            if( args.Length >= 4 )
+            if (args.Length >= 4)
             {
-                int temp;
-                if( int.TryParse( args[3], out temp ) )
-                {
+                if (int.TryParse(args[3], out var temp))
                     initialLine = temp;
-                }
             }
 
             StartBlameDialog(filenameFromBlame, initialLine);
@@ -2208,9 +2203,9 @@ namespace GitUI
         {
             var candidates = Module.GetFullTree("HEAD");
 
-            string nameAsLower = name.ToLower();
+            var predicate = _fildFilePredicateProvider.Get(name, Module.WorkingDir);
 
-            return candidates.Where(fileName => fileName.ToLower().Contains(nameAsLower)).ToList();
+            return candidates.Where(predicate).ToList();
         }
 
         private void Commit(Dictionary<string, string> arguments)
@@ -2263,8 +2258,7 @@ namespace GitUI
 
         public void BrowseGoToRef(string refName, bool showNoRevisionMsg)
         {
-            if (BrowseRepo != null)
-                BrowseRepo.GoToRef(refName, showNoRevisionMsg);
+            BrowseRepo?.GoToRef(refName, showNoRevisionMsg);
         }
 
         public IGitRemoteCommand CreateRemoteCommand()
@@ -2322,8 +2316,7 @@ namespace GitUI
 
                 var e = new GitRemoteCommandCompletedEventArgs(this, isError, false);
 
-                if (Completed != null)
-                    Completed(form, e);
+                Completed?.Invoke(form, e);
 
                 isError = e.IsError;
 

@@ -10,6 +10,7 @@ using GitUI.CommandsDialogs.BrowseDialog;
 using GitUI.HelperDialogs;
 using GitUI.Hotkey;
 using ResourceManager;
+using System.Threading.Tasks;
 using GitExtUtils;
 
 namespace GitUI.CommandsDialogs
@@ -33,6 +34,7 @@ namespace GitUI.CommandsDialogs
         private GitItemStatus _oldDiffItem;
         private IRevisionDiffController _revisionDiffController;
         private readonly IFullPathResolver _fullPathResolver;
+        private readonly IFindFilePredicateProvider _findFilePredicateProvider;
 
         public RevisionDiff()
         {
@@ -40,6 +42,7 @@ namespace GitUI.CommandsDialogs
             Translate();
             this.HotkeysEnabled = true;
             _fullPathResolver = new FullPathResolver(() => Module.WorkingDir);
+            _findFilePredicateProvider = new FindFilePredicateProvider();
             DiffText.OnViewLineOnGitHub = OnViewLineOnGitHub;
         }
 
@@ -172,52 +175,30 @@ namespace GitUI.CommandsDialogs
             return _revisionGrid.DescribeRevision(revision);
         }
 
-        private static int GetNextIdx(int curIdx, int maxIdx, bool searchBackward)
+        private bool GetNextPatchFile(bool searchBackward, bool loop, out int fileIndex, out Task loadFileContent)
         {
-            if (searchBackward)
+            fileIndex = -1;
+            loadFileContent = Task.FromResult<string>(null);
+            var revisions = _revisionGrid.GetSelectedRevisions();
+            if (revisions.Count == 0)
+                return false;
+
+            int idx = DiffFiles.SelectedIndex;
+            if (idx == -1)
+                return false;
+
+            fileIndex = DiffFiles.GetNextIndex(searchBackward, loop);
+            if (fileIndex == idx)
             {
-                if (curIdx == 0)
-                {
-                    curIdx = maxIdx;
-                }
-                else
-                {
-                    curIdx--;
-                }
+                if (!loop)
+                    return false;
             }
             else
             {
-                if (curIdx == maxIdx)
-                {
-                    curIdx = 0;
-                }
-                else
-                {
-                    curIdx++;
-                }
+                DiffFiles.SetSelectedIndex(fileIndex, notify: false);
             }
-            return curIdx;
-        }
-
-        private Tuple<int, string> GetNextPatchFile(bool searchBackward)
-        {
-            var revisions = _revisionGrid.GetSelectedRevisions();
-            if (revisions.Count == 0)
-                return null;
-            int idx = DiffFiles.SelectedIndex;
-            if (idx == -1)
-                return new Tuple<int, string>(idx, null);
-
-            idx = GetNextIdx(idx, DiffFiles.GitItemStatuses.Count() - 1, searchBackward);
-            DiffFiles.SetSelectedIndex(idx, notify: false);
-            return new Tuple<int, string>(idx, GetSelectedPatch(revisions, DiffFiles.SelectedItem));
-        }
-
-        private string GetSelectedPatch(IList<GitRevision> revisions, GitItemStatus file)
-        {
-            string firstRevision = revisions.Count > 0 ? revisions[0].Guid : null;
-            string secondRevision = revisions.Count == 2 ? revisions[1].Guid : null;
-            return DiffText.GetSelectedPatch(firstRevision, secondRevision, file);
+            loadFileContent = ShowSelectedFileDiff();
+            return true;
         }
 
         private ContextMenuSelectionInfo GetSelectionInfo()
@@ -258,7 +239,7 @@ namespace GitUI.CommandsDialogs
             RefreshArtificial();
         }
 
-        private void ShowSelectedFileDiff()
+        private async Task ShowSelectedFileDiff()
         {
             var items = _revisionGrid.GetSelectedRevisions();
             if (DiffFiles.SelectedItem == null || items.Count() == 0)
@@ -287,13 +268,13 @@ namespace GitUI.CommandsDialogs
                     return;
                 }
             }
-            DiffText.ViewChanges(items, DiffFiles.SelectedItem, String.Empty, canViewLineOnGitHubForThisRevision: onlyOneRevisionSelected);
+            await DiffText.ViewChanges(items, DiffFiles.SelectedItem, String.Empty, canViewLineOnGitHubForThisRevision: onlyOneRevisionSelected);
         }
 
 
-        private void DiffFiles_SelectedIndexChanged(object sender, EventArgs e)
+        private async void DiffFiles_SelectedIndexChanged(object sender, EventArgs e)
         {
-            ShowSelectedFileDiff();
+            await ShowSelectedFileDiff();
         }
 
         private void DiffFiles_DoubleClick(object sender, EventArgs e)
@@ -326,9 +307,9 @@ namespace GitUI.CommandsDialogs
                 DiffText.ViewPatch(String.Empty);
         }
 
-        private void DiffText_ExtraDiffArgumentsChanged(object sender, EventArgs e)
+        private async void DiffText_ExtraDiffArgumentsChanged(object sender, EventArgs e)
         {
-            ShowSelectedFileDiff();
+            await ShowSelectedFileDiff();
         }
 
         private void diffShowInFileTreeToolStripMenuItem_Click(object sender, EventArgs e)
@@ -452,15 +433,8 @@ namespace GitUI.CommandsDialogs
 
             Func<string, IList<GitItemStatus>> FindDiffFilesMatches = (string name) =>
             {
-
-                string nameAsLower = name.ToLower();
-
-                return candidates.Where(item =>
-                {
-                    return item.Name != null && item.Name.ToLower().Contains(nameAsLower)
-                        || item.OldName != null && item.OldName.ToLower().Contains(nameAsLower);
-                }
-                    ).ToList();
+                var predicate = _findFilePredicateProvider.Get(name, Module.WorkingDir);
+                return candidates.Where(item => predicate(item.Name) || predicate(item.OldName)).ToList();
             };
 
             GitItemStatus selectedItem;
