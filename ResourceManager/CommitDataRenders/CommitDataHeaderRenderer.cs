@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using GitCommands;
+using GitCommands.Git;
 using GitCommands.Git.Extensions;
 
 namespace ResourceManager.CommitDataRenders
@@ -193,7 +194,7 @@ namespace ResourceManager.CommitDataRenders
 
         private static string GetCommitSubject(string sha, IGitRevisionProvider module)
         {
-            return GitRevision.IsArtificial(sha)
+            return sha.IsArtificial()
                 ? ""
                 : module.GetRevision(sha, shortFormat: true).Subject;
         }

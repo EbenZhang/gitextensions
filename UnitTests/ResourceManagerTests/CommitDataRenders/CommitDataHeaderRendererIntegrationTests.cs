@@ -37,15 +37,15 @@ namespace ResourceManagerTests.CommitDataRenders
             var commitTime = DateTime.UtcNow.AddDays(-2);
 
             _revisionProvider = Substitute.For<IGitRevisionProvider>();
-            _parent1Rev = new GitRevision(aModule: null, guid: parentGuid1) { Subject = "Parent1" };
-            _parent2Rev = new GitRevision(aModule: null, guid: parentGuid2) { Subject = "Parent2" };
+            _parent1Rev = new GitRevision(guid: parentGuid1) { Subject = "Parent1" };
+            _parent2Rev = new GitRevision(guid: parentGuid2) { Subject = "Parent2" };
             _revisionProvider.GetRevision(parentGuid1, shortFormat: true).Returns(_parent1Rev);
             _revisionProvider.GetRevision(parentGuid2, shortFormat: true).Returns(_parent2Rev);
 
             var childGuids = new List<string> { "3b6ce324e30ed7fda24483fd56a180c34a262202", "2a8788ff15071a202505a96f80796dbff5750ddf", "8e66fa8095a86138a7c7fb22318d2f819669831e" };
-            _child1Rev = new GitRevision(aModule: null, guid: childGuids[0]) { Subject = "Child1" };
-            _child2Rev = new GitRevision(aModule: null, guid: childGuids[1]) { Subject = "Child2" };
-            _child3Rev = new GitRevision(aModule: null, guid: childGuids[2]) { Subject = "Child3" };
+            _child1Rev = new GitRevision(guid: childGuids[0]) { Subject = "Child1" };
+            _child2Rev = new GitRevision(guid: childGuids[1]) { Subject = "Child2" };
+            _child3Rev = new GitRevision(guid: childGuids[2]) { Subject = "Child3" };
             _revisionProvider.GetRevision(childGuids[0], shortFormat: true).Returns(_child1Rev);
             _revisionProvider.GetRevision(childGuids[1], shortFormat: true).Returns(_child2Rev);
             _revisionProvider.GetRevision(childGuids[2], shortFormat: true).Returns(_child3Rev);

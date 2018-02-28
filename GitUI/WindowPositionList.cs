@@ -43,7 +43,7 @@ namespace GitUI
         public List<WindowPosition> WindowPositions { get; set; }
 
         private static readonly string AppDataDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitExtensions");
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitExtensions");
 
         private static readonly string ConfigFilePath = Path.Combine(AppDataDir, "WindowPositions.xml");
 
