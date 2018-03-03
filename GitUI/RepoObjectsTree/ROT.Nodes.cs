@@ -1,49 +1,42 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.Git;
 
-namespace GitUI.UserControls
+namespace GitUI.RepoObjectsTree
 {
     partial class RepoObjectsTree
     {
-        class Nodes
+        private sealed class Nodes
         {
             public readonly Tree Tree;
-            public readonly Node OwnerNode;
-            private readonly IList<Node> NodesList = new List<Node>();
+            private readonly IList<Node> _nodesList = new List<Node>();
 
-            public Nodes(Tree aTree, Node aOwnerNode)
+            public Nodes(Tree aTree)
             {
                 Tree = aTree;
-                OwnerNode = aOwnerNode;
             }
 
-            public virtual void AddNode(Node aNode)
+            public void AddNode(Node aNode)
             {
-                NodesList.Add(aNode);
-                aNode.ParentNode = OwnerNode;
+                _nodesList.Add(aNode);
             }
 
             public void Clear()
             {
-                NodesList.Clear();
+                _nodesList.Clear();
             }
 
             public void Remove(Node aNode)
             {
-                NodesList.Remove(aNode);
+                _nodesList.Remove(aNode);
             }
 
             public IEnumerator<Node> GetEnumerator()
             {
-                var e = NodesList.GetEnumerator();
+                var e = _nodesList.GetEnumerator();
                 return e;
             }
 
@@ -56,32 +49,36 @@ namespace GitUI.UserControls
             {
                 foreach (var node in this)
                 {
-                    if(node is TNode)
-                        yield return (TNode)node;
+                    if (node is TNode node1)
+                    {
+                        yield return node1;
+                    }
 
                     foreach (var subnode in node.Nodes.DepthEnumerator<TNode>())
+                    {
                         yield return subnode;
+                    }
                 }
             }
 
             internal void FillTreeViewNode(TreeNode aTreeViewNode)
             {
-                HashSet<Node> prevNodes = new HashSet<Node>();
-                for (int i = 0; i < aTreeViewNode.Nodes.Count; i++)
+                var prevNodes = new HashSet<Node>();
+                for (var i = 0; i < aTreeViewNode.Nodes.Count; i++)
                 {
                     var tvNode = aTreeViewNode.Nodes[i];
                     prevNodes.Add(Node.GetNode(tvNode));
                 }
 
-                int oldNodeIdx = 0;
-                foreach (Node node in this)
+                var oldNodeIdx = 0;
+                foreach (var node in this)
                 {
                     TreeNode tvNode;
 
                     if (oldNodeIdx < aTreeViewNode.Nodes.Count)
                     {
                         tvNode = aTreeViewNode.Nodes[oldNodeIdx];
-                        Node oldNode = Node.GetNode(tvNode);
+                        var oldNode = Node.GetNode(tvNode);
                         if (!oldNode.Equals(node) && !prevNodes.Contains(node))
                         {
                             tvNode = aTreeViewNode.Nodes.Insert(oldNodeIdx, string.Empty);
@@ -105,51 +102,53 @@ namespace GitUI.UserControls
 
             }
 
-            public int Count { get { return NodesList.Count; } }
+            public int Count => _nodesList.Count;
         }
 
-        abstract class Tree
+        private abstract class Tree
         {
-            public readonly Nodes Nodes;
-            private readonly IGitUICommandsSource UICommandsSource;
-            public GitUICommands UICommands { get { return UICommandsSource.UICommands; } }
-            public GitModule Module { get { return UICommands.Module; } }
-            public TreeNode TreeViewNode { get; private set; }
+            protected readonly Nodes Nodes;
+            private readonly IGitUICommandsSource _uiCommandsSource;
+            public GitUICommands UICommands => _uiCommandsSource.UICommands;
+            protected GitModule Module => UICommands.Module;
+            public TreeNode TreeViewNode { get; }
             public Action<List<string>> OnBranchesAdded;
 
-            public Tree(TreeNode aTreeNode, IGitUICommandsSource uiCommands)
+            protected Tree(TreeNode aTreeNode, IGitUICommandsSource uiCommands)
             {
-                Nodes = new Nodes(this, null);
-                UICommandsSource = uiCommands;
+                Nodes = new Nodes(this);
+                _uiCommandsSource = uiCommands;
                 TreeViewNode = aTreeNode;
             }
 
             public Task ReloadTask(CancellationToken token)
             {
                 ClearNodes();
-                Task task = new Task(() => LoadNodes(token), token);
-                Action<Task> continuationAction = (t) =>
-                    {
-                        TreeViewNode.TreeView.BeginUpdate();
-                        try
-                        {
-                            FillTreeViewNode();
-                        }
-                        finally
-                        {
-                            if (TreeViewNode.TreeView.SelectedNode != null)
-                            {
-                                TreeViewNode.TreeView.SelectedNode.EnsureVisible();
-                            }
-                            else if(TreeViewNode.TreeView.Nodes.Count > 0)
-                            {
-                                TreeViewNode.TreeView.Nodes[0].EnsureVisible();
-                            }
-                            TreeViewNode.TreeView.EndUpdate();
-                        }
-                    };
+                var task = new Task(() => LoadNodes(token), token);
 
-                task.ContinueWith(continuationAction, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.FromCurrentSynchronizationContext());
+                void ContinuationAction(Task t)
+                {
+                    TreeViewNode.TreeView.BeginUpdate();
+                    try
+                    {
+                        FillTreeViewNode();
+                    }
+                    finally
+                    {
+                        if (TreeViewNode.TreeView.SelectedNode != null)
+                        {
+                            TreeViewNode.TreeView.SelectedNode.EnsureVisible();
+                        }
+                        else if (TreeViewNode.TreeView.Nodes.Count > 0)
+                        {
+                            TreeViewNode.TreeView.Nodes[0].EnsureVisible();
+                        }
+
+                        TreeViewNode.TreeView.EndUpdate();
+                    }
+                }
+
+                task.ContinueWith(ContinuationAction, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.FromCurrentSynchronizationContext());
                 return task;
             }
 
@@ -167,48 +166,39 @@ namespace GitUI.UserControls
 
             protected void FireBranchAddedEvent(List<string> branchFullPaths)
             {
-                if (OnBranchesAdded != null)
-                {
-                    OnBranchesAdded(branchFullPaths);
-                }
+                OnBranchesAdded?.Invoke(branchFullPaths);
             }
         }
 
-        abstract class Node
+        private abstract class Node
         {
-            /// <summary>Gets the parent node.</summary>
-            public Node ParentNode { get; internal set; }
             public readonly Nodes Nodes;
-            public Tree Tree { get { return Nodes.Tree; } }
-            /// <summary>Gets the <see cref="GitUICommands"/> reference.</summary>
-            public GitUICommands UICommands { get { return Tree.UICommands; } }
-            /// <summary>Gets the <see cref="GitModule"/> reference.</summary>
-            public GitModule Module { get { return UICommands.Module; } }
+            protected Tree Tree => Nodes.Tree;
+            protected GitUICommands UICommands => Tree.UICommands;
 
-            protected Node(Tree aTree, Node aParentNode)
+            protected GitModule Module => UICommands.Module;
+
+            protected Node(Tree aTree)
             {
-                Nodes = new Nodes(aTree, this);
-                //Notifier = NotificationManager.Get(UICommands);
-                ParentNode = aParentNode;
+                Nodes = new Nodes(aTree);
             }
 
-            TreeNode _TreeViewNode;
-            /// <summary>Gets the <see cref="TreeViewNode"/> which holds this <see cref="Node"/>.
-            /// <remarks>Setting this value will automatically call <see cref="ApplyStyle"/>.</remarks></summary>
+            private TreeNode _treeViewNode;
             public TreeNode TreeViewNode
             {
-                get { return _TreeViewNode; }
-                internal set
+                protected get => _treeViewNode;
+                set
                 {
-                    _TreeViewNode = value;
-                    _TreeViewNode.Tag = this;
-                    _TreeViewNode.Text = DisplayText();
-                    _TreeViewNode.ContextMenuStrip = GetContextMenuStrip();
+                    _treeViewNode = value;
+                    _treeViewNode.Tag = this;
+                    _treeViewNode.Text = DisplayText();
+                    _treeViewNode.ContextMenuStrip = GetContextMenuStrip();
                     ApplyStyle();
                 }
             }
 
-            private static Dictionary<Type, ContextMenuStrip> DefaultContextMenus = new Dictionary<Type, ContextMenuStrip>();
+            private static readonly Dictionary<Type, ContextMenuStrip> DefaultContextMenus
+                = new Dictionary<Type, ContextMenuStrip>();
 
             public static void RegisterContextMenu(Type aType, ContextMenuStrip aMenu)
             {
@@ -223,12 +213,11 @@ namespace GitUI.UserControls
 
             protected virtual ContextMenuStrip GetContextMenuStrip()
             {
-                ContextMenuStrip result = null;
-                DefaultContextMenus.TryGetValue(GetType(), out result);
+                DefaultContextMenus.TryGetValue(GetType(), out var result);
                 return result;
             }
 
-            public IWin32Window ParentWindow()
+            protected IWin32Window ParentWindow()
             {
                 return TreeViewNode.TreeView.FindForm();
             }
@@ -238,56 +227,30 @@ namespace GitUI.UserControls
                 return ToString();
             }
 
-            /// <summary>Styles the <see cref="TreeViewNode"/>.</summary>
             protected virtual void ApplyStyle()
             {
                 TreeViewNode.NodeFont = AppSettings.Font;
             }
 
-            public void Select()
-            {
-                if (TreeViewNode.TreeView.SelectedNode == TreeViewNode)
-                {
-                    OnSelected();
-                }
-                else
-                {
-                    TreeViewNode.TreeView.SelectedNode = TreeViewNode;
-                }
-            }
-
-            /// <summary>Occurs when the <see cref="Node"/> is selected.</summary>
             internal virtual void OnSelected() { }
-            /// <summary>Occurs when the <see cref="Node"/> is clicked.</summary>
             internal virtual void OnClick() { }
-            /// <summary>Occurs when the <see cref="Node"/> is double-clicked.</summary>
             internal virtual void OnDoubleClick() { }
 
-            /// <summary>Gets the <see cref="Node"/> from a <see cref="TreeViewNode"/>'s tag.</summary>
             public static Node GetNode(TreeNode treeNode)
             {
                 return (Node)treeNode.Tag;
             }
 
-            /// <summary>Casts the <see cref="System.Windows.Forms.TreeNode.Tag"/> to a <see cref="Node"/>.</summary>
             public static T GetNodeSafe<T>(TreeNode treeNode) where T : Node
             {
-                if (treeNode == null)
-                    return null;
-
-                return treeNode.Tag as T;
+                return treeNode?.Tag as T;
             }
 
-            /// <summary>Executes an action if <see cref="TreeViewNode"/> holds a <see cref="Node"/>.</summary>
-            public static bool OnNode<T>(TreeNode treeNode, Action<T> action) where T : Node
+            public static void OnNode<T>(TreeNode treeNode, Action<T> action) where T : Node
             {
-                T node = GetNodeSafe<T>(treeNode);
-                if (node != null)
-                {
-                    action(node);
-                    return true;
-                }
-                return false;
+                var node = GetNodeSafe<T>(treeNode);
+                if (node == null) return;
+                action(node);
             }
         }
     }

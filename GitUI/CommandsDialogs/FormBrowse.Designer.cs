@@ -58,7 +58,7 @@ namespace GitUI.CommandsDialogs
             this.toolStripRevisionFilterDropDownButton = new System.Windows.Forms.ToolStripDropDownButton();
             this.ShowFirstParent = new System.Windows.Forms.ToolStripButton();
             this.MainSplitContainer = new System.Windows.Forms.SplitContainer();
-            this.repoObjectsTree = new GitUI.UserControls.RepoObjectsTree();
+            this.repoObjectsTree = new GitUI.RepoObjectsTree.RepoObjectsTree();
             this.RightSplitContainer = new System.Windows.Forms.SplitContainer();
             this.RevisionsSplitContainer = new System.Windows.Forms.SplitContainer();
             this.RevisionGrid = new GitUI.RevisionGrid();
@@ -1858,7 +1858,7 @@ namespace GitUI.CommandsDialogs
         private ToolStripSeparator toolStripSeparator46;
         private ToolStripMenuItem checkForUpdatesToolStripMenuItem;
         private SplitContainer MainSplitContainer;
-        private UserControls.RepoObjectsTree repoObjectsTree;
+        private GitUI.RepoObjectsTree.RepoObjectsTree repoObjectsTree;
         private ToolStripMenuItem commitcountPerUserToolStripMenuItem;
         private ToolStripMenuItem gitcommandLogToolStripMenuItem;
         private ToolStripSeparator toolStripSeparator7;

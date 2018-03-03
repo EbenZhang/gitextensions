@@ -6,44 +6,37 @@ using System.Windows.Forms;
 using GitCommands;
 using ResourceManager;
 
-namespace GitUI.UserControls
+namespace GitUI.RepoObjectsTree
 {
-    // "branches"
     public partial class RepoObjectsTree
     {
         #region private classes
 
-        /// <summary>base class for a branch node</summary>
         private abstract class BaseBranchNode : Node
         {
-            protected readonly char PathSeparator = '/';
+            protected const char PathSeparator = '/';
 
             /// <summary>Short name of the branch/branch path. <example>"issue1344"</example></summary>
-            public string Name { get; protected set; }
+            protected string Name { get; set; }
 
-            public string ParentPath { get; private set; }
+            private string ParentPath { get; }
 
             /// <summary>Full path of the branch. <example>"issues/issue1344"</example></summary>
-            public string FullPath
-            {
-                get { return ParentPath.Combine(PathSeparator, Name); }
-            }
+            public string FullPath => ParentPath.Combine(PathSeparator, Name);
 
             public override int GetHashCode()
             {
                 return FullPath.GetHashCode();
             }
 
-            /// <summary>Two <see cref="BaseBranchNode"/> instances are equal
-            ///  if their <see cref="FullPath"/> values are equal.</summary>
-            protected bool Equals(BaseBranchNode other)
+            private bool Equals(BaseBranchNode other)
             {
                 if (other == null)
                 {
                     return false;
                 }
 
-                return (other == this) || string.Equals(FullPath, other.FullPath);
+                return ReferenceEquals(other, this) || string.Equals(FullPath, other.FullPath);
             }
 
             public override bool Equals(object obj)
@@ -52,13 +45,15 @@ namespace GitUI.UserControls
             }
 
             protected BaseBranchNode(Tree aTree, string aFullPath)
-                : base(aTree, null)
+                : base(aTree)
             {
                 aFullPath = aFullPath.Trim();
                 if (aFullPath.IsNullOrEmpty())
-                    throw new ArgumentNullException("aFullPath");
+                {
+                    throw new ArgumentNullException(nameof(aFullPath));
+                }
 
-                string[] dirs = aFullPath.Split(PathSeparator);
+                var dirs = aFullPath.Split(PathSeparator);
                 Name = dirs[dirs.Length - 1];
                 ParentPath = dirs.Take(dirs.Length - 1).Join(PathSeparator);
             }
@@ -68,12 +63,13 @@ namespace GitUI.UserControls
 
             {
                 if (ParentPath.IsNullOrEmpty())
+                {
                     return this;
+                }
 
-                BaseBranchNode parent;
                 BaseBranchNode result;
 
-                if (nodes.TryGetValue(ParentPath, out parent))
+                if (nodes.TryGetValue(ParentPath, out var parent))
                 {
                     result = null;
                 }
@@ -99,37 +95,25 @@ namespace GitUI.UserControls
                 TreeViewNode.TreeView.BeginInvoke(new Action(() =>
                 {
                     UICommands.BrowseGoToRef(FullPath, showNoRevisionMsg: true);
-                    if (TreeViewNode.TreeView != null)
-                    {
-                        TreeViewNode.TreeView.Focus();
-                    }
+                    TreeViewNode.TreeView?.Focus();
                 }));
             }
         }
 
-        /// <summary>Local branch node.</summary>
-        private sealed class BranchNode : BaseBranchNode
+        private sealed class LocalBranchNode : BaseBranchNode
         {
-            public BranchNode(Tree aTree, string aFullPath)
+            public LocalBranchNode(Tree aTree, string aFullPath)
                 : base(aTree, aFullPath.TrimStart(GitModule.ActiveBranchIndicator))
             {
                 IsActive = aFullPath.StartsWith(GitModule.ActiveBranchIndicator.ToString());
             }
 
-            /// <summary>true if this <see cref="BranchNode"/> is the active branch.</summary>
-            public bool IsActive { get; private set; }
+            public bool IsActive { get; }
 
-            /// <summary>Indicates whether this <see cref="BranchNode"/> is setup for remote tracking.</summary>
-            public bool IsTrackingSetup()
-            {
-                return !string.IsNullOrWhiteSpace(Module.LocalConfigFile.GetValue(GitRef.RemoteSettingName(FullPath)));
-            }
-
-            /// <summary>Styles the <see cref="Node.TreeViewNode"/>.</summary>
             protected override void ApplyStyle()
             {
                 base.ApplyStyle();
-                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = "Branch.png";
+                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = @"Branch.png";
                 if (IsActive)
                 {
                     TreeViewNode.NodeFont = new Font(TreeViewNode.NodeFont, FontStyle.Bold);
@@ -138,13 +122,9 @@ namespace GitUI.UserControls
 
             public override bool Equals(object obj)
             {
-                if (base.Equals(obj))
-                {
-                    BranchNode branchNode = obj as BranchNode;
-                    return branchNode != null && IsActive == branchNode.IsActive;
-                }
+                if (!base.Equals(obj)) return false;
+                return obj is LocalBranchNode localBranchNode && IsActive == localBranchNode.IsActive;
 
-                return false;
             }
 
             public override int GetHashCode()
@@ -152,7 +132,6 @@ namespace GitUI.UserControls
                 return base.GetHashCode();
             }
 
-            /// <summary>Checkout the branch.</summary>
             internal override void OnDoubleClick()
             {
                 base.OnDoubleClick();
@@ -173,13 +152,13 @@ namespace GitUI.UserControls
 
             public void Delete()
             {
-                UICommands.StartDeleteBranchDialog(ParentWindow(), new string[] {FullPath});
+                UICommands.StartDeleteBranchDialog(ParentWindow(), new[] {FullPath});
             }
 
             public void DeleteForce()
             {
                 var branchHead = GitRef.CreateBranchRef(UICommands.Module, null, FullPath);
-                var cmd = new GitDeleteBranchCmd(new GitRef[] {branchHead}, true);
+                var cmd = new GitDeleteBranchCmd(new[] {branchHead}, true);
                 UICommands.StartCommandLineProcessDialog(cmd, null);
             }
         }
@@ -193,14 +172,12 @@ namespace GitUI.UserControls
             protected override void ApplyStyle()
             {
                 base.ApplyStyle();
-                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = "folder.png";
+                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = @"folder.png";
             }
         }
 
-        /// <summary>Part of a path leading to local branch(es)</summary>
         private class BranchPathNode : BasePathNode
         {
-            /// <summary>Creates a new <see cref="BranchPathNode"/>.</summary>
             public BranchPathNode(Tree aTree, string aFullPath)
                 : base(aTree, aFullPath)
             {
@@ -208,18 +185,18 @@ namespace GitUI.UserControls
 
             public override string ToString()
             {
-                return string.Format("{0}{1}", Name, PathSeparator);
+                return $"{Name}{PathSeparator}";
             }
 
             public void DeleteAll()
             {
-                var branches = Nodes.DepthEnumerator<BranchNode>().Select(branch => branch.FullPath);
+                var branches = Nodes.DepthEnumerator<LocalBranchNode>().Select(branch => branch.FullPath);
                 UICommands.StartDeleteBranchDialog(ParentWindow(), branches);
             }
 
             public void DeleteAllForce()
             {
-                var branches = Nodes.DepthEnumerator<BranchNode>();
+                var branches = Nodes.DepthEnumerator<LocalBranchNode>();
                 var branchHeads =
                     branches.Select(branch => GitRef.CreateBranchRef(UICommands.Module, null, branch.FullPath));
                 var cmd = new GitDeleteBranchCmd(branchHeads, true);
@@ -229,20 +206,15 @@ namespace GitUI.UserControls
 
         private class BranchTree : Tree
         {
-            public const char PathSeparator = '/';
-            private string SelectedBranch;
-
             public BranchTree(TreeNode aTreeNode, IGitUICommandsSource uiCommands)
                 : base(aTreeNode, uiCommands)
             {
-                uiCommands.GitUICommandsChanged += uiCommands_GitUICommandsChanged;
+                uiCommands.GitUICommandsChanged += UiCommands_GitUICommandsChanged;
             }
 
-            private void uiCommands_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
+            private void UiCommands_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
             {
-                //select active branch after repo change
                 TreeViewNode.TreeView.SelectedNode = null;
-                SelectedBranch = null;
             }
 
             protected override void LoadNodes(System.Threading.CancellationToken token)
@@ -250,8 +222,7 @@ namespace GitUI.UserControls
                 FillBranchTree(Module.GetBranchNames());
             }
 
-            /// <summary>Gets the hierarchical branch tree from the specified list of <paramref name="branches"/>.</summary>
-            public void FillBranchTree(IEnumerable<string> branches)
+            private void FillBranchTree(IEnumerable<string> branches)
             {
                 #region ex
 
@@ -283,16 +254,16 @@ namespace GitUI.UserControls
 
                 #endregion ex
 
-                Dictionary<string, BaseBranchNode> nodes = new Dictionary<string, BaseBranchNode>();
+                var nodes = new Dictionary<string, BaseBranchNode>();
                 var branchFullPaths = new List<string>();
-                foreach (string branch in branches)
+                foreach (var branch in branches)
                 {
-                    BranchNode branchNode = new BranchNode(this, branch);
-                    BaseBranchNode parent = branchNode.CreateRootNode(nodes,
+                    var localBranchNode = new LocalBranchNode(this, branch);
+                    var parent = localBranchNode.CreateRootNode(nodes,
                         (tree, parentPath) => new BranchPathNode(tree, parentPath));
                     if (parent != null)
                         Nodes.AddNode(parent);
-                    branchFullPaths.Add(branchNode.FullPath);
+                    branchFullPaths.Add(localBranchNode.FullPath);
                 }
 
                 FireBranchAddedEvent(branchFullPaths);
@@ -300,24 +271,14 @@ namespace GitUI.UserControls
 
             protected override void FillTreeViewNode()
             {
-                var selectedNode = Node.GetNodeSafe<BranchNode>(TreeViewNode.TreeView.SelectedNode);
-                if (selectedNode != null)
-                {
-                    SelectedBranch = selectedNode.FullPath;
-                }
-
                 base.FillTreeViewNode();
 
-                TreeViewNode.Text = string.Format("{0} ({1})", Strings.branches, Nodes.Count);
+                TreeViewNode.Text = $@"{Strings.branches} ({Nodes.Count})";
 
-                var activeBranch = Nodes.DepthEnumerator<BranchNode>().Where(b => b.IsActive).FirstOrDefault();
+                var activeBranch = Nodes.DepthEnumerator<LocalBranchNode>().FirstOrDefault(b => b.IsActive);
                 if (activeBranch == null)
                 {
                     TreeViewNode.TreeView.SelectedNode = null;
-                }
-                else
-                {
-                    SelectedBranch = activeBranch.FullPath;
                 }
             }
         }

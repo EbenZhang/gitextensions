@@ -101,10 +101,7 @@ namespace GitUI.CommandsDialogs
             listBoxSearchResult.BringToFront();
         }
 
-        public T SelectedItem
-        {
-            get { return (T)listBoxSearchResult.SelectedItem; }
-        }
+        public T SelectedItem => (T)listBoxSearchResult.SelectedItem;
 
         void IDisposable.Dispose()
         {

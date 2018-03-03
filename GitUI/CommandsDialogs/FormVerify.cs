@@ -46,14 +46,11 @@ namespace GitUI.CommandsDialogs
 
             if (aCommands != null)
             {
-                _gitTagController = new GitTagController(() => aCommands.Module.WorkingDir);
+                _gitTagController = new GitTagController(aCommands);
             }
         }
 
-        private LostObject CurrentItem
-        {
-            get { return Warnings.SelectedRows.Count == 0 ? null : _filteredLostObjects[Warnings.SelectedRows[0].Index]; }
-        }
+        private LostObject CurrentItem => Warnings.SelectedRows.Count == 0 ? null : _filteredLostObjects[Warnings.SelectedRows[0].Index];
 
         #region Event Handlers
 
@@ -260,8 +257,7 @@ namespace GitUI.CommandsDialogs
             {
                 currentTag++;
                 var createTagArgs = new GitCreateTagArgs($"{RestoredObjectsTagPrefix}{currentTag}", lostObject.Hash);
-                var cmd = _gitTagController.GetCreateTagCommand(createTagArgs);
-                UICommands.StartCommandLineProcessDialog(cmd, this);
+                var success = _gitTagController.CreateTag(createTagArgs, this);
             }
 
             return currentTag;

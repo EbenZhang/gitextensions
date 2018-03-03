@@ -2,41 +2,28 @@
 using System.Windows.Forms;
 using GitUI.CommandsDialogs;
 
-namespace GitUI.UserControls
+namespace GitUI.RepoObjectsTree
 {
     partial class RepoObjectsTree
     {
-        /// <summary>most recently right-clicked <see cref="TreeNode"/></summary>
-        TreeNode rightClickNode;
+        private TreeNode _lastRightClickedNode;
 
-        /// <summary>Captures the right-clicked <see cref="TreeNode"/>.</summary>
-        void OnNodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        private void OnNodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
-            if (e.Button == MouseButtons.Right)
-            {// right-click -> set right-click TreeNode
-                //e.Node.TreeView.SelectedNode = e.Node;
-                rightClickNode = e.Node;
-            }
-            else
-            {// (NOT right-click) -> set right-click TreeNode to null
-                rightClickNode = null;
-            }
+            _lastRightClickedNode = e.Button == MouseButtons.Right ? e.Node : null;
         }
 
 
-        /// <summary>Hooks an action onto the Click event of a <see cref="ToolStripMenuItem"/>.</summary>
-        void RegisterClick(ToolStripMenuItem item, Action onClick)
+        private static void RegisterClick(ToolStripItem item, Action onClick)
         {
             item.Click += (o, e) => onClick();
         }
 
-        /// <summary>Hooks an action onto the Click event of a <see cref="ToolStripMenuItem"/>.</summary>
-        void RegisterClick<T>(ToolStripMenuItem item, Action<T> onClick) where T: Node
+        private void RegisterClick<T>(ToolStripItem item, Action<T> onClick) where T: Node
         {
-            item.Click += (o, e) => Node.OnNode<T>(rightClickNode, onClick);
+            item.Click += (o, e) => Node.OnNode(_lastRightClickedNode, onClick);
         }
 
-        /// <summary>Registers the context menu actions.</summary>
         private void RegisterContextActions()
         {
             RegisterClick(mnubtnCollapseAll, () => treeMain.CollapseAll());
@@ -45,11 +32,11 @@ namespace GitUI.UserControls
 
             treeMain.NodeMouseClick += OnNodeMouseClick;
 
-            RegisterClick<BranchNode>(mnuBtnCheckoutLocal, branch => branch.Checkout());
-            RegisterClick<BranchNode>(mnubtnBranchDelete, branch => branch.Delete());
-            RegisterClick<BranchNode>(mnubtnBranchDeleteForce, branch => branch.DeleteForce());
-            RegisterClick<BranchNode>(mnubtnFilterLocalBranchInRevisionGrid, branch => FilterInRevisionGrid(branch));
-            Node.RegisterContextMenu(typeof (BranchNode), menuBranch);
+            RegisterClick<LocalBranchNode>(mnuBtnCheckoutLocal, branch => branch.Checkout());
+            RegisterClick<LocalBranchNode>(mnubtnBranchDelete, branch => branch.Delete());
+            RegisterClick<LocalBranchNode>(mnubtnBranchDeleteForce, branch => branch.DeleteForce());
+            RegisterClick<LocalBranchNode>(mnubtnFilterLocalBranchInRevisionGrid, FilterInRevisionGrid);
+            Node.RegisterContextMenu(typeof (LocalBranchNode), menuBranch);
 
             RegisterClick<BranchPathNode>(mnubtnDeleteAllBranches, branchPath => branchPath.DeleteAll());
             RegisterClick<BranchPathNode>(mnubtnDeleteAllBranchesForce, branchPath => branchPath.DeleteAllForce());
@@ -67,7 +54,7 @@ namespace GitUI.UserControls
             RegisterClick<RemoteBranchNode>(mnubtnMergeBranch, remoteBranch => remoteBranch.Merge());
             RegisterClick<RemoteBranchNode>(mnubtnRebase, remoteBranch => remoteBranch.Rebase());
             RegisterClick<RemoteBranchNode>(mnubtnReset, remoteBranch => remoteBranch.Reset());
-            RegisterClick<RemoteBranchNode>(mnubtnFilterRemoteBranchInRevisionGrid, remoteBranch => FilterInRevisionGrid(remoteBranch));
+            RegisterClick<RemoteBranchNode>(mnubtnFilterRemoteBranchInRevisionGrid, FilterInRevisionGrid);
             RegisterClick<RemoteBranchNode>(mnubtnRemoteBranchFetchAndCheckout, b =>
             {
                 b.Fetch();
@@ -114,20 +101,12 @@ namespace GitUI.UserControls
 
         private void OnRemoteRenamedOrAdded(string orgName, string newName)
         {
-            if (_remoteTree == null)
-            {
-                return;
-            }
-            _remoteTree.RenameOrAddRemote(orgName, newName);
+            _remoteTree?.RenameOrAddRemote(orgName, newName);
         }
 
         private void OnRemoteDeleted(string remoteName)
         {
-            if (_remoteTree == null)
-            {
-                return;
-            }
-            _remoteTree.DeleteRemote(remoteName);
+            _remoteTree?.DeleteRemote(remoteName);
         }
     }
 }

@@ -26,9 +26,6 @@ namespace GitUI.CommandsDialogs
             Height = tableLayoutPanel1.Height;
         }
 
-        public T SelectedItem
-        {
-            get { return _searchControl.SelectedItem; }
-        }
+        public T SelectedItem => _searchControl.SelectedItem;
     }
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
@@ -8,35 +7,19 @@ using GitCommands.Git;
 using GitUI.CommandsDialogs;
 using GitUI.HelperDialogs;
 
-namespace GitUI.UserControls
+namespace GitUI.RepoObjectsTree
 {
-    // "remotes"
     public partial class RepoObjectsTree
     {
-        // commits in current branch but NOT remote branch
-        // git rev-list {remote}/{branch}..{branch}
-
-        // commits in remote branch but NOT in current branch
-        // git rev-list {branch}..{remote}/{branch}
-
-        // commits in either, but NOT in both
-        // git rev-list {ref1}...{ref2}
-
-        // $ git remote
-        // $ git remote show {remote}
-
-        // $ git for-each-ref --sort=-upstream --format='%(upstream:short) <- %(refname:short)' refs/heads
-        // master <- origin/master
-        // pu <- origin/pu
-
         private class RemoteBranchTree : Tree
         {
-            public RemoteBranchTree(TreeNode aTreeNode, IGitUICommandsSource uiCommands) : base(aTreeNode, uiCommands)
+            public RemoteBranchTree(TreeNode aTreeNode, IGitUICommandsSource uiCommands)
+                : base(aTreeNode, uiCommands)
             {
-                uiCommands.GitUICommandsChanged += uiCommands_GitUICommandsChanged;
+                uiCommands.GitUICommandsChanged += UiCommands_GitUICommandsChanged;
             }
 
-            private void uiCommands_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
+            private void UiCommands_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
             {
                 TreeViewNode.TreeView.SelectedNode = null;
             }
@@ -45,7 +28,7 @@ namespace GitUI.UserControls
             {
                 var nodes = new Dictionary<string, BaseBranchNode>();
 
-                var branches = Module.GetRefs(true, true)
+                var branches = Module.GetRefs()
                     .Where(branch => branch.IsRemote && !branch.IsTag)
                     .OrderBy(r => r.Name)
                     .Select(branch => branch.Name);
@@ -107,8 +90,8 @@ namespace GitUI.UserControls
                     {
                         continue;
                     }
-                    var remoteRepoNode = node as RemoteRepoNode;
-                    if (remoteRepoNode != null)
+
+                    if (node is RemoteRepoNode remoteRepoNode)
                     {
                         return remoteRepoNode;
                     }
@@ -133,15 +116,14 @@ namespace GitUI.UserControls
                 Nodes.Remove(repoNode);
             }
 
-            public void AddRemote(string remoteName)
+            private void AddRemote(string remoteName)
             {
                 Nodes.AddNode(new RemoteRepoNode(this, remoteName));
-                Nodes.FillTreeViewNode(this.TreeViewNode);
+                Nodes.FillTreeViewNode(TreeViewNode);
             }
         }
 
-        /// <summary>for a branch on a remote repo.</summary>
-        sealed class RemoteBranchNode : BaseBranchNode
+        private sealed class RemoteBranchNode : BaseBranchNode
         {
             public RemoteBranchNode(Tree aTree, string aFullPath) : base(aTree, aFullPath)
             {
@@ -153,7 +135,6 @@ namespace GitUI.UserControls
                 SelectRevision();
             }
 
-            /// <summary>Download updates from the remote branch.</summary>
             public void Fetch()
             {
                 var remoteBranchInfo = GetRemoteBranchInfo();
@@ -180,27 +161,17 @@ namespace GitUI.UserControls
                 return new RemoteBranchInfo {Remote = remote, BranchName = branch};
             }
 
-            public void Pull()
-            {
-                bool pullCompleted = false;
-                var remoteBranchInfo = GetRemoteBranchInfo();
-                UICommands.StartPullDialog(this.TreeViewNode.TreeView, pullOnShow: false,
-                    remoteBranch: remoteBranchInfo.BranchName, remote: remoteBranchInfo.Remote,
-                    pullCompleted: out pullCompleted, fetchAll: false);
-            }
-
-            /// <summary>Create a local branch from the remote branch.</summary>
             public void CreateBranch()
             {
-                UICommands.StartCreateBranchDialog(this.TreeViewNode.TreeView, new GitRevision(FullPath));
+                UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, new GitRevision(FullPath));
             }
 
-            /// <summary>Delete the branch on the remote repository.</summary>
             public void Delete()
             {
                 var remoteBranchInfo = GetRemoteBranchInfo();
                 var cmd = new GitDeleteRemoteBranchCmd(remoteBranchInfo.Remote, remoteBranchInfo.BranchName);
-                if (MessageBoxes.ConfirmDeleteRemoteBranch(TreeViewNode.TreeView, remoteBranchInfo.BranchName, remoteBranchInfo.Remote))
+                if (MessageBoxes.ConfirmDeleteRemoteBranch(TreeViewNode.TreeView,
+                    remoteBranchInfo.BranchName, remoteBranchInfo.Remote))
                 {
                     UICommands.StartCommandLineProcessDialog(cmd, null);
                 }
@@ -246,11 +217,11 @@ namespace GitUI.UserControls
             protected override void ApplyStyle()
             {
                 base.ApplyStyle();
-                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = "RemoteBranch.png";
+                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = @"RemoteBranch.png";
             }
         }
 
-        sealed class RemoteRepoNode : BaseBranchNode
+        private sealed class RemoteRepoNode : BaseBranchNode
         {
             public RemoteRepoNode(Tree aTree, string aFullPath) : base(aTree, aFullPath)
             {
@@ -269,7 +240,7 @@ namespace GitUI.UserControls
             protected override void ApplyStyle()
             {
                 base.ApplyStyle();
-                this.TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = "RemoteRepo.png";
+                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = @"RemoteRepo.png";
             }
 
             public void ChangeName(string newName)

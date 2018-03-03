@@ -151,13 +151,7 @@ namespace GitUI.CommitInfo
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
-        public string RevisionGuid
-        {
-            get
-            {
-                return _revision.Guid;
-            }
-        }
+        public string RevisionGuid => _revision.Guid;
 
         private string _revisionInfo;
         private string _linksInfo;

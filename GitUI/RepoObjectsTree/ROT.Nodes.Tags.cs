@@ -1,21 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Windows.Forms;
 using GitCommands;
 using GitUI.CommandsDialogs;
 using GitUIPluginInterfaces;
 using ResourceManager;
 
-namespace GitUI.UserControls
+namespace GitUI.RepoObjectsTree
 {
-    // "tags"
     partial class RepoObjectsTree
     {
         private class TagNode : BaseBranchNode
         {
-            private const string ImageKey = "tag.png";
             private readonly IGitRef _tagInfo;
 
             public TagNode(Tree aTree, string aFullPath, IGitRef tagInfo) : base(aTree, aFullPath)
@@ -34,7 +29,6 @@ namespace GitUI.UserControls
                 CreateBranch();
             }
 
-            /// <summary>Create a local branch from the remote branch.</summary>
             public void CreateBranch()
             {
                 UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, new GitRevision(_tagInfo.Guid));
@@ -48,7 +42,7 @@ namespace GitUI.UserControls
             protected override void ApplyStyle()
             {
                 base.ApplyStyle();
-                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = ImageKey;
+                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = @"tag.png";
             }
 
             public void Checkout()
@@ -66,16 +60,15 @@ namespace GitUI.UserControls
             public TagTree(TreeNode aTreeNode, IGitUICommandsSource uiCommands)
                 : base(aTreeNode, uiCommands)
             {
-                uiCommands.GitUICommandsChanged += uiCommands_GitUICommandsChanged;
+                uiCommands.GitUICommandsChanged += UiCommands_GitUICommandsChanged;
             }
 
-            private void uiCommands_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
+            private void UiCommands_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
             {
-                if (TreeViewNode == null || TreeViewNode.TreeView == null)
+                if (TreeViewNode?.TreeView == null)
                 {
                     return;
                 }
-                //select active branch after repo change
                 TreeViewNode.TreeView.SelectedNode = null;
             }
 
@@ -104,7 +97,7 @@ namespace GitUI.UserControls
             {
                 base.FillTreeViewNode();
 
-                TreeViewNode.Text = string.Format("{0} ({1})", Strings.tags, Nodes.Count);
+                TreeViewNode.Text = $@"{Strings.tags} ({Nodes.Count})";
 
                 TreeViewNode.Collapse();
             }

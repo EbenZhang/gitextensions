@@ -1,9 +1,8 @@
 ﻿using System.ComponentModel;
-using System.Drawing;
 using System.Windows.Forms;
-using GitCommands;
+using GitUI.UserControls;
 
-namespace GitUI.UserControls
+namespace GitUI.RepoObjectsTree
 {
     partial class RepoObjectsTree
     {
@@ -505,7 +504,7 @@ namespace GitUI.UserControls
 			this.showTagsToolStripMenuItem.Name = "showTagsToolStripMenuItem";
             this.showTagsToolStripMenuItem.Size = new System.Drawing.Size(136, 22);
 			this.showTagsToolStripMenuItem.Text = "Show &tags";
-			this.showTagsToolStripMenuItem.Click += new System.EventHandler(this.showTagsToolStripMenuItem_Click);
+			this.showTagsToolStripMenuItem.Click += new System.EventHandler(this.ShowTagsToolStripMenuItem_Click);
 			// 
 			// RepoObjectsTree
 			// 
