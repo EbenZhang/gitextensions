@@ -11,7 +11,7 @@ namespace GitCommands.Git
         /// <summary>
         /// Determines whether the given repository has index.lock file.
         /// </summary>
-        /// <returns><see langword="true"/> is index is locked; otherwise <see langword="false"/>.</returns>
+        /// <returns><see langword="true"/> if index is locked; otherwise <see langword="false"/>.</returns>
         bool IsIndexLocked();
 
         /// <summary>
@@ -34,7 +34,6 @@ namespace GitCommands.Git
         private readonly IGitDirectoryResolver _gitDirectoryResolver;
         private readonly IFileSystem _fileSystem;
 
-
         public IndexLockManager(IGitModule module, IGitDirectoryResolver gitDirectoryResolver, IFileSystem fileSystem)
         {
             _module = module;
@@ -47,11 +46,10 @@ namespace GitCommands.Git
         {
         }
 
-
         /// <summary>
         /// Determines whether the given repository has index.lock file.
         /// </summary>
-        /// <returns><see langword="true"/> is index is locked; otherwise <see langword="false"/>.</returns>
+        /// <returns><see langword="true"/> if index is locked; otherwise <see langword="false"/>.</returns>
         public bool IsIndexLocked()
         {
             var indexLockFile = Path.Combine(_gitDirectoryResolver.Resolve(_module.WorkingDir), IndexLock);
@@ -88,7 +86,6 @@ namespace GitCommands.Git
                 DeleteIndexLock(indexLock);
             }
         }
-
 
         private void DeleteIndexLock(string fileName)
         {

@@ -25,12 +25,10 @@ namespace GitCommands
     {
         private readonly IEnvironmentAbstraction _environment;
 
-
         public EnvironmentPathsProvider(IEnvironmentAbstraction environment)
         {
             _environment = environment;
         }
-
 
         /// <summary>
         /// Gets the list of paths defined under %PATH% environment variable.
@@ -48,13 +46,15 @@ namespace GitCommands
             foreach (string rawdir in pathVariable.Split(EnvUtils.EnvVariableSeparator))
             {
                 string dir = rawdir;
+
                 // Usually, paths with spaces are not quoted on %PATH%, but it's well possible, and .NET won't consume a quoted path
                 // This does not handle the full grammar of the %PATH%, but at least prevents Illegal Characters in Path exceptions (see #2924)
-                dir = dir.Trim(new char[] { ' ', '"', '\t' });
+                dir = dir.Trim(' ', '"', '\t');
                 if (dir.Length == 0)
                 {
                     continue;
                 }
+
                 yield return dir;
             }
         }
@@ -69,18 +69,23 @@ namespace GitCommands
             return envPaths.Where(IsValidPath);
         }
 
-
         // TODO: optimise?
-        internal static bool IsValidPath(string aPath)
+        internal static bool IsValidPath(string path)
         {
             FileInfo fi = null;
             try
             {
-                fi = new FileInfo(aPath);
+                fi = new FileInfo(path);
             }
-            catch (ArgumentException) { }
-            catch (PathTooLongException) { }
-            catch (NotSupportedException) { }
+            catch (ArgumentException)
+            {
+            }
+            catch (PathTooLongException)
+            {
+            }
+            catch (NotSupportedException)
+            {
+            }
 
             return fi != null;
         }

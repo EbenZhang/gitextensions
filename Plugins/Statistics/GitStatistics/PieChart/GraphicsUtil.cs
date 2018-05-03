@@ -8,7 +8,7 @@ namespace GitStatistics.PieChart
     public struct GraphicsUtil
     {
         /// <summary>
-        ///   Checks if point is contained within <c>RectangleF</c> structure 
+        ///   Checks if point is contained within <c>RectangleF</c> structure
         ///   and extends rectangle bounds if necessary to include the point.
         /// </summary>
         /// <param name = "rect">
@@ -24,8 +24,8 @@ namespace GitStatistics.PieChart
         }
 
         /// <summary>
-        ///   Checks if x-coordinate is contained within the <c>RectangleF</c> 
-        ///   structure and extends rectangle bounds if neccessary to include 
+        ///   Checks if x-coordinate is contained within the <c>RectangleF</c>
+        ///   structure and extends rectangle bounds if neccessary to include
         ///   the point.
         /// </summary>
         /// <param name = "rect">
@@ -42,12 +42,14 @@ namespace GitStatistics.PieChart
                 rect.X = xToInclude;
             }
             else if (xToInclude > rect.Right)
+            {
                 rect.Width = xToInclude - rect.X;
+            }
         }
 
         /// <summary>
-        ///   Checks if y-coordinate is contained within the <c>RectangleF</c> 
-        ///   structure and extends rectangle bounds if neccessary to include 
+        ///   Checks if y-coordinate is contained within the <c>RectangleF</c>
+        ///   structure and extends rectangle bounds if neccessary to include
         ///   the point.
         /// </summary>
         /// <param name = "rect">
@@ -64,7 +66,9 @@ namespace GitStatistics.PieChart
                 rect.Y = yToInclude;
             }
             else if (yToInclude > rect.Bottom)
+            {
                 rect.Height = yToInclude - rect.Y;
+            }
         }
     }
 }

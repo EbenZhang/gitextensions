@@ -17,11 +17,11 @@ namespace GitCommands.Settings
         private System.Timers.Timer _saveTimer = new System.Timers.Timer(SaveTime);
         private readonly bool _autoSave;
 
-        public string SettingsFilePath { get; private set; }
+        public string SettingsFilePath { get; }
 
-        public FileSettingsCache(string aSettingsFilePath, bool autoSave = true)
+        protected FileSettingsCache(string settingsFilePath, bool autoSave = true)
         {
-            SettingsFilePath = aSettingsFilePath;
+            SettingsFilePath = settingsFilePath;
             _autoSave = autoSave;
 
             _saveTimer.Enabled = false;
@@ -41,16 +41,17 @@ namespace GitCommands.Settings
                 _canEnableFileWatcher = true;
                 _fileWatcher.EnableRaisingEvents = _canEnableFileWatcher;
             }
+
             FileChanged();
         }
 
-        void _fileWatcher_Created(object sender, FileSystemEventArgs e)
+        private void _fileWatcher_Created(object sender, FileSystemEventArgs e)
         {
             _lastFileRead = null;
             FileChanged();
         }
 
-        void _fileWatcher_Renamed(object sender, RenamedEventArgs e)
+        private void _fileWatcher_Renamed(object sender, RenamedEventArgs e)
         {
             FileChanged();
         }
@@ -65,7 +66,6 @@ namespace GitCommands.Settings
                 {
                     if (_saveTimer != null)
                     {
-
                         _saveTimer.Dispose();
                         _saveTimer = null;
                         _fileWatcher.Changed -= _fileWatcher_Changed;
@@ -85,10 +85,10 @@ namespace GitCommands.Settings
             base.Dispose(disposing);
         }
 
-        public static T FromCache<T>(string aSettingsFilePath, Lazy<T> createSettingsCache)
+        public static T FromCache<T>(string settingsFilePath, Lazy<T> createSettingsCache)
              where T : FileSettingsCache
         {
-            return WeakRefCache.Default.Get(aSettingsFilePath + ":" + typeof(T).FullName, createSettingsCache);
+            return WeakRefCache.Default.Get(settingsFilePath + ":" + typeof(T).FullName, createSettingsCache);
         }
 
         private void _fileWatcher_Changed(object sender, FileSystemEventArgs e)
@@ -114,6 +114,7 @@ namespace GitCommands.Settings
             {
                 // no-op
             }
+
             return DateTime.MaxValue;
         }
 
@@ -130,7 +131,13 @@ namespace GitCommands.Settings
                     return;
                 }
 
-                var tmpFile = SettingsFilePath + ".tmp";
+                int currentProcessId;
+                using (var currentProcess = Process.GetCurrentProcess())
+                {
+                    currentProcessId = currentProcess.Id;
+                }
+
+                var tmpFile = SettingsFilePath + currentProcessId + ".tmp";
                 WriteSettings(tmpFile);
 
                 if (File.Exists(SettingsFilePath))
@@ -138,6 +145,7 @@ namespace GitCommands.Settings
                     var backupName = SettingsFilePath + ".backup";
                     File.Copy(SettingsFilePath, backupName, true);
                 }
+
                 File.Copy(tmpFile, SettingsFilePath, true);
                 File.Delete(tmpFile);
 
@@ -190,10 +198,12 @@ namespace GitCommands.Settings
             _lastModificationDate = DateTime.UtcNow;
 
             if (_autoSave)
+            {
                 StartSaveTimer();
+            }
         }
 
-        //Used to eliminate multiple settings file open and close to save multiple values.  Settings will be saved SAVETIME milliseconds after the last setvalue is called
+        // Used to eliminate multiple settings file open and close to save multiple values.  Settings will be saved SAVETIME milliseconds after the last setvalue is called
         private void OnSaveTimer(object source, System.Timers.ElapsedEventArgs e)
         {
             System.Timers.Timer t = (System.Timers.Timer)source;
@@ -203,7 +213,7 @@ namespace GitCommands.Settings
 
         private void StartSaveTimer()
         {
-            //Resets timer so that the last call will let the timer event run and will cause the settings to be saved.
+            // Resets timer so that the last call will let the timer event run and will cause the settings to be saved.
             _saveTimer.Stop();
             _saveTimer.AutoReset = true;
             _saveTimer.Interval = SaveTime;

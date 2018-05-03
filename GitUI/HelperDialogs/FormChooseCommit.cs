@@ -11,33 +11,33 @@ namespace GitUI.HelperDialogs
     {
         private FormChooseCommit()
             : this(null)
-        { }
-
-        private FormChooseCommit(GitUICommands aCommands)
-            : base(aCommands)
         {
-            InitializeComponent();
-            Translate();        
         }
 
-        public FormChooseCommit(GitUICommands aCommands, string preselectCommit, bool showArtificial = false)
-            : this(aCommands)
+        private FormChooseCommit(GitUICommands commands)
+            : base(commands)
+        {
+            InitializeComponent();
+            Translate();
+        }
+
+        public FormChooseCommit(GitUICommands commands, string preselectCommit, bool showArtificial = false)
+            : this(commands)
         {
             revisionGrid.MultiSelect = false;
             revisionGrid.ShowUncommitedChangesIfPossible = showArtificial && !revisionGrid.Module.IsBareRepository();
 
-            if (!String.IsNullOrEmpty(preselectCommit))
+            if (!string.IsNullOrEmpty(preselectCommit))
             {
                 string guid = Module.RevParse(preselectCommit);
-                if (!String.IsNullOrEmpty(guid))
+                if (!string.IsNullOrEmpty(guid))
                 {
                     revisionGrid.SetInitialRevision(guid);
                 }
             }
-
         }
 
-        public GitCommands.GitRevision SelectedRevision { get; private set; }
+        public GitRevision SelectedRevision { get; private set; }
         private Dictionary<string, string> _parents;
 
         protected override void OnLoad(EventArgs e)
@@ -49,7 +49,7 @@ namespace GitUI.HelperDialogs
         private void btnOK_Click(object sender, EventArgs e)
         {
             var revisions = revisionGrid.GetSelectedRevisions();
-            if (1 == revisions.Count)
+            if (revisions.Count == 1)
             {
                 SelectedRevision = revisions[0];
                 DialogResult = DialogResult.OK;
@@ -81,17 +81,21 @@ namespace GitUI.HelperDialogs
         private void revisionGrid_SelectionChanged(object sender, EventArgs e)
         {
             var revisions = revisionGrid.GetSelectedRevisions();
-            if (1 != revisions.Count)
+            if (revisions.Count != 1)
             {
                 return;
             }
+
             SelectedRevision = revisions[0];
 
             flowLayoutPanelParents.Visible = SelectedRevision.HasParent;
 
-            if(!flowLayoutPanelParents.Visible)
+            if (!flowLayoutPanelParents.Visible)
+            {
                 return;
-            _parents = SelectedRevision.ParentGuids.ToDictionary(p=> GitRevision.ToShortSha(p), p=> p);
+            }
+
+            _parents = SelectedRevision.ParentGuids.ToDictionary(p => GitRevision.ToShortSha(p), p => p);
             linkLabelParent.Text = _parents.Keys.ElementAt(0);
 
             linkLabelParent2.Visible = _parents.Count > 1;

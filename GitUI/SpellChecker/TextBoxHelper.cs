@@ -9,21 +9,14 @@ namespace GitUI.SpellChecker
     ///   Wraps API calls for access to missing functionality
     ///   from the System.Windows.Forms text box.
     /// </summary>
-    internal class TextBoxHelper
+    internal static class TextBoxHelper
     {
         private const double AnInch = 14.4;
 
-        private TextBoxHelper()
-        {
-            // intentionally left blank
-        }
-
         internal static int GetTextWidthAtCharIndex(TextBoxBase textBoxBase, int index, int length)
         {
-            var richTextBox = textBoxBase as RichTextBox;
-
-            //TODO!
-            if (richTextBox == null || !EnvUtils.RunningOnWindows())
+            // TODO!
+            if (!(textBoxBase is RichTextBox richTextBox) || !EnvUtils.RunningOnWindows())
             {
                 return textBoxBase.Font.Height;
             }
@@ -34,21 +27,20 @@ namespace GitUI.SpellChecker
 
             NativeMethods.RECT rect;
             rect.Top = 0;
-            rect.Bottom = (int) AnInch;
+            rect.Bottom = (int)AnInch;
             rect.Left = 0;
-            rect.Right = (int) (richTextBox.ClientSize.Width*AnInch);
+            rect.Right = (int)(richTextBox.ClientSize.Width * AnInch);
 
             NativeMethods.RECT rectPage;
             rectPage.Top = 0;
-            rectPage.Bottom = (int) AnInch;
+            rectPage.Bottom = (int)AnInch;
             rectPage.Left = 0;
-            rectPage.Right = (int) (richTextBox.ClientSize.Width*AnInch);
+            rectPage.Right = (int)(richTextBox.ClientSize.Width * AnInch);
 
             var canvas = Graphics.FromHwnd(richTextBox.Handle);
             var canvasHdc = canvas.GetHdc();
 
             var formatRange = GetFormatRange(charRange, canvasHdc, rect, rectPage);
-
 
             NativeMethods.SendMessage(
                 richTextBox.Handle,
@@ -59,13 +51,12 @@ namespace GitUI.SpellChecker
             canvas.ReleaseHdc(canvasHdc);
             canvas.Dispose();
 
-            return (int) ((formatRange.rc.Right - formatRange.rc.Left)/AnInch);
+            return (int)((formatRange.rc.Right - formatRange.rc.Left) / AnInch);
         }
 
         internal static int GetBaselineOffsetAtCharIndex(TextBoxBase tb, int index)
         {
-            var rtb = tb as RichTextBox;
-            if (rtb == null || !EnvUtils.RunningOnWindows())
+            if (!(tb is RichTextBox rtb) || !EnvUtils.RunningOnWindows())
             {
                 return tb.Font.Height;
             }
@@ -78,35 +69,33 @@ namespace GitUI.SpellChecker
                 NativeMethods.SendMessageInt(rtb.Handle, NativeMethods.EM_LINELENGTH, new IntPtr(lineNumber),
                                              IntPtr.Zero).ToInt32();
 
-
             NativeMethods.CHARRANGE charRange;
             charRange.cpMin = lineIndex;
             charRange.cpMax = lineIndex + lineLength;
 
             NativeMethods.RECT rect;
             rect.Top = 0;
-            rect.Bottom = (int) AnInch;
+            rect.Bottom = (int)AnInch;
             rect.Left = 0;
-            rect.Right = 10000000; //(int)(rtb.Width * anInch + 20); 
-
+            rect.Right = 10000000; ////(int)(rtb.Width * anInch + 20);
 
             NativeMethods.RECT rectPage;
             rectPage.Top = 0;
-            rectPage.Bottom = (int) AnInch;
+            rectPage.Bottom = (int)AnInch;
             rectPage.Left = 0;
-            rectPage.Right = 10000000; //(int)(rtb.Width * anInch + 20); 
+            rectPage.Right = 10000000; ////(int)(rtb.Width * anInch + 20);
 
             var canvas = Graphics.FromHwnd(rtb.Handle);
             var canvasHdc = canvas.GetHdc();
 
             var formatRange = GetFormatRange(charRange, canvasHdc, rect, rectPage);
 
-            NativeMethods.SendMessage(rtb.Handle, NativeMethods.EM_FORMATRANGE, IntPtr.Zero, ref formatRange).ToInt32();
+            NativeMethods.SendMessage(rtb.Handle, NativeMethods.EM_FORMATRANGE, IntPtr.Zero, ref formatRange);
 
             canvas.ReleaseHdc(canvasHdc);
             canvas.Dispose();
 
-            return (int) ((formatRange.rc.Bottom - formatRange.rc.Top)/AnInch);
+            return (int)((formatRange.rc.Bottom - formatRange.rc.Top) / AnInch);
         }
 
         private static NativeMethods.FORMATRANGE GetFormatRange(NativeMethods.CHARRANGE charRange, IntPtr canvasHdc,
@@ -144,14 +133,13 @@ namespace GitUI.SpellChecker
         }
 
         /// <summary>
-        ///   Returns the index of the character under the specified 
+        ///   Returns the index of the character under the specified
         ///   point in the control, or the nearest character if there
         ///   is no character under the point.
         /// </summary>
         /// <param name = "textBox">The text box control to check.</param>
-        /// <param name = "point">The point to find the character for, 
+        /// <param name = "point">The point to find the character for,
         ///   specified relative to the client area of the text box.</param>
-        /// <returns></returns>
         private static int CharFromPos(TextBoxBase textBox, Point point)
         {
             unchecked
@@ -159,6 +147,7 @@ namespace GitUI.SpellChecker
                 // Convert the point into a DWord with horizontal position
                 // in the loword and vertical position in the hiword:
                 var xy = (point.X & 0xFFFF) + ((point.Y & 0xFFFF) << 16);
+
                 // Get the position from the text box.
                 var res =
                     NativeMethods.SendMessageInt(
@@ -170,10 +159,10 @@ namespace GitUI.SpellChecker
                 // the Platform SDK appears to be incorrect on this matter.
                 // the hiword is the line number and the loword is the index
                 // of the character on this line
-                var lineNumber = ((res & 0xFFFF) >> 16);
-                var charIndex = (res & 0xFFFF);
+                var lineNumber = (res & 0xFFFF) >> 16;
+                var charIndex = res & 0xFFFF;
 
-                // Find the index of the first character on the line within 
+                // Find the index of the first character on the line within
                 // the control:
                 var lineStartIndex =
                     NativeMethods.SendMessageInt(
@@ -181,6 +170,7 @@ namespace GitUI.SpellChecker
                         NativeMethods.EM_LINEINDEX,
                         new IntPtr(lineNumber),
                         IntPtr.Zero).ToInt32();
+
                 // Return the combined index:
                 return lineStartIndex + charIndex;
             }
@@ -196,16 +186,13 @@ namespace GitUI.SpellChecker
         ///   area of the control.</returns>
         private static Point PosFromChar(TextBoxBase textBoxBase, int charIndex)
         {
-            unchecked
-            {
-                var xy =
-                    NativeMethods.SendMessageInt(
-                        textBoxBase.Handle,
-                        NativeMethods.EM_POSFROMCHAR,
-                        new IntPtr(charIndex),
-                        IntPtr.Zero).ToInt32();
-                return new Point(xy);
-            }
+            var xy =
+                NativeMethods.SendMessageInt(
+                    textBoxBase.Handle,
+                    NativeMethods.EM_POSFROMCHAR,
+                    new IntPtr(charIndex),
+                    IntPtr.Zero).ToInt32();
+            return new Point(xy);
         }
 
         private static int GetFirstVisibleLine(TextBoxBase txt)

@@ -19,8 +19,8 @@ namespace GitUI.CommandsDialogs
         private readonly AsyncLoader _ignoredFilesLoader;
         private readonly IFullPathResolver _fullPathResolver;
 
-        public FormAddToGitIgnore(GitUICommands aCommands, bool localExclude, params string[] filePatterns)
-            : base(aCommands)
+        public FormAddToGitIgnore(GitUICommands commands, bool localExclude, params string[] filePatterns)
+            : base(commands)
         {
             InitializeComponent();
             _localExclude = localExclude;
@@ -28,10 +28,18 @@ namespace GitUI.CommandsDialogs
             Translate();
 
             if (localExclude)
+            {
                 Text = _addToLocalExcludeTitle.Text;
+            }
+
             if (filePatterns != null)
+            {
                 FilePattern.Text = string.Join(Environment.NewLine, filePatterns);
+            }
+
             _fullPathResolver = new FullPathResolver(() => Module.WorkingDir);
+
+            this.AdjustForDpiScaling();
         }
 
         private string ExcludeFile
@@ -66,7 +74,9 @@ namespace GitUI.CommandsDialogs
                     var gitIgnoreFileAddition = new StringBuilder();
 
                     if (File.Exists(fileName) && !File.ReadAllText(fileName, GitModule.SystemEncoding).EndsWith(Environment.NewLine))
+                    {
                         gitIgnoreFileAddition.Append(Environment.NewLine);
+                    }
 
                     foreach (var pattern in patterns)
                     {
@@ -88,7 +98,7 @@ namespace GitUI.CommandsDialogs
             Close();
         }
 
-        private void UpdatePreviewPanel(IList<string> ignoredFiles)
+        private void UpdatePreviewPanel(IReadOnlyList<string> ignoredFiles)
         {
             _NO_TRANSLATE_Preview.DataSource = ignoredFiles;
             _NO_TRANSLATE_filesWillBeIgnored.Text = string.Format(_matchingFilesString.Text, _NO_TRANSLATE_Preview.Items.Count);
@@ -106,15 +116,13 @@ namespace GitUI.CommandsDialogs
             _ignoredFilesLoader.Cancel();
             if (_NO_TRANSLATE_Preview.Enabled)
             {
-                _ignoredFilesLoader.Delay = 300;           
+                _ignoredFilesLoader.Delay = TimeSpan.FromMilliseconds(300);
                 _NO_TRANSLATE_filesWillBeIgnored.Text = _updateStatusString.Text;
                 _NO_TRANSLATE_Preview.DataSource = new List<string> { _updateStatusString.Text };
                 _NO_TRANSLATE_Preview.Enabled = false;
             }
 
-            _ignoredFilesLoader.Load(() => Module.GetIgnoredFiles(GetCurrentPatterns()), UpdatePreviewPanel);
+            _ignoredFilesLoader.LoadAsync(() => Module.GetIgnoredFiles(GetCurrentPatterns()), UpdatePreviewPanel);
         }
-
-
     }
 }

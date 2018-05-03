@@ -18,9 +18,8 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private Font _diffFont;
         private Font _applicationFont;
-        private Font commitFont;
+        private Font _commitFont;
         private readonly IImageCache _avatarCache;
-
 
         public AppearanceSettingsPage()
         {
@@ -33,12 +32,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             NoImageService.Items.AddRange(Enum.GetNames(typeof(DefaultImageType)));
         }
 
-        protected override string GetCommaSeparatedKeywordList()
-        {
-            return "graph,visual studio,author,image,font,lang,language,spell,spelling";
-        }
-
-        private int GetTruncatePathMethodIndex(string text)
+        private static int GetTruncatePathMethodIndex(string text)
         {
             switch (text.ToLowerInvariant())
             {
@@ -53,7 +47,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             }
         }
 
-        private string GetTruncatePathMethodString(int index)
+        private static string GetTruncatePathMethodString(int index)
         {
             switch (index)
             {
@@ -87,9 +81,22 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             Dictionary.Items.Clear();
             Dictionary.Items.Add(_noDictFile.Text);
             if (AppSettings.Dictionary.Equals("none", StringComparison.InvariantCultureIgnoreCase))
+            {
                 Dictionary.SelectedIndex = 0;
+            }
             else
-                Dictionary.Text = AppSettings.Dictionary;
+            {
+                string dictionaryFile = string.Concat(Path.Combine(AppSettings.GetDictionaryDir(), AppSettings.Dictionary), ".dic");
+                if (File.Exists(dictionaryFile))
+                {
+                    Dictionary.Items.Add(AppSettings.Dictionary);
+                    Dictionary.Text = AppSettings.Dictionary;
+                }
+                else
+                {
+                    Dictionary.SelectedIndex = 0;
+                }
+            }
 
             chkShowRelativeDate.Checked = AppSettings.RelativeDate;
 
@@ -118,13 +125,15 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
             AppSettings.DiffFont = _diffFont;
             AppSettings.Font = _applicationFont;
-            AppSettings.CommitFont = commitFont;
+            AppSettings.CommitFont = _commitFont;
         }
 
         private void Dictionary_DropDown(object sender, EventArgs e)
         {
             try
             {
+                string currentDictionary = Dictionary.Text;
+
                 Dictionary.Items.Clear();
                 Dictionary.Items.Add(_noDictFile.Text);
                 foreach (
@@ -134,10 +143,12 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                     var file = new FileInfo(fileName);
                     Dictionary.Items.Add(file.Name.Replace(".dic", ""));
                 }
+
+                Dictionary.Text = currentDictionary;
             }
             catch
             {
-                MessageBox.Show(this, String.Format(_noDictFilesFound.Text, AppSettings.GetDictionaryDir()));
+                MessageBox.Show(this, string.Format(_noDictFilesFound.Text, AppSettings.GetDictionaryDir()));
             }
         }
 
@@ -165,7 +176,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private void commitFontChangeButton_Click(object sender, EventArgs e)
         {
-            commitFontDialog.Font = commitFont;
+            commitFontDialog.Font = _commitFont;
             DialogResult result = commitFontDialog.ShowDialog(this);
 
             if (result == DialogResult.OK || result == DialogResult.Yes)
@@ -176,23 +187,23 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private void SetCurrentDiffFont(Font newFont)
         {
-            this._diffFont = newFont;
+            _diffFont = newFont;
             SetFontButtonText(newFont, diffFontChangeButton);
         }
 
         private void SetCurrentApplicationFont(Font newFont)
         {
-            this._applicationFont = newFont;
+            _applicationFont = newFont;
             SetFontButtonText(newFont, applicationFontChangeButton);
         }
 
         private void SetCurrentCommitFont(Font newFont)
         {
-            this.commitFont = newFont;
+            _commitFont = newFont;
             SetFontButtonText(newFont, commitFontChangeButton);
         }
 
-        private void SetFontButtonText(Font font, Button button)
+        private static void SetFontButtonText(Font font, Button button)
         {
             button.Text = string.Format("{0}, {1}", font.FontFamily.Name, (int)(font.Size + 0.5f));
         }

@@ -1,16 +1,20 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using GitUI;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 using ResourceManager;
 
 namespace Gerrit
 {
+    [Export(typeof(IGitPlugin))]
     public class GerritPlugin : GitPluginBase, IGitPluginForRepository
     {
         #region Translation
@@ -43,31 +47,23 @@ namespace Gerrit
         public override void Register(IGitUICommands gitUiCommands)
         {
             _gitUiCommands = gitUiCommands;
-            gitUiCommands.PostBrowseInitialize += gitUiCommands_PostBrowseInitialize;
-            gitUiCommands.PostRegisterPlugin += gitUiCommands_PostRegisterPlugin;
+            gitUiCommands.PostBrowseInitialize += UpdateGerritMenuItems;
+            gitUiCommands.PostRegisterPlugin += UpdateGerritMenuItems;
         }
 
         public override void Unregister(IGitUICommands gitUiCommands)
         {
-            gitUiCommands.PostBrowseInitialize -= gitUiCommands_PostBrowseInitialize;
-            gitUiCommands.PostRegisterPlugin -= gitUiCommands_PostRegisterPlugin;
+            gitUiCommands.PostBrowseInitialize -= UpdateGerritMenuItems;
+            gitUiCommands.PostRegisterPlugin -= UpdateGerritMenuItems;
             _gitUiCommands = null;
         }
 
-        void gitUiCommands_PostRegisterPlugin(object sender, GitUIBaseEventArgs e)
-        {
-            UpdateGerritMenuItems(e);
-        }
-
-        void gitUiCommands_PostBrowseInitialize(object sender, GitUIBaseEventArgs e)
-        {
-            UpdateGerritMenuItems(e);
-        }
-
-        private void UpdateGerritMenuItems(GitUIBaseEventArgs e)
+        private void UpdateGerritMenuItems(object sender, GitUIEventArgs e)
         {
             if (!_initialized)
+            {
                 Initialize((Form)e.OwnerForm);
+            }
 
             // Correct enabled/visibility of our menu/tool strip items.
 
@@ -87,20 +83,19 @@ namespace Gerrit
                 !HaveValidCommitMsgHook(e.GitModule);
         }
 
-        private bool HaveValidCommitMsgHook(IGitModule gitModule)
-        {
-            return HaveValidCommitMsgHook(gitModule, false);
-        }
-
-        private bool HaveValidCommitMsgHook([NotNull] IGitModule gitModule, bool force)
+        private static bool HaveValidCommitMsgHook([NotNull] IGitModule gitModule, bool force = false)
         {
             if (gitModule == null)
-                throw new ArgumentNullException("gitDirectory");
+            {
+                throw new ArgumentNullException(nameof(gitModule));
+            }
 
             string path = Path.Combine(gitModule.ResolveGitInternalPath("hooks"), "commit-msg");
 
             if (!File.Exists(path))
+            {
                 return false;
+            }
 
             // We don't want to read the contents of the commit-msg every time
             // we call this method, so we cache the result if we aren't
@@ -109,7 +104,9 @@ namespace Gerrit
             lock (_syncRoot)
             {
                 if (!force && _validatedHooks.TryGetValue(path, out var isValid))
+                {
                     return isValid;
+                }
 
                 try
                 {
@@ -148,19 +145,28 @@ namespace Gerrit
             var toolStrip = FindControl<ToolStrip>(form, p => p.Name == "ToolStrip");
 
             if (menuStrip == null)
+            {
                 throw new Exception("Cannot find main menu");
+            }
+
             if (toolStrip == null)
+            {
                 throw new Exception("Cannot find main tool strip");
+            }
 
             // Create the Edit .gitreview button.
 
             var repositoryMenu = (ToolStripMenuItem)menuStrip.Items.Cast<ToolStripItem>().SingleOrDefault(p => p.Name == "repositoryToolStripMenuItem");
             if (repositoryMenu == null)
+            {
                 throw new Exception("Cannot find Repository menu");
+            }
 
             var mailMapMenuItem = repositoryMenu.DropDownItems.Cast<ToolStripItem>().SingleOrDefault(p => p.Name == "editmailmapToolStripMenuItem");
             if (mailMapMenuItem == null)
+            {
                 throw new Exception("Cannot find mailmap menu item");
+            }
 
             _gitReviewMenuItem = new ToolStripMenuItem
             {
@@ -171,14 +177,15 @@ namespace Gerrit
 
             repositoryMenu.DropDownItems.Insert(
                 repositoryMenu.DropDownItems.IndexOf(mailMapMenuItem) + 1,
-                _gitReviewMenuItem
-            );
+                _gitReviewMenuItem);
 
             // Create the toolstrip items.
 
             var pushMenuItem = toolStrip.Items.Cast<ToolStripItem>().SingleOrDefault(p => p.Name == "toolStripButtonPush");
             if (pushMenuItem == null)
+            {
                 throw new Exception("Cannot find push menu item");
+            }
 
             int nextIndex = toolStrip.Items.IndexOf(pushMenuItem) + 1;
 
@@ -234,7 +241,7 @@ namespace Gerrit
             };
         }
 
-        void publishMenuItem_Click(object sender, EventArgs e)
+        private void publishMenuItem_Click(object sender, EventArgs e)
         {
             using (var form = new FormGerritPublish(_gitUiCommands))
             {
@@ -244,7 +251,7 @@ namespace Gerrit
             _gitUiCommands.RepoChangedNotifier.Notify();
         }
 
-        void downloadMenuItem_Click(object sender, EventArgs e)
+        private void downloadMenuItem_Click(object sender, EventArgs e)
         {
             using (var form = new FormGerritDownload(_gitUiCommands))
             {
@@ -254,45 +261,50 @@ namespace Gerrit
             _gitUiCommands.RepoChangedNotifier.Notify();
         }
 
-        void installCommitMsgMenuItem_Click(object sender, EventArgs e)
+        private void installCommitMsgMenuItem_Click(object sender, EventArgs e)
         {
             var result = MessageBox.Show(
                 _mainForm,
                 _installCommitMsgHookMessage.Text,
                 _installCommitMsgHookShortText.Text,
                 MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question
-            );
+                MessageBoxIcon.Question);
 
             if (result == DialogResult.Yes)
-                InstallCommitMsgHook();
+            {
+                ThreadHelper.JoinableTaskFactory.Run(InstallCommitMsgHookAsync);
+            }
 
             _gitUiCommands.RepoChangedNotifier.Notify();
         }
 
-        private void InstallCommitMsgHook()
+        private async Task InstallCommitMsgHookAsync()
         {
+            await _mainForm.SwitchToMainThreadAsync();
+
             var settings = GerritSettings.Load(_mainForm, _gitUiCommands.GitModule);
 
             if (settings == null)
+            {
                 return;
+            }
 
             string path = Path.Combine(
                 _gitUiCommands.GitModule.ResolveGitInternalPath("hooks"),
-                "commit-msg"
-            );
+                "commit-msg");
 
             string content;
 
             try
             {
-                content = DownloadFromScp(settings);
+                content = await DownloadFromScpAsync(settings);
             }
             catch
             {
                 content = null;
             }
 
+            await _mainForm.SwitchToMainThreadAsync();
             if (content == null)
             {
                 MessageBox.Show(
@@ -300,8 +312,7 @@ namespace Gerrit
                     _installCommitMsgHookFailed.Text,
                     _installCommitMsgHookShortText.Text,
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Error
-                );
+                    MessageBoxIcon.Error);
             }
             else
             {
@@ -313,35 +324,40 @@ namespace Gerrit
             }
         }
 
-        private string DownloadFromScp(GerritSettings settings)
+        private async Task<string> DownloadFromScpAsync(GerritSettings settings)
         {
             // This is a very quick and dirty "implementation" of the scp
             // protocol. By sending the 0's as input, we trigger scp to
             // send the file.
 
-            string content = GerritUtil.RunGerritCommand(
+            string content = await GerritUtil.RunGerritCommandAsync(
                 _mainForm,
                 _gitUiCommands.GitModule,
                 "scp -f hooks/commit-msg",
                 settings.DefaultRemote,
-                new byte[] { 0, 0, 0, 0, 0, 0, 0 }
-            );
+                new byte[] { 0, 0, 0, 0, 0, 0, 0 }).ConfigureAwait(false);
 
             // The first line of the output contains the file we're receiving
             // in a format like "C0755 4248 commit-msg".
 
-            if (String.IsNullOrEmpty(content))
+            if (string.IsNullOrEmpty(content))
+            {
                 return null;
+            }
 
             int index = content.IndexOf('\n');
 
             if (index == -1)
+            {
                 return null;
+            }
 
             string header = content.Substring(0, index);
 
             if (!header.EndsWith(" commit-msg"))
+            {
                 return null;
+            }
 
             // This looks like a valid scp response; return the rest of the
             // response.
@@ -352,15 +368,17 @@ namespace Gerrit
 
             index = content.LastIndexOf((char)0);
 
-            Debug.Assert(index == content.Length - 1);
+            Debug.Assert(index == content.Length - 1, "index == content.Length - 1");
 
             if (index != -1)
+            {
                 content = content.Substring(0, index);
+            }
 
             return content;
         }
 
-        void gitReviewMenuItem_Click(object sender, EventArgs e)
+        private void gitReviewMenuItem_Click(object sender, EventArgs e)
         {
             using (var form = new FormGitReview(_gitUiCommands))
             {
@@ -376,26 +394,28 @@ namespace Gerrit
             return FindControl(form.Controls, predicate);
         }
 
-        private T FindControl<T>(IEnumerable controls, Func<T, bool> predicate)
+        private static T FindControl<T>(IEnumerable controls, Func<T, bool> predicate)
             where T : Control
         {
             foreach (Control control in controls)
             {
-                var result = control as T;
-
-                if (result != null && predicate(result))
+                if (control is T result && predicate(result))
+                {
                     return result;
+                }
 
                 result = FindControl(control.Controls, predicate);
 
                 if (result != null)
+                {
                     return result;
+                }
             }
 
             return null;
         }
 
-        public override bool Execute(GitUIBaseEventArgs gitUiCommands)
+        public override bool Execute(GitUIEventArgs args)
         {
             using (var form = new FormPluginInformation())
             {

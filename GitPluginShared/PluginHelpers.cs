@@ -10,6 +10,7 @@ namespace GitPluginShared
     public static class PluginHelpers
     {
         public const string GitCommandBarName = "GitExtensions";
+
         // specify if captions of commands can be updated
         // On VS2013 (at least) update captions of command on hidden toolbar lead to create doubles of all commands on toolbar 2 commits, 4, 8, 16 ...
         public static bool AllowCaptionUpdate;
@@ -17,7 +18,9 @@ namespace GitPluginShared
         public static bool ChangeCommandCaption(DTE2 application, string commandBarName, string tooltipText, string caption)
         {
             if (!AllowCaptionUpdate)
+            {
                 return false;
+            }
 
             try
             {
@@ -30,11 +33,12 @@ namespace GitPluginShared
                     btn.Style = MsoButtonStyle.msoButtonIconAndCaption;
                     return true;
                 }
+
                 return false;
             }
             catch (Exception)
             {
-                //ignore!
+                // ignore!
                 return false;
             }
         }
@@ -43,7 +47,7 @@ namespace GitPluginShared
         {
             return commandBar.Controls
                 .Cast<CommandBarControl>()
-                .Where(control => (control.TooltipText.Trim().Equals(tooltipText)))
+                .Where(control => control.TooltipText.Trim() == tooltipText)
                 .Cast<CommandBarButton>()
                 .FirstOrDefault();
         }
@@ -52,12 +56,16 @@ namespace GitPluginShared
         {
             try
             {
-                if ("" == name)
+                if (name == "")
+                {
                     return null;
+                }
 
                 OutputWindowPane result = FindOutputPane(app, name);
-                if (null != result)
+                if (result != null)
+                {
                     return result;
+                }
 
                 var outputWindow = (OutputWindow)app.Windows.Item(Constants.vsWindowKindOutput).Object;
                 OutputWindowPanes panes = outputWindow.OutputWindowPanes;
@@ -65,7 +73,7 @@ namespace GitPluginShared
             }
             catch (Exception)
             {
-                //ignore!!
+                // ignore!!
                 return null;
             }
         }
@@ -74,8 +82,10 @@ namespace GitPluginShared
         {
             try
             {
-                if ("" == name)
+                if (name == "")
+                {
                     return null;
+                }
 
                 var outputWindow = (OutputWindow)app.Windows.Item(Constants.vsWindowKindOutput).Object;
                 OutputWindowPanes panes = outputWindow.OutputWindowPanes;
@@ -83,16 +93,18 @@ namespace GitPluginShared
                 foreach (OutputWindowPane pane in panes)
                 {
                     if (name != pane.Name)
+                    {
                         continue;
+                    }
 
                     return pane;
                 }
-
             }
             catch (Exception)
             {
-                //ignore!!
+                // ignore!!
             }
+
             return null;
         }
     }

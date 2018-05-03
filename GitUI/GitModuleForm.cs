@@ -10,6 +10,7 @@ namespace GitUI
     public class GitModuleForm : GitExtensionsForm, IGitUICommandsSource
     {
         private GitUICommands _uiCommands;
+
         /// <summary>Gets a <see cref="GitUICommands"/> reference.</summary>
         [Browsable(false)]
         public GitUICommands UICommands
@@ -17,7 +18,9 @@ namespace GitUI
             get
             {
                 if (_uiCommands == null)
+                {
                     throw new InvalidOperationException("UICommands is null");
+                }
 
                 return _uiCommands;
             }
@@ -43,21 +46,24 @@ namespace GitUI
         {
         }
 
-        public GitModuleForm(GitUICommands aCommands)
-            : this(true, aCommands)
+        public GitModuleForm(GitUICommands commands)
+            : this(true, commands)
         {
         }
 
-        public GitModuleForm(bool enablePositionRestore, GitUICommands aCommands)
+        public GitModuleForm(bool enablePositionRestore, GitUICommands commands)
             : base(enablePositionRestore)
         {
-            UICommands = aCommands;
+            UICommands = commands;
         }
 
         protected override bool ExecuteCommand(int command)
         {
             if (ExecuteScriptCommand(command))
+            {
                 return true;
+            }
+
             return base.ExecuteCommand(command);
         }
 

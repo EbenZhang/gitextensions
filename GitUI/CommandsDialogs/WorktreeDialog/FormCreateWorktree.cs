@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
-using ResourceManager;
 using GitUIPluginInterfaces;
+using ResourceManager;
 
 namespace GitUI.CommandsDialogs.WorktreeDialog
 {
@@ -19,8 +18,8 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
         public string WorktreeDirectory => newWorktreeDirectory.Text;
         public bool OpenWorktree => openWorktreeCheckBox.Checked;
 
-        public FormCreateWorktree(GitUICommands aCommands)
-            : base(aCommands)
+        public FormCreateWorktree(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
             _branchesLoader = new AsyncLoader();
@@ -44,16 +43,18 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             var selectedBranch = UICommands.GitModule.GetSelectedBranch();
             ExistingBranches = Module.GetRefs(false);
             comboBoxBranches.Text = Strings.GetLoadingData();
-            _branchesLoader.Load(
-                () => ExistingBranches.Where(r => r.Name != selectedBranch).ToList(),
-                list =>
-                {
-                    comboBoxBranches.Text = string.Empty;
-                    comboBoxBranches.DataSource = list;
-                    comboBoxBranches.DisplayMember = "LocalName";
-                }
-            ).ContinueWith(_ =>
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
+                await _branchesLoader.LoadAsync(
+                    () => ExistingBranches.Where(r => r.Name != selectedBranch).ToList(),
+                    list =>
+                    {
+                        comboBoxBranches.Text = string.Empty;
+                        comboBoxBranches.DataSource = list;
+                        comboBoxBranches.DisplayMember = nameof(IGitRef.LocalName);
+                    });
+
+                await this.SwitchToMainThreadAsync();
                 if (comboBoxBranches.Items.Count == 0)
                 {
                     radioButtonCreateNewBranch.Checked = true;
@@ -62,36 +63,20 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
                 else
                 {
                     radioButtonCheckoutExistingBranch.Checked = true;
-
                 }
+
                 ValidateWorktreeOptions();
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+            });
         }
 
-        public IList<IGitRef> ExistingBranches { get; set; }
+        public IReadOnlyList<IGitRef> ExistingBranches { get; set; }
 
-        private void comboBoxBranches_TextChanged(object sender, EventArgs e)
-        {
-            if (comboBoxBranches.DataSource == null)
-            {
-                return;
-            }
-        }
-
-        private void comboBoxBranches_SelectionChangeCommitted(object sender, EventArgs e)
-        {
-            if (comboBoxBranches.SelectedValue == null)
-            {
-                return;
-            }
-        }
-
-        private void comboBoxBranches_KeyUp(object sender, System.Windows.Forms.KeyEventArgs e)
+        private void comboBoxBranches_KeyUp(object sender, KeyEventArgs e)
         {
             GoIfEnterKey(sender, e);
         }
 
-        private void GoIfEnterKey(object sender, System.Windows.Forms.KeyEventArgs e)
+        private void GoIfEnterKey(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
@@ -107,11 +92,11 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
         {
             if (disposing)
             {
-                _branchesLoader.Cancel();
                 _branchesLoader.Dispose();
 
                 components?.Dispose();
             }
+
             base.Dispose(disposing);
         }
 
@@ -122,7 +107,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
 
         private void CreateWorktree()
         {
-            //https://git-scm.com/docs/git-worktree
+            // https://git-scm.com/docs/git-worktree
             var arguments = "worktree add \"" + WorktreeDirectory + "\"";
             if (radioButtonCreateNewBranch.Checked)
             {
@@ -133,8 +118,8 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
                 arguments += " " + ((GitRef)comboBoxBranches.SelectedItem).Name;
             }
 
-            UICommands.StartGitCommandProcessDialog(arguments);
-            this.DialogResult = DialogResult.OK;
+            UICommands.StartGitCommandProcessDialog(this, arguments);
+            DialogResult = DialogResult.OK;
         }
 
         private bool IsTargetFolderValid()
@@ -143,6 +128,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             {
                 return false;
             }
+
             try
             {
                 var directoryInfo = new DirectoryInfo(newWorktreeDirectory.Text);
@@ -160,11 +146,10 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             textBoxNewBranchName.Enabled = radioButtonCreateNewBranch.Checked;
             if (radioButtonCheckoutExistingBranch.Checked)
             {
-                createWorktreeButton.Enabled = (comboBoxBranches.SelectedItem != null);
+                createWorktreeButton.Enabled = comboBoxBranches.SelectedItem != null;
             }
             else
             {
-
                 createWorktreeButton.Enabled = !(string.IsNullOrWhiteSpace(textBoxNewBranchName.Text)
                                                  || ExistingBranches.Any(b => b.Name == textBoxNewBranchName.Text));
             }
@@ -172,7 +157,6 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             if (createWorktreeButton.Enabled)
             {
                 createWorktreeButton.Enabled = IsTargetFolderValid();
-                return;
             }
         }
 

@@ -25,13 +25,13 @@ namespace Gerrit
         public string DefaultBranch { get; private set; }
         public string DefaultRemote { get; private set; }
         public bool DefaultRebase { get; private set; }
-        private readonly IGitModule Module;
+        private readonly IGitModule _module;
 
         // public only because of FormTranslate
-        public GerritSettings(IGitModule aModule)
+        public GerritSettings(IGitModule module)
         {
             Translator.Translate(this, GitCommands.AppSettings.CurrentTranslation);
-            Module = aModule;
+            _module = module;
             Port = 29418;
             DefaultBranch = "master";
             DefaultRemote = "gerrit";
@@ -41,34 +41,45 @@ namespace Gerrit
         private void Validate()
         {
             if (string.IsNullOrEmpty(Host))
+            {
                 throw new GerritSettingsException(_settingsErrorHostNotEntered.Text);
-            if (string.IsNullOrEmpty(Project))
-                throw new GerritSettingsException(_settingsErrorProjectNotEntered.Text);
+            }
 
-            var remotes = Module.GetRemotes(true);
+            if (string.IsNullOrEmpty(Project))
+            {
+                throw new GerritSettingsException(_settingsErrorProjectNotEntered.Text);
+            }
+
+            var remotes = _module.GetRemotes(true);
 
             if (!remotes.Contains(DefaultRemote))
-                throw new GerritSettingsException(String.Format(_settingsErrorDefaultRemoteNotPresent.Text, DefaultRemote));
+            {
+                throw new GerritSettingsException(string.Format(_settingsErrorDefaultRemoteNotPresent.Text, DefaultRemote));
+            }
         }
 
-        public static GerritSettings Load([NotNull] IGitModule aModule)
+        public static GerritSettings Load([NotNull] IGitModule module)
         {
-            return Load(null, aModule);
+            return Load(null, module);
         }
 
-        public static GerritSettings Load([CanBeNull] IWin32Window owner, [NotNull] IGitModule aModule)
+        public static GerritSettings Load([CanBeNull] IWin32Window owner, [NotNull] IGitModule module)
         {
-            if (aModule == null)
-                throw new ArgumentNullException(nameof(aModule));
+            if (module == null)
+            {
+                throw new ArgumentNullException(nameof(module));
+            }
 
-            string path = aModule.WorkingDir + ".gitreview";
+            string path = module.WorkingDir + ".gitreview";
 
-            var result = new GerritSettings(aModule);
+            var result = new GerritSettings(module);
 
             try
             {
                 if (!File.Exists(path))
+                {
                     throw new GerritSettingsException(result._settingsErrorFileNotFound.Text);
+                }
 
                 bool inHeader = false;
 
@@ -79,13 +90,15 @@ namespace Gerrit
                     // Skip empty lines and comments.
 
                     if (trimmed.Length == 0 || trimmed[0] == '#')
+                    {
                         continue;
+                    }
 
                     // Look for the section header.
 
                     if (trimmed[0] == '[')
                     {
-                        inHeader = trimmed.Trim(new[] { '[', ']' }).Equals("gerrit", StringComparison.OrdinalIgnoreCase);
+                        inHeader = trimmed.Trim('[', ']').Equals("gerrit", StringComparison.OrdinalIgnoreCase);
                     }
                     else if (inHeader)
                     {
@@ -96,7 +109,9 @@ namespace Gerrit
                         // Ignore invalid lines.
 
                         if (parts.Length != 2 || parts[1].Length == 0)
+                        {
                             continue;
+                        }
 
                         // Get the parts of the config file.
 
@@ -106,11 +121,14 @@ namespace Gerrit
                             case "project": result.Project = parts[1]; break;
                             case "defaultbranch": result.DefaultBranch = parts[1]; break;
                             case "defaultremote": result.DefaultRemote = parts[1]; break;
-                            case "defaultrebase": result.DefaultRebase = !parts[1].Equals("0"); break;
+                            case "defaultrebase": result.DefaultRebase = parts[1] != "0"; break;
 
                             case "port":
                                 if (!int.TryParse(parts[1], out var value))
+                                {
                                     throw new GerritSettingsException(result._settingsErrorPortNotNumeric.Text);
+                                }
+
                                 result.Port = value;
                                 break;
                         }

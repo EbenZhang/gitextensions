@@ -2,8 +2,9 @@
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using GitUI.HelperDialogs;
 using GitCommands;
+using GitUI.HelperDialogs;
+using Microsoft.VisualStudio.Threading;
 
 namespace GitUI.UserControls
 {
@@ -24,7 +25,6 @@ namespace GitUI.UserControls
         /// <summary>
         /// shows a message box if commitHash is invalid
         /// </summary>
-        /// <param name="commitHash"></param>
         public void SetSelectedCommitHash(string commitHash)
         {
             string oldCommitHash = SelectedCommitHash;
@@ -46,8 +46,17 @@ namespace GitUI.UserControls
             else
             {
                 textBoxCommitHash.Text = GitRevision.ToShortSha(SelectedCommitHash);
-                Task.Factory.StartNew(() => this.Module.GetCommitCountString(this.Module.GetCurrentCheckout(), SelectedCommitHash))
-                     .ContinueWith(t => lbCommits.Text = t.Result, TaskScheduler.FromCurrentSynchronizationContext());
+                ThreadHelper.JoinableTaskFactory.RunAsync(
+                    async () =>
+                    {
+                        await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+
+                        var text = Module.GetCommitCountString(Module.GetCurrentCheckout(), SelectedCommitHash);
+
+                        await this.SwitchToMainThreadAsync();
+
+                        lbCommits.Text = text;
+                    });
             }
         }
 

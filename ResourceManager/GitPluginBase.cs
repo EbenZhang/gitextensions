@@ -1,28 +1,31 @@
 using System.Collections.Generic;
+using System.Linq;
 using GitCommands;
 using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 
 namespace ResourceManager
 {
+    [UsedImplicitly]
     public abstract class GitPluginBase : IGitPlugin, ITranslate
     {
         public string Description { get; protected set; }
         public string Name { get; protected set; }
 
-        protected void SetNameAndDescription(string aName)
+        protected void SetNameAndDescription(string name)
         {
-            Name = aName;
-            Description = aName;
+            Name = name;
+            Description = name;
         }
 
-        //Store settings to use later
+        // Store settings to use later
         public ISettingsSource Settings => SettingsContainer.GetSettingsSource();
 
         public IGitPluginSettingsContainer SettingsContainer { get; set; }
 
         public virtual IEnumerable<ISetting> GetSettings()
         {
-            return new List<ISetting>();
+            return Enumerable.Empty<ISetting>();
         }
 
         public virtual void Register(IGitUICommands gitUiCommands)
@@ -35,7 +38,7 @@ namespace ResourceManager
             SettingsContainer.SetSettingsSource(null);
         }
 
-        public abstract bool Execute(GitUIBaseEventArgs gitUiCommands);
+        public abstract bool Execute(GitUIEventArgs args);
 
         protected void Translate()
         {

@@ -20,7 +20,6 @@ namespace ResourceManagerTests.CommitDataRenders
         private CommitDataBodyRenderer _renderer;
         private CommitDataBodyRenderer _rendererReal;
 
-
         [SetUp]
         public void Setup()
         {
@@ -32,23 +31,21 @@ namespace ResourceManagerTests.CommitDataRenders
             _rendererReal = new CommitDataBodyRenderer(_getModule, new LinkFactory());
         }
 
-
         [Test]
         public void Render_should_throw_if_data_null()
         {
-            ((Action)(() => _renderer.Render(null, true))).ShouldThrow<ArgumentNullException>();
+            ((Action)(() => _renderer.Render(null, true))).Should().Throw<ArgumentNullException>();
         }
 
         [Test]
         public void Render_should_render_body_with_links()
         {
-            string fullSha1;
-            _module.IsExistingCommitHash("b3e7944792", out fullSha1).Returns(x =>
+            _module.IsExistingCommitHash("b3e7944792", out _).Returns(x =>
             {
                 x[1] = "b3e79447928051cfb3494c9c0ef1a1d0ecde56a8";
                 return true;
             });
-            _module.IsExistingCommitHash("11119447928051cfb3494c9c0ef1a1d0ecde56a8", out fullSha1).Returns(x =>
+            _module.IsExistingCommitHash("11119447928051cfb3494c9c0ef1a1d0ecde56a8", out _).Returns(x =>
             {
                 x[1] = "11119447928051cfb3494c9c0ef1a1d0ecde56a8";
                 return true;

@@ -2,35 +2,36 @@
 
 namespace GitUIPluginInterfaces
 {
-    public class NumberSetting<T>: ISetting
+    public class NumberSetting<T> : ISetting
     {
-        public NumberSetting(string aName, T aDefaultValue)
-            : this(aName, aName, aDefaultValue)
+        public NumberSetting(string name, T defaultValue)
+            : this(name, name, defaultValue)
         {
         }
 
-        public NumberSetting(string aName, string aCaption, T aDefaultValue)
+        public NumberSetting(string name, string caption, T defaultValue)
         {
-            Name = aName;
-            Caption = aCaption;
-            DefaultValue = aDefaultValue;
+            Name = name;
+            Caption = caption;
+            DefaultValue = defaultValue;
         }
 
-        public string Name { get; private set; }
-        public string Caption { get; private set; }
+        public string Name { get; }
+        public string Caption { get; }
         public T DefaultValue { get; set; }
         public TextBox CustomControl { get; set; }
 
         public ISettingControlBinding CreateControlBinding()
         {
             return new TextBoxBinding(this, CustomControl);
-    }
+        }
 
         private class TextBoxBinding : SettingControlBinding<NumberSetting<T>, TextBox>
         {
-            public TextBoxBinding(NumberSetting<T> aSetting, TextBox aCustomControl)
-                : base(aSetting, aCustomControl)
-            { }
+            public TextBoxBinding(NumberSetting<T> setting, TextBox customControl)
+                : base(setting, customControl)
+            {
+            }
 
             public override TextBox CreateControl()
             {
@@ -39,15 +40,9 @@ namespace GitUIPluginInterfaces
 
             public override void LoadSetting(ISettingsSource settings, bool areSettingsEffective, TextBox control)
             {
-                object settingVal;
-                if (areSettingsEffective)
-                {
-                    settingVal = Setting.ValueOrDefault(settings);
-                }
-                else
-                {
-                    settingVal = Setting[settings];
-                }
+                object settingVal = areSettingsEffective
+                    ? Setting.ValueOrDefault(settings)
+                    : Setting[settings];
 
                 control.Text = ConvertToString(settingVal);
             }
@@ -55,9 +50,10 @@ namespace GitUIPluginInterfaces
             public override void SaveSetting(ISettingsSource settings, bool areSettingsEffective, TextBox control)
             {
                 var controlValue = control.Text;
+
                 if (areSettingsEffective)
                 {
-                    if (ConvertToString(Setting.ValueOrDefault(settings)).Equals(controlValue))
+                    if (ConvertToString(Setting.ValueOrDefault(settings)) == controlValue)
                     {
                         return;
                     }
@@ -84,21 +80,33 @@ namespace GitUIPluginInterfaces
                 return null;
             }
 
-            var type = typeof (T);
-            if (type == typeof (int))
+            var type = typeof(T);
+            if (type == typeof(int))
+            {
                 return int.Parse(value);
+            }
+
             if (type == typeof(float))
+            {
                 return float.Parse(value);
+            }
+
             if (type == typeof(double))
+            {
                 return double.Parse(value);
+            }
+
             if (type == typeof(long))
+            {
                 return long.Parse(value);
+            }
+
             return null;
         }
 
         public object this[ISettingsSource settings]
         {
-            get 
+            get
             {
                 return settings.GetValue(Name, null, s =>
                     {
@@ -106,7 +114,7 @@ namespace GitUIPluginInterfaces
                     });
             }
 
-            set 
+            set
             {
                 settings.SetValue(Name, value, i => { return ConvertToString(i); });
             }
@@ -122,8 +130,7 @@ namespace GitUIPluginInterfaces
             else
             {
                 return (T)settingVal;
-            }            
+            }
         }
-
     }
 }

@@ -23,13 +23,12 @@ namespace GitUI.CommandsDialogs
             new TranslationString("Save changes to .mailmap?");
         private readonly TranslationString _saveFileQuestionCaption =
             new TranslationString("Save changes?");
-        
 
         public string MailMapFile = string.Empty;
         private readonly IFullPathResolver _fullPathResolver;
 
-        public FormMailMap(GitUICommands aCommands)
-            : base(aCommands)
+        public FormMailMap(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
@@ -50,7 +49,7 @@ namespace GitUI.CommandsDialogs
                 var path = _fullPathResolver.Resolve(".mailmap");
                 if (File.Exists(path))
                 {
-                    _NO_TRANSLATE_MailMapText.ViewFile(path);
+                    _NO_TRANSLATE_MailMapText.ViewFileAsync(path);
                 }
             }
             catch (Exception ex)
@@ -74,11 +73,13 @@ namespace GitUI.CommandsDialogs
                         _fullPathResolver.Resolve(".mailmap"),
                         x =>
                         {
-                            this.MailMapFile = _NO_TRANSLATE_MailMapText.GetText();
-                            if (!this.MailMapFile.EndsWith(Environment.NewLine))
-                                this.MailMapFile += Environment.NewLine;
+                            MailMapFile = _NO_TRANSLATE_MailMapText.GetText();
+                            if (!MailMapFile.EndsWith(Environment.NewLine))
+                            {
+                                MailMapFile += Environment.NewLine;
+                            }
 
-                            File.WriteAllBytes(x, GitModule.SystemEncoding.GetBytes(this.MailMapFile));
+                            File.WriteAllBytes(x, GitModule.SystemEncoding.GetBytes(MailMapFile));
                         });
 
                 UICommands.RepoChangedNotifier.Notify();
@@ -103,26 +104,35 @@ namespace GitUI.CommandsDialogs
                 {
                     case DialogResult.Yes:
                         if (SaveFile())
+                        {
                             needToClose = true;
+                        }
+
                         break;
                     case DialogResult.No:
                         needToClose = true;
                         break;
-                    default:
-                        break;
                 }
             }
             else
+            {
                 needToClose = true;
+            }
 
             if (!needToClose)
+            {
                 e.Cancel = true;
+            }
         }
 
         private void FormMailMapLoad(object sender, EventArgs e)
         {
-            if (!Module.IsBareRepository()) return;
-            MessageBox.Show(this, _mailmapOnlyInWorkingDirSupported.Text,_mailmapOnlyInWorkingDirSupportedCaption.Text);
+            if (!Module.IsBareRepository())
+            {
+                return;
+            }
+
+            MessageBox.Show(this, _mailmapOnlyInWorkingDirSupported.Text, _mailmapOnlyInWorkingDirSupportedCaption.Text);
             Close();
         }
 

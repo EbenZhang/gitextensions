@@ -13,7 +13,6 @@ namespace GitCommandsTests.Git
         private LongShaProvider _provider;
         private IGitModule _module;
 
-
         [SetUp]
         public void Setup()
         {
@@ -21,7 +20,6 @@ namespace GitCommandsTests.Git
 
             _provider = new LongShaProvider(() => _module);
         }
-
 
         [TestCase(null)]
         [TestCase("")]
@@ -39,7 +37,7 @@ namespace GitCommandsTests.Git
         {
             _module = null;
 
-            ((Action)(() => _provider.Get("xx"))).ShouldThrow<ArgumentException>();
+            ((Action)(() => _provider.Get("xx"))).Should().Throw<ArgumentException>();
         }
 
         [TestCase("0123", true)]

@@ -13,27 +13,26 @@ using NetSpell.SpellChecker.Dictionary;
 namespace NetSpell.SpellChecker
 {
     /// <summary>
-    ///		The Spelling class encapsulates the functions necessary to check
-    ///		the spelling of inputted text.
+    ///     The Spelling class encapsulates the functions necessary to check
+    ///     the spelling of inputted text.
     /// </summary>
-    [ToolboxBitmap(typeof(NetSpell.SpellChecker.Spelling), "Spelling.bmp")]
-    public class Spelling : System.ComponentModel.Component
+    [ToolboxBitmap(typeof(Spelling), "Spelling.bmp")]
+    public class Spelling : Component
     {
-
         #region Global Regex
         // Regex are class scope and compiled to improve performance on reuse
-        private Regex _digitRegex = new Regex(@"^\d", RegexOptions.Compiled);
-        private Regex _htmlRegex = new Regex(@"</[c-g\d]+>|</[i-o\d]+>|</[a\d]+>|</[q-z\d]+>|<[cg]+[^>]*>|<[i-o]+[^>]*>|<[q-z]+[^>]*>|<[a]+[^>]*>|<(\[^\]*\|'[^']*'|[^'\>])*>", RegexOptions.IgnoreCase & RegexOptions.Compiled);
+        private readonly Regex _digitRegex = new Regex(@"^\d", RegexOptions.Compiled);
+        private readonly Regex _htmlRegex = new Regex(@"</[c-g\d]+>|</[i-o\d]+>|</[a\d]+>|</[q-z\d]+>|<[cg]+[^>]*>|<[i-o]+[^>]*>|<[q-z]+[^>]*>|<[a]+[^>]*>|<(\[^\]*\|'[^']*'|[^'\>])*>", RegexOptions.IgnoreCase & RegexOptions.Compiled);
         private MatchCollection _htmlTags;
-        private Regex _letterRegex = new Regex(@"\D", RegexOptions.Compiled);
-        private Regex _upperRegex = new Regex(@"[^\p{Lu}]", RegexOptions.Compiled); // @"[^A-Z]
-        private Regex _wordEx = new Regex(@"\b[\w']+\b", RegexOptions.Compiled); // @"\b[A-Za-z0-9_'À-ÿ]+\b"
+        private readonly Regex _letterRegex = new Regex(@"\D", RegexOptions.Compiled);
+        private readonly Regex _upperRegex = new Regex(@"[^\p{Lu}]", RegexOptions.Compiled); // @"[^A-Z]
+        private readonly Regex _wordEx = new Regex(@"\b[\w']+\b", RegexOptions.Compiled); // @"\b[A-Za-z0-9_'À-ÿ]+\b"
         private MatchCollection _words;
 
         #endregion
 
         #region private variables
-        private System.ComponentModel.Container components;
+        private Container _components;
         #endregion
 
         #region Events
@@ -42,76 +41,39 @@ namespace NetSpell.SpellChecker
         ///     This event is fired when a word is deleted
         /// </summary>
         /// <remarks>
-        ///		Use this event to update the parent text
+        ///     Use this event to update the parent text
         /// </remarks>
-        public event DeletedWordEventHandler DeletedWord;
+        public event EventHandler<SpellingEventArgs> DeletedWord;
 
         /// <summary>
         ///     This event is fired when word is detected two times in a row
         /// </summary>
-        public event DoubledWordEventHandler DoubledWord;
+        public event EventHandler<SpellingEventArgs> DoubledWord;
 
         /// <summary>
         ///     This event is fired when the spell checker reaches the end of
         ///     the text in the Text property
         /// </summary>
-        public event EndOfTextEventHandler EndOfText;
+        public event EventHandler EndOfText;
 
         /// <summary>
         ///     This event is fired when a word is skipped
         /// </summary>
-        public event IgnoredWordEventHandler IgnoredWord;
+        public event EventHandler<SpellingEventArgs> IgnoredWord;
 
         /// <summary>
         ///     This event is fired when the spell checker finds a word that
         ///     is not in the dictionaries
         /// </summary>
-        public event MisspelledWordEventHandler MisspelledWord;
+        public event EventHandler<SpellingEventArgs> MisspelledWord;
 
         /// <summary>
         ///     This event is fired when a word is replace
         /// </summary>
         /// <remarks>
-        ///		Use this event to update the parent text
+        ///     Use this event to update the parent text
         /// </remarks>
-        public event ReplacedWordEventHandler ReplacedWord;
-
-
-        /// <summary>
-        ///     This represents the delegate method prototype that
-        ///     event receivers must implement
-        /// </summary>
-        public delegate void DeletedWordEventHandler(object sender, SpellingEventArgs e);
-
-        /// <summary>
-        ///     This represents the delegate method prototype that
-        ///     event receivers must implement
-        /// </summary>
-        public delegate void DoubledWordEventHandler(object sender, SpellingEventArgs e);
-
-        /// <summary>
-        ///     This represents the delegate method prototype that
-        ///     event receivers must implement
-        /// </summary>
-        public delegate void EndOfTextEventHandler(object sender, System.EventArgs e);
-
-        /// <summary>
-        ///     This represents the delegate method prototype that
-        ///     event receivers must implement
-        /// </summary>
-        public delegate void IgnoredWordEventHandler(object sender, SpellingEventArgs e);
-
-        /// <summary>
-        ///     This represents the delegate method prototype that
-        ///     event receivers must implement
-        /// </summary>
-        public delegate void MisspelledWordEventHandler(object sender, SpellingEventArgs e);
-
-        /// <summary>
-        ///     This represents the delegate method prototype that
-        ///     event receivers must implement
-        /// </summary>
-        public delegate void ReplacedWordEventHandler(object sender, ReplaceWordEventArgs e);
+        public event EventHandler<ReplaceWordEventArgs> ReplacedWord;
 
         /// <summary>
         ///     This is the method that is responsible for notifying
@@ -135,7 +97,7 @@ namespace NetSpell.SpellChecker
         ///     This is the method that is responsible for notifying
         ///     receivers that the event occurred
         /// </summary>
-        protected virtual void OnEndOfText(System.EventArgs e)
+        protected virtual void OnEndOfText(EventArgs e)
         {
             EndOfText?.Invoke(this, e);
         }
@@ -170,6 +132,7 @@ namespace NetSpell.SpellChecker
         #endregion
 
         #region Constructors
+
         /// <summary>
         ///     Initializes a new instance of the SpellCheck class
         /// </summary>
@@ -178,11 +141,10 @@ namespace NetSpell.SpellChecker
             InitializeComponent();
         }
 
-
         /// <summary>
         ///     Required for Windows.Forms Class Composition Designer support
         /// </summary>
-        public Spelling(System.ComponentModel.IContainer container)
+        public Spelling(IContainer container)
         {
             container.Add(this);
             InitializeComponent();
@@ -195,11 +157,14 @@ namespace NetSpell.SpellChecker
         /// <summary>
         /// Clean up any resources being used.
         /// </summary>
-        protected override void Dispose( bool disposing )
+        protected override void Dispose(bool disposing)
         {
             if (disposing)
-                components?.Dispose();
-            base.Dispose( disposing );
+            {
+                _components?.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
 
         /// <summary>
@@ -231,19 +196,23 @@ namespace NetSpell.SpellChecker
             {
                 return false;
             }
-            if(IgnoreAllCapsWords && !_upperRegex.IsMatch(characters))
+
+            if (IgnoreAllCapsWords && !_upperRegex.IsMatch(characters))
             {
                 return false;
             }
-            if(IgnoreWordsWithDigits && _digitRegex.IsMatch(characters))
+
+            if (IgnoreWordsWithDigits && _digitRegex.IsMatch(characters))
             {
                 return false;
             }
-            if(!_letterRegex.IsMatch(characters))
+
+            if (!_letterRegex.IsMatch(characters))
             {
                 return false;
             }
-            if(IgnoreHtml)
+
+            if (IgnoreHtml)
             {
                 int startIndex = GetWordIndex();
 
@@ -255,6 +224,7 @@ namespace NetSpell.SpellChecker
                     }
                 }
             }
+
             return true;
         }
 
@@ -265,11 +235,15 @@ namespace NetSpell.SpellChecker
 
         private void Initialize()
         {
-            if(_dictionary == null)
+            if (_dictionary == null)
+            {
                 _dictionary = new WordDictionary();
+            }
 
-            if(!_dictionary.Initialized)
+            if (!_dictionary.Initialized)
+            {
                 _dictionary.Initialize();
+            }
         }
 
         /// <summary>
@@ -305,7 +279,7 @@ namespace NetSpell.SpellChecker
 
         /// <summary>
         ///     suggestions for a typical fault of spelling, that
-        ///		differs with more, than 1 letter from the right form.
+        ///     differs with more, than 1 letter from the right form.
         /// </summary>
         private void ReplaceChars(List<Word> tempSuggestion)
         {
@@ -324,7 +298,9 @@ namespace NetSpell.SpellChecker
                     tempWord += CurrentWord.Substring(pos + key.Length);
 
                     if (FindWord(ref tempWord))
+                    {
                         SuggestWord(tempWord, tempSuggestion);
+                    }
 
                     pos = CurrentWord.IndexOf(key, pos + 1, StringComparison.InvariantCulture);
                 }
@@ -332,8 +308,8 @@ namespace NetSpell.SpellChecker
         }
 
         /// <summary>
-        ///		swap out each char one by one and try all the tryme
-        ///		chars in its place to see if that makes a good word
+        ///     swap out each char one by one and try all the tryme
+        ///     chars in its place to see if that makes a good word
         /// </summary>
         private void BadChar(List<Word> tempSuggestion)
         {
@@ -347,7 +323,9 @@ namespace NetSpell.SpellChecker
                     tempWord[i] = tryme[x];
                     string word = tempWord.ToString();
                     if (FindWord(ref word))
+                    {
                         SuggestWord(word, tempSuggestion);
+                    }
                 }
             }
         }
@@ -366,7 +344,9 @@ namespace NetSpell.SpellChecker
 
                     string word = tempWord.ToString();
                     if (FindWord(ref word))
+                    {
                         SuggestWord(word, tempSuggestion);
+                    }
                 }
             }
         }
@@ -387,7 +367,9 @@ namespace NetSpell.SpellChecker
 
                     string word = tempWord.ToString();
                     if (FindWord(ref word))
+                    {
                         SuggestWord(word, tempSuggestion);
+                    }
                 }
             }
         }
@@ -402,24 +384,26 @@ namespace NetSpell.SpellChecker
                 StringBuilder tempWord = new StringBuilder(CurrentWord);
 
                 char swap = tempWord[i];
-                tempWord[i] = tempWord[i+1];
-                tempWord[i+1] = swap;
+                tempWord[i] = tempWord[i + 1];
+                tempWord[i + 1] = swap;
 
                 string word = tempWord.ToString();
                 if (FindWord(ref word))
+                {
                     SuggestWord(word, tempSuggestion);
+                }
             }
         }
 
         /// <summary>
         ///     split the string into two pieces after every char
-        ///		if both pieces are good words make them a suggestion
+        ///     if both pieces are good words make them a suggestion
         /// </summary>
         private void TwoWords(List<Word> tempSuggestion)
         {
             for (int i = 1; i < CurrentWord.Length - 1; i++)
             {
-                string firstWord = CurrentWord.Substring(0,i);
+                string firstWord = CurrentWord.Substring(0, i);
                 string secondWord = CurrentWord.Substring(i);
 
                 if (FindWord(ref firstWord) && FindWord(ref secondWord))
@@ -438,8 +422,8 @@ namespace NetSpell.SpellChecker
         ///     Deletes the CurrentWord from the Text Property
         /// </summary>
         /// <remarks>
-        ///		Note, calling ReplaceWord with the ReplacementWord property set to
-        ///		an empty string has the same behavior as DeleteWord.
+        ///     Note, calling ReplaceWord with the ReplacementWord property set to
+        ///     an empty string has the same behavior as DeleteWord.
         /// </remarks>
         public void DeleteWord()
         {
@@ -448,6 +432,7 @@ namespace NetSpell.SpellChecker
                 TraceWriter.TraceWarning("No Words to Delete");
                 return;
             }
+
             int replacedIndex = WordIndex;
 
             int index = _words[replacedIndex].Index;
@@ -456,31 +441,34 @@ namespace NetSpell.SpellChecker
             // adjust length to remove extra white space after first word
             if (index == 0
                 && index + length < _text.Length
-                && _text[index+length] == ' ')
+                && _text[index + length] == ' ')
             {
-                length++; //removing trailing space
+                length++; // removing trailing space
             }
+
             // adjust length to remove double white space
             else if (index > 0
                 && index + length < _text.Length
-                && _text[index-1] == ' '
-                && _text[index+length] == ' ')
+                && _text[index - 1] == ' '
+                && _text[index + length] == ' ')
             {
-                length++; //removing trailing space
+                length++; // removing trailing space
             }
+
             // adjust index to remove extra white space before punctuation
             else if (index > 0
                 && index + length < _text.Length
-                && _text[index-1] == ' '
-                && char.IsPunctuation(_text[index+length]))
+                && _text[index - 1] == ' '
+                && char.IsPunctuation(_text[index + length]))
             {
                 index--;
                 length++;
             }
+
             // adjust index to remove extra white space before last word
             else if (index > 0
                 && index + length == _text.Length
-                && _text[index-1] == ' ')
+                && _text[index - 1] == ' ')
             {
                 index--;
                 length++;
@@ -518,39 +506,41 @@ namespace NetSpell.SpellChecker
         public int EditDistance(string source, string target, bool positionPriority)
         {
             // i.e. 2-D array
-            int [,] matrix = new int[source.Length+1, target.Length+1];
+            int[,] matrix = new int[source.Length + 1, target.Length + 1];
 
             // boundary conditions
             matrix[0, 0] = 0;
 
-            for(int j=1; j <= target.Length; j++)
+            for (int j = 1; j <= target.Length; j++)
             {
                 // boundary conditions
-                int val = matrix[0,j-1];
+                int val = matrix[0, j - 1];
                 matrix[0, j] = val + 1;
             }
 
             // outer loop
-            for(int i=1; i <= source.Length; i++)
+            for (int i = 1; i <= source.Length; i++)
             {
                 // boundary conditions
-                int val = matrix[i-1, 0];
-                matrix[i, 0] = val+1;
+                int val = matrix[i - 1, 0];
+                matrix[i, 0] = val + 1;
 
                 // inner loop
-                for(int j=1; j <= target.Length; j++)
+                for (int j = 1; j <= target.Length; j++)
                 {
-                    int diag = matrix[i-1, j-1];
+                    int diag = matrix[i - 1, j - 1];
 
-                    if(source.Substring(i-1, 1) != target.Substring(j-1, 1))
+                    if (source.Substring(i - 1, 1) != target.Substring(j - 1, 1))
+                    {
                         diag++;
+                    }
 
-                    int deletion = matrix[i-1, j];
-                    int insertion = matrix[i, j-1];
-                    int match = Math.Min(deletion+1, insertion+1);
+                    int deletion = matrix[i - 1, j];
+                    int insertion = matrix[i, j - 1];
+                    int match = Math.Min(deletion + 1, insertion + 1);
                     matrix[i, j] = Math.Min(diag, match);
-                }//for j
-            }//for i
+                }// for j
+            }// for i
 
             int dist = matrix[source.Length, target.Length];
 
@@ -558,10 +548,16 @@ namespace NetSpell.SpellChecker
             if (positionPriority)
             {
                 if (char.ToLowerInvariant(source[0]) != char.ToLowerInvariant(target[0]))
+                {
                     dist++;
-                if (char.ToLowerInvariant(source[source.Length-1]) != char.ToLowerInvariant(target[target.Length-1]))
+                }
+
+                if (char.ToLowerInvariant(source[source.Length - 1]) != char.ToLowerInvariant(target[target.Length - 1]))
+                {
                     dist++;
+                }
             }
+
             return dist;
         }
 
@@ -583,24 +579,24 @@ namespace NetSpell.SpellChecker
         ///     The number of edits to make firstWord equal secondWord
         /// </returns>
         /// <remarks>
-        ///		This method automatically gives priority to matching the first and last char
+        ///     This method automatically gives priority to matching the first and last char
         /// </remarks>
         public int EditDistance(string source, string target)
         {
-            return EditDistance(source, target, true);
+            return EditDistance(source, target, positionPriority: true);
         }
 
         /// <summary>
-        ///		Gets the word index from the text index.  Use this method to
-        ///		find a word based on the text position.
+        ///     Gets the word index from the text index.  Use this method to
+        ///     find a word based on the text position.
         /// </summary>
         /// <param name="textIndex">
-        ///		<para>
+        ///     <para>
         ///         The index to search for
         ///     </para>
         /// </param>
         /// <returns>
-        ///		The word index that the text index falls on
+        ///     The word index that the text index falls on
         /// </returns>
         public int GetWordIndexFromTextIndex(int textIndex)
         {
@@ -610,33 +606,43 @@ namespace NetSpell.SpellChecker
                 return 0;
             }
 
-            if(_words.Count == 1)
+            if (_words.Count == 1)
+            {
                 return 0;
+            }
 
-            int low=0;
-            int high=_words.Count-1;
+            int low = 0;
+            int high = _words.Count - 1;
 
             // binary search
-            while(low<=high)
+            while (low <= high)
             {
-                int mid=(low+high)/2;
+                int mid = (low + high) / 2;
                 int wordStartIndex = _words[mid].Index;
                 int wordEndIndex = _words[mid].Index + _words[mid].Length - 1;
 
                 // add white space to end of word by finding the start of the next word
-                if ((mid+1) < _words.Count)
-                    wordEndIndex = _words[mid+1].Index - 1;
+                if ((mid + 1) < _words.Count)
+                {
+                    wordEndIndex = _words[mid + 1].Index - 1;
+                }
 
-                if(textIndex < wordStartIndex)
-                    high=mid-1;
-                else if(textIndex > wordEndIndex)
-                    low=mid+1;
-                else if(wordStartIndex <= textIndex && textIndex <= wordEndIndex)
+                if (textIndex < wordStartIndex)
+                {
+                    high = mid - 1;
+                }
+                else if (textIndex > wordEndIndex)
+                {
+                    low = mid + 1;
+                }
+                else if (wordStartIndex <= textIndex && textIndex <= wordEndIndex)
+                {
                     return mid;
+                }
             }
 
             // return last word if not found
-            return _words.Count-1;
+            return _words.Count - 1;
         }
 
         /// <summary>
@@ -659,8 +665,8 @@ namespace NetSpell.SpellChecker
         ///     Ignores the instances of the CurrentWord in the Text Property
         /// </summary>
         /// <remarks>
-        ///		Must call SpellCheck after call this method to resume
-        ///		spell checking
+        ///     Must call SpellCheck after call this method to resume
+        ///     spell checking
         /// </remarks>
         public void IgnoreWord()
         {
@@ -691,7 +697,7 @@ namespace NetSpell.SpellChecker
             }
 
             // if not in list and replacement word has length
-            if(!ReplaceList.ContainsKey(CurrentWord) && _replacementWord.Length > 0)
+            if (!ReplaceList.ContainsKey(CurrentWord) && _replacementWord.Length > 0)
             {
                 ReplaceList.Add(CurrentWord, _replacementWord);
             }
@@ -713,7 +719,6 @@ namespace NetSpell.SpellChecker
             ReplaceAllWord();
         }
 
-
         /// <summary>
         ///     Replaces the instances of the CurrentWord in the Text Property
         /// </summary>
@@ -730,6 +735,7 @@ namespace NetSpell.SpellChecker
                 DeleteWord();
                 return;
             }
+
             string replacedWord = CurrentWord;
             int replacedIndex = WordIndex;
 
@@ -737,12 +743,14 @@ namespace NetSpell.SpellChecker
             int length = _words[replacedIndex].Length;
 
             _text.Remove(index, length);
+
             // if first letter upper case, match case for replacement word
             if (char.IsUpper(_words[replacedIndex].ToString(), 0))
             {
-                _replacementWord = _replacementWord.Substring(0,1).ToUpper(CultureInfo.CurrentUICulture)
+                _replacementWord = _replacementWord.Substring(0, 1).ToUpper(CultureInfo.CurrentUICulture)
                     + _replacementWord.Substring(1);
             }
+
             _text.Insert(index, _replacementWord);
 
             CalculateWords();
@@ -780,7 +788,7 @@ namespace NetSpell.SpellChecker
         /// <seealso cref="WordIndex"/>
         public bool SpellCheck()
         {
-            return SpellCheck(_wordIndex, WordCount-1);
+            return SpellCheck(_wordIndex, WordCount - 1);
         }
 
         /// <summary>
@@ -827,56 +835,56 @@ namespace NetSpell.SpellChecker
         /// <seealso cref="WordIndex"/>
         public bool SpellCheck(int startWordIndex, int endWordIndex)
         {
-            if(startWordIndex > endWordIndex || _words == null || _words.Count == 0)
+            if (startWordIndex > endWordIndex || _words == null || _words.Count == 0)
             {
                 // make sure end index is not greater then word count
-                OnEndOfText(System.EventArgs.Empty);	//raise event
+                OnEndOfText(EventArgs.Empty);    // raise event
                 return false;
             }
 
             Initialize();
 
-            string currentWord = "";
             bool misspelledWord = false;
 
             for (int i = startWordIndex; i <= endWordIndex; i++)
             {
                 WordIndex = i; // saving the current word index
-                currentWord = CurrentWord;
+                var currentWord = CurrentWord;
 
-                if(CheckString(currentWord))
+                if (CheckString(currentWord))
                 {
-                    if(!TestWord())
+                    if (!TestWord())
                     {
-                        if(ReplaceList.ContainsKey(currentWord))
+                        if (ReplaceList.ContainsKey(currentWord))
                         {
                             ReplacementWord = ReplaceList[currentWord];
                             ReplaceWord();
                         }
-                        else if(!IgnoreList.Contains(currentWord))
+                        else if (!IgnoreList.Contains(currentWord))
                         {
                             misspelledWord = true;
-                            OnMisspelledWord(new SpellingEventArgs(currentWord, i, _words[i].Index));		//raise event
-                            //break;
+                            OnMisspelledWord(new SpellingEventArgs(currentWord, i, _words[i].Index));       // raise event
+
+                            // break;
                         }
                     }
-                    else if(i > 0 && _words[i-1].Value == currentWord
-                        && (_words[i-1].Index + _words[i-1].Length + 1) == _words[i].Index)
+                    else if (i > 0 && _words[i - 1].Value == currentWord
+                        && (_words[i - 1].Index + _words[i - 1].Length + 1) == _words[i].Index)
                     {
                         misspelledWord = true;
-                        OnDoubledWord(new SpellingEventArgs(currentWord, i, _words[i].Index));		//raise event
-                        //break;
+                        OnDoubledWord(new SpellingEventArgs(currentWord, i, _words[i].Index));      // raise event
+
+                        // break;
                     }
                 }
             } // for
 
-            if(_wordIndex >= _words.Count-1 && !misspelledWord)
+            if (_wordIndex >= _words.Count - 1 && !misspelledWord)
             {
-                OnEndOfText(System.EventArgs.Empty);	//raise event
+                OnEndOfText(EventArgs.Empty);    // raise event
             }
 
             return misspelledWord;
-
         } // SpellCheck
 
         /// <summary>
@@ -939,19 +947,21 @@ namespace NetSpell.SpellChecker
         ///     </para>
         /// </param>
         /// <remarks>
-        ///		This method sets the <see cref="Text"/> property to the word.
-        ///		Then calls <see cref="TestWord"/> on the word to generate the need
-        ///		information for suggestions. Note that the Text, CurrentWord and WordIndex
-        ///		properties are set when calling this method.
+        ///     This method sets the <see cref="Text"/> property to the word.
+        ///     Then calls <see cref="TestWord(string)"/> on the word to generate the need
+        ///     information for suggestions. Note that the Text, CurrentWord and WordIndex
+        ///     properties are set when calling this method.
         /// </remarks>
         /// <seealso cref="CurrentWord"/>
         /// <seealso cref="Suggestions"/>
-        /// <seealso cref="TestWord"/>
+        /// <seealso cref="TestWord(string)"/>
         public void Suggest(string word)
         {
             Text = word;
-            if(!TestWord(word))
+            if (!TestWord(word))
+            {
                 Suggest();
+            }
         }
 
         /// <summary>
@@ -959,11 +969,12 @@ namespace NetSpell.SpellChecker
         ///     for the <see cref="CurrentWord"/>
         /// </summary>
         /// <remarks>
-        ///		<see cref="TestWord"/> must have been called before calling this method
+        ///     <see cref="TestWord()"/> or <see cref="TestWord(string)"/> must have been called before calling this method
         /// </remarks>
         /// <seealso cref="CurrentWord"/>
         /// <seealso cref="Suggestions"/>
-        /// <seealso cref="TestWord"/>
+        /// <seealso cref="TestWord()"/>
+        /// <seealso cref="TestWord(string)"/>
         public void Suggest()
         {
             // can't generate suggestions with out current word
@@ -1000,13 +1011,17 @@ namespace NetSpell.SpellChecker
                         if (codes.ContainsKey(word.PhoneticCode))
                         {
                             List<string> words = _dictionary.ExpandWord(word);
+
                             // add expanded words
                             foreach (string expandedWord in words)
+                            {
                                 SuggestWord(expandedWord, tempSuggestion);
+                            }
                         }
                     }
                 }
-                TraceWriter.TraceVerbose("Suggestiongs Found with Phonetic Stratagy: {0}" , tempSuggestion.Count);
+
+                TraceWriter.TraceVerbose("Suggestiongs Found with Phonetic Stratagy: {0}", tempSuggestion.Count);
             }
 
             if (SuggestionMode == SuggestionEnum.PhoneticNearMiss
@@ -1034,7 +1049,7 @@ namespace NetSpell.SpellChecker
                 SwapChar(tempSuggestion);
             }
 
-            TraceWriter.TraceVerbose("Total Suggestiongs Found: {0}" , tempSuggestion.Count);
+            TraceWriter.TraceVerbose("Total Suggestiongs Found: {0}", tempSuggestion.Count);
 
             tempSuggestion.Sort();  // sorts by edit score
             Suggestions.Clear();
@@ -1042,6 +1057,7 @@ namespace NetSpell.SpellChecker
             for (int i = 0; i < tempSuggestion.Count; i++)
             {
                 string word = tempSuggestion[i].Text;
+
                 // looking for duplicates
                 if (!Suggestions.Contains(word))
                 {
@@ -1054,7 +1070,6 @@ namespace NetSpell.SpellChecker
                     break;
                 }
             }
-
         } // suggest
 
         /// <summary>
@@ -1086,10 +1101,16 @@ namespace NetSpell.SpellChecker
             TraceWriter.TraceVerbose("Testing Word: {0}", word);
 
             if (Dictionary.Contains(word))
+            {
                 return true;
+            }
+
             var lowerWord = word.ToLower();
             if (word != lowerWord)
+            {
                 return Dictionary.Contains(lowerWord);
+            }
+
             return false;
         }
 
@@ -1111,13 +1132,17 @@ namespace NetSpell.SpellChecker
             TraceWriter.TraceVerbose("Find Word: {0}", word);
 
             if (Dictionary.Contains(word))
+            {
                 return true;
+            }
+
             string wordLower = word.ToLowerInvariant();
             if (word != wordLower && Dictionary.Contains(wordLower))
             {
                 word = wordLower;
                 return true;
             }
+
             return false;
         }
 
@@ -1126,11 +1151,10 @@ namespace NetSpell.SpellChecker
         #region public properties
 
         private WordDictionary _dictionary;
-        private HashSet<string> _autoCompleteWords = new HashSet<string>();
+        private readonly HashSet<string> _autoCompleteWords = new HashSet<string>();
         private string _replacementWord = "";
         private StringBuilder _text = new StringBuilder();
         private int _wordIndex;
-
 
         /// <summary>
         ///     The suggestion strategy to use when generating suggestions
@@ -1141,13 +1165,15 @@ namespace NetSpell.SpellChecker
             ///     Combines the phonetic and near miss strategies
             /// </summary>
             PhoneticNearMiss,
+
             /// <summary>
             ///     The phonetic strategy generates suggestions by word sound
             /// </summary>
             /// <remarks>
-            ///		This technique was developed by the open source project ASpell.net
+            ///     This technique was developed by the open source project ASpell.net
             /// </remarks>
             Phonetic,
+
             /// <summary>
             ///     The near miss strategy generates suggestion by replacing,
             ///     removing, adding chars to make words
@@ -1157,7 +1183,6 @@ namespace NetSpell.SpellChecker
             /// </remarks>
             NearMiss
         }
-
 
         /// <summary>
         ///     Display the 'Spell Check Complete' alert.
@@ -1185,18 +1210,21 @@ namespace NetSpell.SpellChecker
         {
             get
             {
-                if(!DesignMode && _dictionary == null)
+                if (!DesignMode && _dictionary == null)
+                {
                     _dictionary = new WordDictionary();
+                }
 
                 return _dictionary;
             }
             set
             {
                 if (value != null)
+                {
                     _dictionary = value;
+                }
             }
         }
-
 
         /// <summary>
         ///     Ignore words with all capital letters when spell checking
@@ -1218,7 +1246,7 @@ namespace NetSpell.SpellChecker
         ///     List of words to automatically ignore
         /// </summary>
         /// <remarks>
-        ///		When <see cref="IgnoreAllWord"/> is clicked, the <see cref="CurrentWord"/> is added to this list
+        ///     When <see cref="IgnoreAllWord"/> is clicked, the <see cref="CurrentWord"/> is added to this list
         /// </remarks>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -1244,7 +1272,7 @@ namespace NetSpell.SpellChecker
         ///     List of words and replacement values to automatically replace
         /// </summary>
         /// <remarks>
-        ///		When <see cref="ReplaceAllWord()"/> is clicked, the <see cref="CurrentWord"/> is added to this list
+        ///     When <see cref="ReplaceAllWord()"/> is clicked, the <see cref="CurrentWord"/> is added to this list
         /// </remarks>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -1271,7 +1299,6 @@ namespace NetSpell.SpellChecker
         [Category("Options")]
         [Description("Determines if the spell checker should use its internal dialogs")]
         public bool ShowDialog { get; set; } = true;
-
 
         /// <summary>
         ///     The suggestion strategy to use when generating suggestions
@@ -1317,7 +1344,9 @@ namespace NetSpell.SpellChecker
             get
             {
                 if (_words == null || _words.Count == 0)
+                {
                     return 0;
+                }
 
                 return GetWordIndex();
             }
@@ -1332,8 +1361,10 @@ namespace NetSpell.SpellChecker
         {
             get
             {
-                if(_words == null)
+                if (_words == null)
+                {
                     return 0;
+                }
 
                 return _words.Count;
             }
@@ -1348,41 +1379,50 @@ namespace NetSpell.SpellChecker
         {
             get
             {
-                if(_words == null)
+                if (_words == null)
+                {
                     return 0;
+                }
 
                 // make sure word index can't be higher then word count
-                return Math.Max(0, Math.Min(_wordIndex, (WordCount-1)));
+                return Math.Max(0, Math.Min(_wordIndex, WordCount - 1));
             }
             set
             {
                 _wordIndex = value;
 
                 if (_words == null || _words.Count == 0)
+                {
                     CurrentWord = string.Empty;
+                }
                 else
+                {
                     CurrentWord = _words[WordIndex].Value;
+                }
             }
         }
 
         #endregion
 
         #region Component Designer generated code
+
         /// <summary>
         /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
         private void InitializeComponent()
         {
-            components = new System.ComponentModel.Container();
+            _components = new System.ComponentModel.Container();
         }
 
         #endregion
 
-        public void AddAutoCompleteWords (IEnumerable<string> words)
+        public void AddAutoCompleteWords(IEnumerable<string> words)
         {
             foreach (var word in words)
+            {
                 _autoCompleteWords.Add(word);
+            }
         }
     }
 }

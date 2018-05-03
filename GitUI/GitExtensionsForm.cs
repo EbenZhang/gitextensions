@@ -4,10 +4,11 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using GitExtUtils.GitUI;
 using GitUI.Properties;
+using Microsoft.WindowsAPICodePack.Taskbar;
 using ResourceManager;
 using Settings = GitCommands.AppSettings;
-using Microsoft.WindowsAPICodePack.Taskbar;
 
 namespace GitUI
 {
@@ -20,7 +21,7 @@ namespace GitUI
         internal static Icon ApplicationIcon = GetApplicationIcon(Settings.IconStyle, Settings.IconColor);
 
         /// <summary>indicates whether the <see cref="Form"/>'s position will be restored</summary>
-        readonly bool _enablePositionRestore;
+        private readonly bool _enablePositionRestore;
 
         /// <summary>Creates a new <see cref="GitExtensionsForm"/> without position restore.</summary>
         public GitExtensionsForm()
@@ -32,7 +33,6 @@ namespace GitUI
         /// <param name="enablePositionRestore">Indicates whether the <see cref="Form"/>'s position
         /// will be restored upon being re-opened.</param>
         public GitExtensionsForm(bool enablePositionRestore)
-            : base()
         {
             _enablePositionRestore = enablePositionRestore;
 
@@ -50,10 +50,12 @@ namespace GitUI
             Close();
         }
 
-        void GitExtensionsForm_FormClosing(object sender, FormClosingEventArgs e)
+        private void GitExtensionsForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (_enablePositionRestore)
+            {
                 SavePosition(GetType().Name);
+            }
 
             if (GitCommands.Utils.EnvUtils.RunningOnWindows() && TaskbarManager.IsPlatformSupported)
             {
@@ -61,7 +63,9 @@ namespace GitUI
                 {
                     TaskbarManager.Instance.SetProgressState(TaskbarProgressBarState.NoProgress);
                 }
-                catch (InvalidOperationException) { }
+                catch (InvalidOperationException)
+                {
+                }
             }
         }
 
@@ -107,78 +111,80 @@ namespace GitUI
                 case "random":
                     return (ColorIndex)new Random(DateTime.Now.Millisecond).Next(7);
             }
+
             return ColorIndex.Unknown;
         }
 
         public static Icon GetApplicationIcon(string iconStyle, string iconColor)
         {
             var colorIndex = (int)GetColorIndexByName(iconColor);
-            if (colorIndex == (int) ColorIndex.Unknown)
-                colorIndex = 0;
 
-            Icon appIcon;
+            if (colorIndex == (int)ColorIndex.Unknown)
+            {
+                colorIndex = 0;
+            }
+
+            Icon[] icons;
             if (iconStyle.Equals("small", StringComparison.OrdinalIgnoreCase))
             {
-                Icon[] icons = {
-                                    Resources.x_with_arrow,
-                                    Resources.x_with_arrow_blue,
-                                    Resources.x_with_arrow_green,
-                                    Resources.x_with_arrow_lightblue,
-                                    Resources.x_with_arrow_purple,
-                                    Resources.x_with_arrow_red,
-                                    Resources.x_with_arrow_yellow
-                                };
-                Debug.Assert(icons.Length == 7);
-                appIcon = icons[colorIndex];
+                icons = new[]
+                {
+                    Resources.x_with_arrow,
+                    Resources.x_with_arrow_blue,
+                    Resources.x_with_arrow_green,
+                    Resources.x_with_arrow_lightblue,
+                    Resources.x_with_arrow_purple,
+                    Resources.x_with_arrow_red,
+                    Resources.x_with_arrow_yellow
+                };
             }
             else if (iconStyle.Equals("large", StringComparison.OrdinalIgnoreCase))
             {
-                Icon[] icons = {
-                                    Resources.git_extensions_logo_final,
-                                    Resources.git_extensions_logo_final_blue,
-                                    Resources.git_extensions_logo_final_green,
-                                    Resources.git_extensions_logo_final_lightblue,
-                                    Resources.git_extensions_logo_final_purple,
-                                    Resources.git_extensions_logo_final_red,
-                                    Resources.git_extensions_logo_final_yellow
-                                };
-                Debug.Assert(icons.Length == 7);
-                appIcon = icons[colorIndex];
+                icons = new[]
+                {
+                    Resources.git_extensions_logo_final,
+                    Resources.git_extensions_logo_final_blue,
+                    Resources.git_extensions_logo_final_green,
+                    Resources.git_extensions_logo_final_lightblue,
+                    Resources.git_extensions_logo_final_purple,
+                    Resources.git_extensions_logo_final_red,
+                    Resources.git_extensions_logo_final_yellow
+                };
             }
             else if (iconStyle.Equals("cow", StringComparison.OrdinalIgnoreCase))
             {
-                Icon[] icons = {
-                                    Resources.cow_head,
-                                    Resources.cow_head_blue,
-                                    Resources.cow_head_green,
-                                    Resources.cow_head_blue,
-                                    Resources.cow_head_purple,
-                                    Resources.cow_head_red,
-                                    Resources.cow_head_yellow
-                                };
-                Debug.Assert(icons.Length == 7);
-                appIcon = icons[colorIndex];
+                icons = new[]
+                {
+                    Resources.cow_head,
+                    Resources.cow_head_blue,
+                    Resources.cow_head_green,
+                    Resources.cow_head_blue,
+                    Resources.cow_head_purple,
+                    Resources.cow_head_red,
+                    Resources.cow_head_yellow
+                };
             }
             else
             {
-                Icon[] icons = {
-                                    Resources.git_extensions_logo_final_mixed,
-                                    Resources.git_extensions_logo_final_mixed_blue,
-                                    Resources.git_extensions_logo_final_mixed_green,
-                                    Resources.git_extensions_logo_final_mixed_lightblue,
-                                    Resources.git_extensions_logo_final_mixed_purple,
-                                    Resources.git_extensions_logo_final_mixed_red,
-                                    Resources.git_extensions_logo_final_mixed_yellow
-                                };
-                Debug.Assert(icons.Length == 7);
-                appIcon = icons[colorIndex];
+                icons = new[]
+                {
+                    Resources.git_extensions_logo_final_mixed,
+                    Resources.git_extensions_logo_final_mixed_blue,
+                    Resources.git_extensions_logo_final_mixed_green,
+                    Resources.git_extensions_logo_final_mixed_lightblue,
+                    Resources.git_extensions_logo_final_mixed_purple,
+                    Resources.git_extensions_logo_final_mixed_red,
+                    Resources.git_extensions_logo_final_mixed_yellow
+                };
             }
-            Debug.Assert(appIcon != null);
+
+            Debug.Assert(icons.Length == 7, "icons.Length == 7");
+            var appIcon = icons[colorIndex];
+            Debug.Assert(appIcon != null, "appIcon != null");
             return appIcon;
         }
 
         #endregion icon
-
 
         /// <summary>Sets <see cref="AutoScaleMode"/>,
         /// restores position, raises the <see cref="Form.Load"/> event,
@@ -187,19 +193,22 @@ namespace GitUI
         protected override void OnLoad(EventArgs e)
         {
             if (_enablePositionRestore)
+            {
                 RestorePosition(GetType().Name);
+            }
 
             // Should be called after restoring position
             base.OnLoad(e);
 
             if (!CheckComponent(this))
+            {
                 OnRuntimeLoad(e);
+            }
         }
 
         /// <summary>Invoked at runtime during the <see cref="OnLoad"/> method.</summary>
         protected virtual void OnRuntimeLoad(EventArgs e)
         {
-
         }
 
         private bool _windowCentred;
@@ -211,31 +220,26 @@ namespace GitUI
         /// </summary>
         /// <param name = "name">The name to use when looking up the position in
         ///   the settings</param>
-        private void RestorePosition(String name)
+        private void RestorePosition(string name)
         {
             if (!Visible ||
                 WindowState == FormWindowState.Minimized)
+            {
                 return;
+            }
 
-            _windowCentred = (StartPosition == FormStartPosition.CenterParent);
+            _windowCentred = StartPosition == FormStartPosition.CenterParent;
 
             var position = LookupWindowPosition(name);
-
             if (position == null)
+            {
                 return;
+            }
 
-            int deviceDpi = GetCurrentDeviceDpi();
-            float scale = 1.0f * deviceDpi / position.DeviceDpi;
+            float scale = (float)DpiUtil.DpiX / position.DeviceDpi;
 
             StartPosition = FormStartPosition.Manual;
-            if (FormBorderStyle == FormBorderStyle.Sizable ||
-                FormBorderStyle == FormBorderStyle.SizableToolWindow)
-            {
-                Size formSize = position.Rect.Size;
-                formSize.Width = (int)(formSize.Width * scale);
-                formSize.Height = (int)(formSize.Height * scale);
-                Size = formSize;
-            }
+
             if (Owner == null || !_windowCentred)
             {
                 Point location = position.Rect.Location;
@@ -243,34 +247,43 @@ namespace GitUI
                 location.Y = (int)(location.Y * scale);
                 Rectangle? rect = FindWindowScreen(location);
                 if (rect != null)
+                {
                     location.Y = rect.Value.Y;
+                }
+
                 DesktopLocation = location;
             }
             else
             {
                 // Calculate location for modal form with parent
-                Location = new Point(Owner.Left + Owner.Width / 2 - Width / 2,
-                    Math.Max(0, Owner.Top + Owner.Height / 2 - Height / 2));
+                Location = new Point(Owner.Left + (Owner.Width / 2) - (Width / 2),
+                    Math.Max(0, Owner.Top + (Owner.Height / 2) - (Height / 2)));
             }
-            if(WindowState != position.State)
+
+            if (WindowState != position.State)
+            {
                 WindowState = position.State;
+            }
         }
 
-        static Rectangle? FindWindowScreen(Point location)
+        private static Rectangle? FindWindowScreen(Point location)
         {
             SortedDictionary<float, Rectangle> distance = new SortedDictionary<float, Rectangle>();
-            foreach (var rect in (from screen in Screen.AllScreens
-                                  select screen.WorkingArea))
+            foreach (var rect in from screen in Screen.AllScreens
+                                 select screen.WorkingArea)
             {
                 if (rect.Contains(location) && !distance.ContainsKey(0.0f))
+                {
                     return null; // title in screen
+                }
 
-                int midPointX = (rect.X + rect.Width / 2);
-                int midPointY = (rect.Y + rect.Height / 2);
-                float d = (float)Math.Sqrt((location.X - midPointX) * (location.X - midPointX) +
-                    (location.Y - midPointY) * (location.Y - midPointY));
+                int midPointX = rect.X + (rect.Width / 2);
+                int midPointY = rect.Y + (rect.Height / 2);
+                float d = (float)Math.Sqrt(((location.X - midPointX) * (location.X - midPointX)) +
+                    ((location.Y - midPointY) * (location.Y - midPointY)));
                 distance.Add(d, rect);
             }
+
             if (distance.Count > 0)
             {
                 return distance.First().Value;
@@ -281,28 +294,15 @@ namespace GitUI
             }
         }
 
-        public int GetCurrentDeviceDpi()
-        {
-#if TARGETING_DOTNET47
-            int deviceDpi = DeviceDpi;
-#else
-            int deviceDpi;
-            using (Graphics g = this.CreateGraphics())
-            {
-                deviceDpi = (int)g.DpiX;
-            }
-#endif
-            return deviceDpi;
-        }
-
         private static WindowPositionList _windowPositionList;
+
         /// <summary>
         ///   Save the position of a form to the user settings. Hides the window
         ///   as a side-effect.
         /// </summary>
         /// <param name = "name">The name to use when writing the position to the
         ///   settings</param>
-        private void SavePosition(String name)
+        private void SavePosition(string name)
         {
             try
             {
@@ -318,23 +318,28 @@ namespace GitUI
 
                 // Write to the user settings:
                 if (_windowPositionList == null)
+                {
                     _windowPositionList = WindowPositionList.Load();
+                }
+
                 WindowPosition windowPosition = _windowPositionList.Get(name);
+
                 // Don't save location when we center modal form
                 if (windowPosition != null && Owner != null && _windowCentred)
                 {
                     if (rectangle.Width <= windowPosition.Rect.Width && rectangle.Height <= windowPosition.Rect.Height)
+                    {
                         rectangle.Location = windowPosition.Rect.Location;
+                    }
                 }
 
-                int deviceDpi = GetCurrentDeviceDpi();
-                var position = new WindowPosition(rectangle, deviceDpi, formWindowState, name);
+                var position = new WindowPosition(rectangle, DpiUtil.DpiX, formWindowState, name);
                 _windowPositionList.AddOrUpdate(position);
                 _windowPositionList.Save();
             }
             catch (Exception)
             {
-                //TODO: howto restore a corrupted config?
+                // TODO: howto restore a corrupted config?
             }
         }
 
@@ -347,16 +352,20 @@ namespace GitUI
         ///   doesn't exist, or would not be visible on any screen in the user's
         ///   current display setup.
         /// </returns>
-        private static WindowPosition LookupWindowPosition(String name)
+        private static WindowPosition LookupWindowPosition(string name)
         {
             try
             {
                 if (_windowPositionList == null)
+                {
                     _windowPositionList = WindowPositionList.Load();
+                }
 
                 var position = _windowPositionList?.Get(name);
                 if (position == null || position.Rect.IsEmpty)
+                {
                     return null;
+                }
 
                 if (Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(position.Rect)))
                 {
@@ -365,7 +374,7 @@ namespace GitUI
             }
             catch (Exception)
             {
-                //TODO: howto restore a corrupted config?
+                // TODO: howto restore a corrupted config?
             }
 
             return null;

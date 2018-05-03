@@ -17,9 +17,8 @@ namespace GitUI.CommandsDialogs
         private readonly IGitBranchNameNormaliser _branchNameNormaliser;
         private readonly GitBranchNameOptions _gitBranchNameOptions = new GitBranchNameOptions(AppSettings.AutoNormaliseSymbol);
 
-
-        public FormCreateBranch(GitUICommands aCommands, GitRevision revision)
-            : base(aCommands)
+        public FormCreateBranch(GitUICommands commands, GitRevision revision)
+            : base(commands)
         {
             _branchNameNormaliser = new GitBranchNameNormaliser();
             CheckoutAfterCreation = true;
@@ -42,7 +41,7 @@ namespace GitUI.CommandsDialogs
         public bool UserAbleToChangeRevision { get; set; }
         public bool CouldBeOrphan { get; set; }
 
-        private IEnumerable<T> FindControls<T>(Control control) where T : Control
+        private static IEnumerable<T> FindControls<T>(Control control) where T : Control
         {
             var controls = control.Controls.Cast<Control>().ToList();
             return controls.SelectMany(FindControls<T>)
@@ -50,7 +49,6 @@ namespace GitUI.CommandsDialogs
                            .Where(c => c.GetType() == typeof(T))
                            .Cast<T>();
         }
-
 
         private void BranchNameTextBox_Leave(object sender, EventArgs e)
         {
@@ -102,6 +100,7 @@ namespace GitUI.CommandsDialogs
                 DialogResult = DialogResult.None;
                 return;
             }
+
             if (!Module.CheckBranchFormat(branchName))
             {
                 MessageBox.Show(string.Format(_branchNameIsNotValud.Text, branchName), Text);
@@ -113,19 +112,14 @@ namespace GitUI.CommandsDialogs
             {
                 var originalHash = Module.GetCurrentCheckout();
 
-                string cmd;
-                if (Orphan.Checked)
-                {
-                    cmd = GitCommandHelpers.CreateOrphanCmd(branchName, commitGuid);
-                }
-                else
-                {
-                    cmd = GitCommandHelpers.BranchCmd(branchName, commitGuid, chkbxCheckoutAfterCreate.Checked);
-                }
+                var cmd = Orphan.Checked
+                    ? GitCommandHelpers.CreateOrphanCmd(branchName, commitGuid)
+                    : GitCommandHelpers.BranchCmd(branchName, commitGuid, chkbxCheckoutAfterCreate.Checked);
 
                 bool wasSuccessFul = FormProcess.ShowDialog(this, cmd);
                 if (Orphan.Checked && wasSuccessFul && ClearOrphan.Checked)
-                {// orphan AND orphan creation success AND clear
+                {
+                    // orphan AND orphan creation success AND clear
                     cmd = GitCommandHelpers.RemoveCmd();
                     FormProcess.ShowDialog(this, cmd);
                 }
@@ -148,7 +142,7 @@ namespace GitUI.CommandsDialogs
             bool isOrphan = Orphan.Checked;
             ClearOrphan.Enabled = isOrphan;
 
-            chkbxCheckoutAfterCreate.Enabled = (isOrphan == false);// auto-checkout for orphan
+            chkbxCheckoutAfterCreate.Enabled = isOrphan == false; // auto-checkout for orphan
             if (isOrphan)
             {
                 chkbxCheckoutAfterCreate.Checked = true;

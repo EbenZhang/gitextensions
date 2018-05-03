@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Text;
-using System.Windows.Forms;
-using GitUIPluginInterfaces;
 using System.Linq;
-using System.Threading;
-using ResourceManager;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using GitCommands;
+using GitUI;
+using GitUIPluginInterfaces;
+using Microsoft.VisualStudio.Threading;
+using ResourceManager;
 
 namespace Bitbucket
 {
@@ -19,30 +21,26 @@ namespace Bitbucket
         private readonly TranslationString _error = new TranslationString("Error");
         private readonly TranslationString _linkLabelToolTip = new TranslationString("Right-click to copy link");
 
-        private Settings _settings;
-        private readonly BitbucketPlugin _plugin;
-        private readonly GitUIBaseEventArgs _gitUiCommands;
-        private readonly ISettingsSource _settingsContainer;
+        private readonly Settings _settings;
         private readonly BindingList<BitbucketUser> _reviewers = new BindingList<BitbucketUser>();
-        private readonly List<string> _bitbucketUsers = new List<string>();
 
-
-        public BitbucketPullRequestForm(BitbucketPlugin plugin, ISettingsSource settings, GitUIBaseEventArgs gitUiCommands)
+        public BitbucketPullRequestForm(BitbucketPlugin plugin, ISettingsSource settings, GitUIEventArgs gitUiCommands)
         {
             InitializeComponent();
             Translate();
 
-            _plugin = plugin;
-            _settingsContainer = settings;
-            _gitUiCommands = gitUiCommands;
+            // NOTE ddlBranchSource and ddlBranchTarget both have string items so do not need a display member
+            ddlRepositorySource.DisplayMember = nameof(Repository.DisplayName);
+            ddlRepositoryTarget.DisplayMember = nameof(Repository.DisplayName);
 
-            _settings = Settings.Parse(_gitUiCommands.GitModule, _settingsContainer, _plugin);
+            _settings = Settings.Parse(gitUiCommands.GitModule, settings, plugin);
             if (_settings == null)
             {
                 MessageBox.Show(_yourRepositoryIsNotInBitbucket.Text);
                 Close();
                 return;
             }
+
             Load += BitbucketViewPullRequestFormLoad;
             Load += BitbucketPullRequestFormLoad;
 
@@ -53,119 +51,128 @@ namespace Bitbucket
             lblLinkViewPull.Text = string.Format("{0}/projects/{1}/repos/{2}/pull-requests",
                 _settings.BitbucketUrl, _settings.ProjectKey, _settings.RepoSlug);
             toolTipLink.SetToolTip(lblLinkViewPull, _linkLabelToolTip.Text);
+
+            this.AdjustForDpiScaling();
         }
 
         private void BitbucketPullRequestFormLoad(object sender, EventArgs e)
         {
             if (_settings == null)
-                return;
-
-            ThreadPool.QueueUserWorkItem(state =>
             {
-                var repositories = GetRepositories();
-                try
-                {
-                    this.Invoke((MethodInvoker)delegate
-                    {
-                        ddlRepositorySource.DataSource = repositories.ToList();
-                        ddlRepositoryTarget.DataSource = repositories.ToList();
-                        ddlRepositorySource.Enabled = true;
-                        ddlRepositoryTarget.Enabled = true;
-                    });
-                }
-                catch (System.InvalidOperationException)
-                {
-                }
-            });
+                return;
+            }
+
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await TaskScheduler.Default;
+                var repositories = await GetRepositoriesAsync();
+
+                await this.SwitchToMainThreadAsync();
+                ddlRepositorySource.DataSource = repositories.ToList();
+                ddlRepositoryTarget.DataSource = repositories.ToList();
+                ddlRepositorySource.Enabled = true;
+                ddlRepositoryTarget.Enabled = true;
+            }).FileAndForget();
         }
 
         private void BitbucketViewPullRequestFormLoad(object sender, EventArgs e)
         {
             if (_settings == null)
-                return;
-
-            ThreadPool.QueueUserWorkItem(state =>
             {
-                var pullReqs = GetPullRequests();
-                try
-                {
-                    this.Invoke((MethodInvoker)delegate
-                    {
-                        lbxPullRequests.DataSource = pullReqs;
-                        lbxPullRequests.DisplayMember = "DisplayName";
-                    });
-                }
-                catch(System.InvalidOperationException){
-                    return;
-                }
-            });
+                return;
+            }
+
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await TaskScheduler.Default;
+                var pullReqs = await GetPullRequestsAsync();
+
+                await this.SwitchToMainThreadAsync();
+                lbxPullRequests.DataSource = pullReqs;
+                lbxPullRequests.DisplayMember = nameof(PullRequest.DisplayName);
+            }).FileAndForget();
         }
 
-        private List<Repository> GetRepositories()
+        private async Task<List<Repository>> GetRepositoriesAsync()
         {
             var list = new List<Repository>();
             var getDefaultRepo = new GetRepoRequest(_settings.ProjectKey, _settings.RepoSlug, _settings);
-            var defaultRepo = getDefaultRepo.Send();
+            var defaultRepo = await getDefaultRepo.SendAsync().ConfigureAwait(false);
             if (defaultRepo.Success)
+            {
                 list.Add(defaultRepo.Result);
+            }
 
             return list;
         }
 
-        private List<PullRequest> GetPullRequests()
+        private async Task<List<PullRequest>> GetPullRequestsAsync()
         {
             var list = new List<PullRequest>();
             var getPullReqs = new GetPullRequest(_settings.ProjectKey, _settings.RepoSlug, _settings);
-            var result = getPullReqs.Send();
+            var result = await getPullReqs.SendAsync().ConfigureAwait(false);
             if (result.Success)
             {
                 list.AddRange(result.Result);
             }
+
             return list;
         }
 
         private void BtnCreateClick(object sender, EventArgs e)
         {
-            if (ddlBranchSource.SelectedValue == null ||
-                ddlBranchTarget.SelectedValue == null ||
-                ddlRepositorySource.SelectedValue == null ||
-                ddlRepositoryTarget.SelectedValue == null)
-            {
-                return;
-            }
+            ThreadHelper.ThrowIfNotOnUIThread();
 
-            var info = new PullRequestInfo
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
-                Title = txtTitle.Text,
-                Description = txtDescription.Text,
-                SourceBranch = ddlBranchSource.SelectedValue.ToString(),
-                TargetBranch = ddlBranchTarget.SelectedValue.ToString(),
-                SourceRepo = (Repository)ddlRepositorySource.SelectedValue,
-                TargetRepo = (Repository)ddlRepositoryTarget.SelectedValue,
-                Reviewers = _reviewers
-            };
-            var pullRequest = new CreatePullRequestRequest(_settings, info);
-            var response = pullRequest.Send();
-            if (response.Success)
-            {
-                MessageBox.Show(_success.Text);
-                BitbucketViewPullRequestFormLoad(null, null);
-            }
-            else
-                MessageBox.Show(string.Join(Environment.NewLine, response.Messages),
-                    _error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (ddlBranchSource.SelectedValue == null ||
+                    ddlBranchTarget.SelectedValue == null ||
+                    ddlRepositorySource.SelectedValue == null ||
+                    ddlRepositoryTarget.SelectedValue == null)
+                {
+                    return;
+                }
+
+                var info = new PullRequestInfo
+                {
+                    Title = txtTitle.Text,
+                    Description = txtDescription.Text,
+                    SourceBranch = ddlBranchSource.SelectedValue.ToString(),
+                    TargetBranch = ddlBranchTarget.SelectedValue.ToString(),
+                    SourceRepo = (Repository)ddlRepositorySource.SelectedValue,
+                    TargetRepo = (Repository)ddlRepositoryTarget.SelectedValue,
+                    Reviewers = _reviewers
+                };
+                var pullRequest = new CreatePullRequestRequest(_settings, info);
+                var response = await pullRequest.SendAsync();
+                await this.SwitchToMainThreadAsync();
+                if (response.Success)
+                {
+                    MessageBox.Show(_success.Text);
+                    BitbucketViewPullRequestFormLoad(null, null);
+                }
+                else
+                {
+                    MessageBox.Show(string.Join(Environment.NewLine, response.Messages),
+                        _error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            });
         }
 
-        Dictionary<Repository, IEnumerable<string>> Branches = new Dictionary<Repository,IEnumerable<string>>();
-        private IEnumerable<string> GetBitbucketBranches(Repository selectedRepo)
+        private readonly Dictionary<Repository, IEnumerable<string>> _branches = new Dictionary<Repository, IEnumerable<string>>();
+        private async Task<IEnumerable<string>> GetBitbucketBranchesAsync(Repository selectedRepo)
         {
-            if (Branches.ContainsKey(selectedRepo))
+            lock (_branches)
             {
-                return Branches[selectedRepo];
+                if (_branches.ContainsKey(selectedRepo))
+                {
+                    return _branches[selectedRepo];
+                }
             }
+
             var list = new List<string>();
             var getBranches = new GetBranchesRequest(selectedRepo, _settings);
-            var result = getBranches.Send();
+            var result = await getBranches.SendAsync().ConfigureAwait(false);
             if (result.Success)
             {
                 foreach (var value in result.Result["values"])
@@ -173,91 +180,114 @@ namespace Bitbucket
                     list.Add(value["displayId"].ToString());
                 }
             }
-            Branches.Add(selectedRepo, list);
-            return list;
-        }
 
-        private void ReviewersDataGridEditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
-        {
-            var cellEdit = e.Control as DataGridViewTextBoxEditingControl;
-            if (cellEdit != null)
+            lock (_branches)
             {
-                cellEdit.AutoCompleteCustomSource = new AutoCompleteStringCollection();
-                cellEdit.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                cellEdit.AutoCompleteSource = AutoCompleteSource.CustomSource;
-                cellEdit.AutoCompleteCustomSource.AddRange(_bitbucketUsers.ToArray());
+                _branches.Add(selectedRepo, list);
             }
+
+            return list;
         }
 
         private void DdlRepositorySourceSelectedValueChanged(object sender, EventArgs e)
         {
-            RefreshDDLBranch(ddlBranchSource, ((ComboBox)sender).SelectedValue);
+            ThreadHelper.JoinableTaskFactory.Run(() => RefreshDDLBranchAsync(ddlBranchSource, ((ComboBox)sender).SelectedValue));
         }
 
         private void DdlRepositoryTargetSelectedValueChanged(object sender, EventArgs e)
         {
-            RefreshDDLBranch(ddlBranchTarget, ((ComboBox)sender).SelectedValue);
+            ThreadHelper.JoinableTaskFactory.Run(() => RefreshDDLBranchAsync(ddlBranchTarget, ((ComboBox)sender).SelectedValue));
         }
 
-        private void RefreshDDLBranch(ComboBox branchComboBox, object selectedValue)
+        private async Task RefreshDDLBranchAsync(ComboBox branchComboBox, object selectedValue)
         {
-            List<string> branchNames = (GetBitbucketBranches((Repository)selectedValue)).ToList();
+            List<string> branchNames = (await GetBitbucketBranchesAsync((Repository)selectedValue)).ToList();
             if (AppSettings.BranchOrderingCriteria == BranchOrdering.Alphabetically)
             {
                 branchNames.Sort();
             }
+
             branchNames.Insert(0, "");
+
+            await this.SwitchToMainThreadAsync();
             branchComboBox.DataSource = branchNames;
         }
 
         private void DdlBranchSourceSelectedValueChanged(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(ddlBranchSource.SelectedValue.ToString())) return;
-            var commit = GetCommitInfo((Repository)ddlRepositorySource.SelectedValue,
-                                                ddlBranchSource.SelectedValue.ToString());
+            if (string.IsNullOrEmpty(ddlBranchSource.SelectedValue.ToString()))
+            {
+                return;
+            }
 
-            ddlBranchSource.Tag = commit;
-            UpdateCommitInfo(lblCommitInfoSource, commit);
-            txtTitle.Text = ddlBranchSource.SelectedValue.ToString().Replace("-"," ");
-            UpdatePullRequestDescription();
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                var commit = await GetCommitInfoAsync((Repository)ddlRepositorySource.SelectedValue,
+                                                    ddlBranchSource.SelectedValue.ToString());
+                await this.SwitchToMainThreadAsync();
+
+                ddlBranchSource.Tag = commit;
+                UpdateCommitInfo(lblCommitInfoSource, commit);
+                txtTitle.Text = ddlBranchSource.SelectedValue.ToString().Replace("-", " ");
+                await UpdatePullRequestDescriptionAsync();
+            });
         }
 
         private void DdlBranchTargetSelectedValueChanged(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(ddlBranchTarget.SelectedValue.ToString())) return;
-            var commit = GetCommitInfo((Repository)ddlRepositoryTarget.SelectedValue,
-                                                ddlBranchTarget.SelectedValue.ToString());
+            if (string.IsNullOrEmpty(ddlBranchTarget.SelectedValue.ToString()))
+            {
+                return;
+            }
 
-            ddlBranchTarget.Tag = commit;
-            UpdateCommitInfo(lblCommitInfoTarget, commit);
-            UpdatePullRequestDescription();
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                var commit = await GetCommitInfoAsync((Repository)ddlRepositoryTarget.SelectedValue,
+                                                    ddlBranchTarget.SelectedValue.ToString());
+                await this.SwitchToMainThreadAsync();
+
+                ddlBranchTarget.Tag = commit;
+                UpdateCommitInfo(lblCommitInfoTarget, commit);
+                await UpdatePullRequestDescriptionAsync();
+            });
         }
 
-        private Commit GetCommitInfo(Repository repo, string branch)
+        private async Task<Commit> GetCommitInfoAsync(Repository repo, string branch)
         {
             if (repo == null || string.IsNullOrWhiteSpace(branch))
+            {
                 return null;
+            }
+
             var getCommit = new GetHeadCommitRequest(repo, branch, _settings);
-            var result = getCommit.Send();
+            var result = await getCommit.SendAsync().ConfigureAwait(false);
             return result.Success ? result.Result : null;
         }
 
         private void UpdateCommitInfo(Label label, Commit commit)
         {
             if (commit == null)
+            {
                 label.Text = string.Empty;
+            }
             else
+            {
                 label.Text = string.Format(_commited.Text,
                     commit.AuthorName, commit.Message);
+            }
         }
 
-        private void UpdatePullRequestDescription()
+        private async Task UpdatePullRequestDescriptionAsync()
         {
+            await this.SwitchToMainThreadAsync();
+
             if (ddlRepositorySource.SelectedValue == null
                 || ddlRepositoryTarget.SelectedValue == null
                 || ddlBranchSource.Tag == null
                 || ddlBranchTarget.Tag == null)
+            {
                 return;
+            }
 
             var getCommitsInBetween = new GetInBetweenCommitsRequest(
                 (Repository)ddlRepositorySource.SelectedValue,
@@ -266,22 +296,28 @@ namespace Bitbucket
                 (Commit)ddlBranchTarget.Tag,
                 _settings);
 
-            var result = getCommitsInBetween.Send();
+            var result = await getCommitsInBetween.SendAsync();
             if (result.Success)
             {
+                await this.SwitchToMainThreadAsync();
+
                 var sb = new StringBuilder();
                 sb.AppendLine();
                 foreach (var commit in result.Result)
                 {
                     if (!commit.IsMerge)
+                    {
                         sb.Append("* ").AppendLine(commit.Message);
+                    }
                 }
+
                 txtDescription.Text = sb.ToString();
             }
         }
+
         private void PullRequestChanged(object sender, EventArgs e)
         {
-            var curItem = lbxPullRequests.SelectedItem as PullRequest;
+            var curItem = (PullRequest)lbxPullRequests.SelectedItem;
 
             txtPRTitle.Text = curItem.Title;
             txtPRDescription.Text = curItem.Description;
@@ -299,63 +335,70 @@ namespace Bitbucket
 
         private void BtnMergeClick(object sender, EventArgs e)
         {
-            var curItem = lbxPullRequests.SelectedItem as PullRequest;
-            if (curItem == null) return;
-
-            var mergeInfo = new MergeRequestInfo
+            if (lbxPullRequests.SelectedItem is PullRequest curItem)
             {
-                Id = curItem.Id,
-                Version = curItem.Version,
-                ProjectKey = curItem.DestProjectKey,
-                TargetRepo = curItem.DestRepo,
-            };
+                var mergeInfo = new MergeRequestInfo
+                {
+                    Id = curItem.Id,
+                    Version = curItem.Version,
+                    ProjectKey = curItem.DestProjectKey,
+                    TargetRepo = curItem.DestRepo,
+                };
 
-            //Merge
-            var mergeRequest = new MergePullRequest(_settings, mergeInfo);
-            var response = mergeRequest.Send();
-            if (response.Success)
-            {
-                MessageBox.Show(_success.Text);
-                BitbucketViewPullRequestFormLoad(null, null);
+                // Merge
+                var mergeRequest = new MergePullRequest(_settings, mergeInfo);
+                var response = ThreadHelper.JoinableTaskFactory.Run(() => mergeRequest.SendAsync());
+                if (response.Success)
+                {
+                    MessageBox.Show(_success.Text);
+                    BitbucketViewPullRequestFormLoad(null, null);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        string.Join(Environment.NewLine, response.Messages),
+                        _error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-            else
-                MessageBox.Show(string.Join(Environment.NewLine, response.Messages),
-                    _error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+
         private void BtnApproveClick(object sender, EventArgs e)
         {
-            var curItem = lbxPullRequests.SelectedItem as PullRequest;
-            if (curItem == null) return;
-
-            var mergeInfo = new MergeRequestInfo
+            if (lbxPullRequests.SelectedItem is PullRequest curItem)
             {
-                Id = curItem.Id,
-                Version = curItem.Version,
-                ProjectKey = curItem.DestProjectKey,
-                TargetRepo = curItem.DestRepo,
-            };
+                var mergeInfo = new MergeRequestInfo
+                {
+                    Id = curItem.Id,
+                    Version = curItem.Version,
+                    ProjectKey = curItem.DestProjectKey,
+                    TargetRepo = curItem.DestRepo,
+                };
 
-            //Approve
-            var approveRequest = new ApprovePullRequest(_settings, mergeInfo);
-            var response = approveRequest.Send();
-            if (response.Success)
-            {
-                MessageBox.Show(_success.Text);
+                // Approve
+                var approveRequest = new ApprovePullRequest(_settings, mergeInfo);
+                var response = ThreadHelper.JoinableTaskFactory.Run(() => approveRequest.SendAsync());
+                if (response.Success)
+                {
+                    MessageBox.Show(_success.Text);
                     BitbucketViewPullRequestFormLoad(null, null);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        string.Join(Environment.NewLine, response.Messages),
+                        _error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-            else
-                MessageBox.Show(string.Join(Environment.NewLine, response.Messages),
-                    _error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private void textLinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             try
             {
-                var link = (sender as LinkLabel).Text;
+                var link = ((LinkLabel)sender).Text;
                 if (e.Button == MouseButtons.Right)
                 {
-                    //Just copy the text
+                    // Just copy the text
                     Clipboard.SetText(link);
                 }
                 else

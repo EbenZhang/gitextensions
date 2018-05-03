@@ -14,15 +14,12 @@ namespace GitCommands.Remote
         /// <summary>
         /// Returns the default remote for push operation.
         /// </summary>
-        /// <param name="remote"></param>
-        /// <param name="branch"></param>
         /// <returns>The <see cref="GitRef.Name"/> if found, otheriwse <see langword="null"/>.</returns>
         string GetDefaultPushRemote(GitRemote remote, string branch);
 
         /// <summary>
         /// Loads the list of remotes configured in .git/config file.
         /// </summary>
-        /// <param name="loadDisabled"></param>
         IEnumerable<GitRemote> LoadRemotes(bool loadDisabled);
 
         /// <summary>
@@ -53,7 +50,6 @@ namespace GitCommands.Remote
         ///  Marks the remote as enabled or disabled in .git/config file.
         /// </summary>
         /// <param name="remoteName">The name of the remote.</param>
-        /// <param name="disabled"></param>
         void ToggleRemoteState(string remoteName, bool disabled);
     }
 
@@ -63,31 +59,32 @@ namespace GitCommands.Remote
         internal static readonly string SectionRemote = "remote";
         private readonly Func<IGitModule> _getModule;
 
-
         public GitRemoteManager(Func<IGitModule> getModule)
         {
             _getModule = getModule;
         }
 
-
         // TODO: moved verbatim from FormRemotes.cs, perhaps needs refactoring
         [SuppressMessage("ReSharper", "RedundantArgumentDefaultValue")]
         public void ConfigureRemotes(string remoteName)
         {
-            var _module = GetModule();
-            var localConfig = _module.LocalConfigFile;
+            var module = GetModule();
+            var localConfig = module.LocalConfigFile;
+            var moduleRefs = module.GetRefs(tags: false, branches: true);
 
-            foreach (var remoteHead in _module.GetRefs(true, true))
+            foreach (var remoteHead in moduleRefs)
             {
-                foreach (var localHead in _module.GetRefs(true, true))
+                if (!remoteHead.IsRemote ||
+                    !remoteHead.Name.Contains(remoteName, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    if (!remoteHead.IsRemote ||
-                        localHead.IsRemote ||
+                    continue;
+                }
+
+                foreach (var localHead in moduleRefs)
+                {
+                    if (localHead.IsRemote ||
                         !string.IsNullOrEmpty(localHead.GetTrackingRemote(localConfig)) ||
-                        remoteHead.IsTag ||
-                        localHead.IsTag ||
-                        !remoteHead.Name.ToLower().Contains(localHead.Name.ToLower()) ||
-                        !remoteHead.Name.ToLower().Contains(remoteName.ToLower()))
+                        !remoteHead.Name.Contains(localHead.Name, StringComparison.InvariantCultureIgnoreCase))
                     {
                         continue;
                     }
@@ -101,8 +98,6 @@ namespace GitCommands.Remote
         /// <summary>
         /// Returns the default remote for push operation.
         /// </summary>
-        /// <param name="remote"></param>
-        /// <param name="branch"></param>
         /// <returns>The <see cref="GitRef.Name"/> if found, otheriwse <see langword="null"/>.</returns>
         // TODO: moved verbatim from FormPush.cs, perhaps needs refactoring
         public string GetDefaultPushRemote(GitRemote remote, string branch)
@@ -112,10 +107,10 @@ namespace GitCommands.Remote
                 throw new ArgumentNullException(nameof(remote));
             }
 
-            var _module = GetModule();
+            var module = GetModule();
             bool IsSettingForBranch(string setting, string branchName)
             {
-                var head = new GitRef(_module, string.Empty, setting);
+                var head = new GitRef(module, string.Empty, setting);
                 return head.IsHead && head.Name.Equals(branchName, StringComparison.OrdinalIgnoreCase);
             }
 
@@ -123,7 +118,7 @@ namespace GitCommands.Remote
                                    .Select(s => s.Split(':'))
                                    .Where(t => t.Length == 2)
                                    .Where(t => IsSettingForBranch(t[0], branch))
-                                   .Select(t => new GitRef(_module, string.Empty, t[1]))
+                                   .Select(t => new GitRef(module, string.Empty, t[1]))
                                    .FirstOrDefault(h => h.IsHead);
 
             return remoteHead?.Name;
@@ -134,11 +129,11 @@ namespace GitCommands.Remote
         /// </summary>
         public string[] GetDisabledRemotes()
         {
-            var _module = GetModule();
-            return _module.LocalConfigFile.GetConfigSections()
-                                          .Where(s => s.SectionName == $"{DisabledSectionPrefix}remote")
-                                          .Select(s => s.SubSection)
-                                          .ToArray();
+            var module = GetModule();
+            return module.LocalConfigFile.GetConfigSections()
+                                         .Where(s => s.SectionName == $"{DisabledSectionPrefix}remote")
+                                         .Select(s => s.SubSection)
+                                         .ToArray();
         }
 
         /// <summary>
@@ -212,6 +207,7 @@ namespace GitCommands.Remote
 
             // if create a new remote or updated the url - we may need to perform "update remote"
             bool updateRemoteRequired = false;
+
             // if operation return anything back, relay that to the user
             var output = string.Empty;
 
@@ -227,8 +223,8 @@ namespace GitCommands.Remote
             {
                 if (remote.Disabled)
                 {
-                    // disabled branches can't updated as it poses to many problems, i.e. 
-                    // - verify that the branch name is valid, and 
+                    // disabled branches can't updated as it poses to many problems, i.e.
+                    // - verify that the branch name is valid, and
                     // - it does not duplicate an active branch name etc.
                     return new GitRemoteSaveResult(null, false);
                 }
@@ -294,7 +290,6 @@ namespace GitCommands.Remote
             module.LocalConfigFile.Save();
         }
 
-
         // pass the list in to minimise allocations
         private void PopulateRemotes(List<GitRemote> allRemotes, bool enabled)
         {
@@ -302,13 +297,12 @@ namespace GitCommands.Remote
             Func<string[]> func;
             if (enabled)
             {
-                func = module.GetRemotes;
+                func = () => module.GetRemotes();
             }
             else
             {
                 func = GetDisabledRemotes;
             }
-
 
             var gitRemotes = func().Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
             if (gitRemotes.Any())
@@ -332,16 +326,17 @@ namespace GitCommands.Remote
             {
                 throw new ArgumentException($"Require a valid instance of {nameof(IGitModule)}");
             }
+
             return module;
         }
 
-        private string GetSettingKey(string settingKey, string remoteName, bool remoteEnabled)
+        private static string GetSettingKey(string settingKey, string remoteName, bool remoteEnabled)
         {
             var key = string.Format(settingKey, remoteName);
             return remoteEnabled ? key : DisabledSectionPrefix + key;
         }
 
-        private void UpdateSettings(IGitModule module, string remoteName, bool remoteDisabled, string settingName, string value)
+        private static void UpdateSettings(IGitModule module, string remoteName, bool remoteDisabled, string settingName, string value)
         {
             var preffix = remoteDisabled ? DisabledSectionPrefix : string.Empty;
             var fullSettingName = preffix + string.Format(settingName, remoteName);

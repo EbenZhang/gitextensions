@@ -4,25 +4,27 @@ using System.Windows.Forms;
 
 namespace GitUIPluginInterfaces
 {
-    public class ChoiceSetting: ISetting
+    public class ChoiceSetting : ISetting
     {
-        public ChoiceSetting(string aName, IList<string> values, string aDefaultValue = null)
-            : this(aName, aName, values, aDefaultValue)
+        public ChoiceSetting(string name, IList<string> values, string defaultValue = null)
+            : this(name, name, values, defaultValue)
         {
         }
 
-        public ChoiceSetting(string aName, string aCaption, IList<string> values, string aDefaultValue = null)
+        public ChoiceSetting(string name, string caption, IList<string> values, string defaultValue = null)
         {
-            Name = aName;
-            Caption = aCaption;
-            DefaultValue = aDefaultValue;
+            Name = name;
+            Caption = caption;
+            DefaultValue = defaultValue;
             Values = values;
             if (DefaultValue == null && values.Any())
+            {
                 DefaultValue = values.First();
+            }
         }
 
-        public string Name { get; private set; }
-        public string Caption { get; private set; }
+        public string Name { get; }
+        public string Caption { get; }
         public string DefaultValue { get; set; }
         public IList<string> Values { get; set; }
         public ComboBox CustomControl { get; set; }
@@ -30,35 +32,30 @@ namespace GitUIPluginInterfaces
         public ISettingControlBinding CreateControlBinding()
         {
             return new ComboBoxBinding(this, CustomControl);
-    }
+        }
 
         private class ComboBoxBinding : SettingControlBinding<ChoiceSetting, ComboBox>
         {
-
-            public ComboBoxBinding(ChoiceSetting aSetting, ComboBox aCustomControl)
-                : base(aSetting, aCustomControl)
-            { }
+            public ComboBoxBinding(ChoiceSetting setting, ComboBox customControl)
+                : base(setting, customControl)
+            {
+            }
 
             public override ComboBox CreateControl()
             {
-                var comboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList};
+                var comboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
                 comboBox.Items.AddRange(Setting.Values.ToArray());
                 return comboBox;
             }
 
             public override void LoadSetting(ISettingsSource settings, bool areSettingsEffective, ComboBox control)
             {
-                string settingVal;
-                if (areSettingsEffective)
-                {
-                    settingVal = Setting.ValueOrDefault(settings);
-                }
-                else
-                {
-                    settingVal = Setting[settings];
-                }
+                string settingVal = areSettingsEffective
+                    ? Setting.ValueOrDefault(settings)
+                    : Setting[settings];
 
                 control.SelectedIndex = Setting.Values.IndexOf(settingVal);
+
                 if (control.SelectedIndex == -1)
                 {
                     control.Text = settingVal;

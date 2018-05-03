@@ -1,6 +1,6 @@
 ﻿using FluentAssertions;
 using GitCommands;
-using GitCommands.Repository;
+using GitCommands.UserRepositoryHistory;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -12,7 +12,6 @@ namespace GitCommandsTests
         private const string ShortName = "gitextension";
         private IRepositoryDescriptionProvider _repositoryDescriptionProvider;
         private AppTitleGenerator _appTitleGenerator;
-
 
         [SetUp]
         public void Setup()

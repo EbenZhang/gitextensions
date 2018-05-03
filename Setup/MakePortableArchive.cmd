@@ -54,6 +54,10 @@ xcopy /y ..\GitExtensions\bin\%Configuration%\PSTaskDialog.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\GitExtensions\bin\%Configuration%\ResourceManager.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
+xcopy /y ..\GitExtensions\bin\%Configuration%\Microsoft.VisualStudio.Threading.dll GitExtensions\
+IF ERRORLEVEL 1 EXIT /B 1
+xcopy /y ..\GitExtensions\bin\%Configuration%\Microsoft.VisualStudio.Validation.dll GitExtensions\
+IF ERRORLEVEL 1 EXIT /B 1
 
 xcopy /y ..\Plugins\AutoCompileSubmodules\bin\%Configuration%\AutoCompileSubmodules.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
@@ -96,8 +100,6 @@ IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\Plugins\JiraCommitHintPlugin\bin\%Configuration%\Atlassian.Jira.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\Plugins\JiraCommitHintPlugin\bin\%Configuration%\JiraCommitHintPlugin.dll GitExtensions\Plugins\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y ..\Plugins\JiraCommitHintPlugin\bin\%Configuration%\netstandard.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y ..\Plugins\JiraCommitHintPlugin\bin\%Configuration%\NString.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
@@ -268,6 +270,7 @@ IF ERRORLEVEL 1 EXIT /B 1
 
 :create_archive
 set nuget=..\.nuget\nuget.exe
-%nuget% install ..\.nuget\packages.config -OutputDirectory ..\packages
+%nuget% update -self
+%nuget% install ..\.nuget\packages.config -OutputDirectory ..\packages -Verbosity Quiet
 %szip% a -tzip %normal% GitExtensions
 IF ERRORLEVEL 1 EXIT /B 1

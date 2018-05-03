@@ -16,9 +16,9 @@ namespace GitUI.Editor.Diff
 
         public List<ISegment> GetLinesStartingWith(IDocument document, ref int beginIndex, string prefixStr, ref bool found)
         {
-            return GetLinesStartingWith(document, ref beginIndex, new string[] { prefixStr }, ref found);
-
+            return GetLinesStartingWith(document, ref beginIndex, new[] { prefixStr }, ref found);
         }
+
         public List<ISegment> GetLinesStartingWith(IDocument document, ref int beginIndex, string[] prefixStrs, ref bool found)
         {
             var result = new List<ISegment>();
@@ -37,9 +37,11 @@ namespace GitUI.Editor.Diff
                 else
                 {
                     if (found)
+                    {
                         break;
-                    else
-                        beginIndex++;
+                    }
+
+                    beginIndex++;
                 }
             }
 
@@ -48,8 +50,11 @@ namespace GitUI.Editor.Diff
 
         public bool DoesLineStartWith(IDocument document, int lineOffset, string prefixStr)
         {
-            Debug.Assert(prefixStr.Length <= 2 && prefixStr.Length >= 1);
-            if (prefixStr.Length == 1) return document.GetCharAt(lineOffset) == prefixStr[0];
+            Debug.Assert(prefixStr.Length <= 2 && prefixStr.Length >= 1, "prefixStr.Length <= 2 && prefixStr.Length >= 1");
+            if (prefixStr.Length == 1)
+            {
+                return document.GetCharAt(lineOffset) == prefixStr[0];
+            }
 
             if (document.TextLength <= lineOffset + 1)
             {
@@ -61,6 +66,7 @@ namespace GitUI.Editor.Diff
 
             return firstChar == prefixStr[0] && secondChar == prefixStr[1];
         }
+
         public bool DoesLineStartWith(IDocument document, int lineOffset, string[] prefixStrs)
         {
             return prefixStrs.Any(pre => DoesLineStartWith(document, lineOffset, pre));

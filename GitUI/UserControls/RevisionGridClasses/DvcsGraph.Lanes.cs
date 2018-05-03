@@ -10,16 +10,17 @@ namespace GitUI.RevisionGridClasses
     {
         private sealed class Lanes : IEnumerable<Graph.ILaneRow>
         {
-            private readonly ActiveLaneRow currentRow = new ActiveLaneRow();
-            private readonly List<LaneJunctionDetail> laneNodes = new List<LaneJunctionDetail>();
-            private readonly List<Graph.ILaneRow> laneRows;
-            private readonly Graph sourceGraph;
+            private readonly ActiveLaneRow _currentRow = new ActiveLaneRow();
+            private readonly List<LaneJunctionDetail> _laneNodes = new List<LaneJunctionDetail>();
+            private readonly List<Graph.ILaneRow> _laneRows;
+            private readonly Graph _sourceGraph;
 
-            public Lanes(Graph aGraph)
+            public Lanes(Graph graph)
             {
-                sourceGraph = aGraph;
+                _sourceGraph = graph;
+
                 // Rebuild lanes
-                laneRows = new List<Graph.ILaneRow>();
+                _laneRows = new List<Graph.ILaneRow>();
             }
 
             public Graph.ILaneRow this[int row]
@@ -31,23 +32,23 @@ namespace GitUI.RevisionGridClasses
                         return null;
                     }
 
-                    if (row < laneRows.Count)
+                    if (row < _laneRows.Count)
                     {
-                        return laneRows[row];
+                        return _laneRows[row];
                     }
 
-                    if (row < sourceGraph.AddedNodes.Count)
+                    if (row < _sourceGraph.AddedNodes.Count)
                     {
-                        return new SavedLaneRow(sourceGraph.AddedNodes[row]);
+                        return new SavedLaneRow(_sourceGraph.AddedNodes[row]);
                     }
 
                     return null;
                 }
             }
 
-            public int Count => sourceGraph.Count;
+            public int Count => _sourceGraph.Count;
 
-            public int CachedCount => laneRows.Count;
+            public int CachedCount => _laneRows.Count;
 
             #region IEnumerable<LaneRow> Members
 
@@ -65,12 +66,14 @@ namespace GitUI.RevisionGridClasses
 
             public void Clear()
             {
-                laneRows.Clear();
-                laneNodes.Clear();
-                currentRow.Clear();
+                _laneRows.Clear();
+                _laneNodes.Clear();
+                _currentRow.Clear();
 
-                foreach (Node aNode in sourceGraph.GetRefs())
-                    Update(aNode);
+                foreach (Node node in _sourceGraph.GetRefs())
+                {
+                    Update(node);
+                }
             }
 
             public bool CacheTo(int row)
@@ -84,34 +87,35 @@ namespace GitUI.RevisionGridClasses
                 return isValid;
             }
 
-            public void Update(Node aNode)
+            public void Update(Node node)
             {
-                if (aNode.Descendants.Count != 0)
+                if (node.Descendants.Count != 0)
+                {
                     return;
+                }
 
                 // This node is a head, create a new lane for it
-                Node h = aNode;
+                Node h = node;
                 if (h.Ancestors.Count != 0)
                 {
                     foreach (Junction j in h.Ancestors)
                     {
                         var detail = new LaneJunctionDetail(j);
-                        laneNodes.Add(detail);
+                        _laneNodes.Add(detail);
                     }
                 }
                 else
                 {
                     // This is a single entry with no parents or children.
                     var detail = new LaneJunctionDetail(h);
-                    laneNodes.Add(detail);
+                    _laneNodes.Add(detail);
                 }
             }
 
             private bool MoveNext()
             {
-
                 // If there are no lanes, there is nothing more to draw
-                if (laneNodes.Count == 0 || sourceGraph.Count <= laneRows.Count)
+                if (_laneNodes.Count == 0 || _sourceGraph.Count <= _laneRows.Count)
                 {
                     return false;
                 }
@@ -120,10 +124,10 @@ namespace GitUI.RevisionGridClasses
 
                 #region Find current node & index
 
-                currentRow.Node = null;
-                for (int curLane = 0; curLane < laneNodes.Count; curLane++)
+                _currentRow.Node = null;
+                for (int curLane = 0; curLane < _laneNodes.Count; curLane++)
                 {
-                    LaneJunctionDetail lane = laneNodes[curLane];
+                    LaneJunctionDetail lane = _laneNodes[curLane];
                     if (lane.Count == 0)
                     {
                         continue;
@@ -131,48 +135,51 @@ namespace GitUI.RevisionGridClasses
 
                     // NOTE: We could also compare with sourceGraph sourceGraph.AddedNodes[sourceGraph.processedNodes],
                     // since it should always be the same value
-                    if (currentRow.Node == null ||
-                        currentRow.Node.Data == null ||
-                        (lane.Current.Data != null && lane.Current.Index < currentRow.Node.Index))
+                    if (_currentRow.Node?.Data == null ||
+                        (lane.Current.Data != null && lane.Current.Index < _currentRow.Node.Index))
                     {
-                        currentRow.Node = lane.Current;
-                        currentRow.NodeLane = curLane;
-                        //break;
+                        _currentRow.Node = lane.Current;
+                        _currentRow.NodeLane = curLane;
+                        ////break;
                     }
                 }
-                if (currentRow.Node == null)
+
+                if (_currentRow.Node == null)
                 {
                     // DEBUG: The check above didn't find anything, but should have
-                    if (Debugger.IsAttached) Debugger.Break();
-                    //Node[] topo = this.sourceGraph.TopoSortedNodes();
+                    if (Debugger.IsAttached)
+                    {
+                        Debugger.Break();
+                    }
+                    ////Node[] topo = this.sourceGraph.TopoSortedNodes();
                     return false;
                 }
 
                 // If this row doesn't contain data, we're to the end of the valid entries.
-                if (currentRow.Node.Data == null)
+                if (_currentRow.Node.Data == null)
                 {
                     return false;
                 }
 
-                sourceGraph.ProcessNode(currentRow.Node);
+                _sourceGraph.ProcessNode(_currentRow.Node);
 
                 #endregion
 
-                // Check for multiple junctions with this node at the top. Remove the 
-                // node from that junction as well. This will happen when there is a branch 
+                // Check for multiple junctions with this node at the top. Remove the
+                // node from that junction as well. This will happen when there is a branch
 
                 #region Check for branches
 
-                currentRow.Clear(currentRow.NodeLane);
-                for (int curLane = 0; curLane < laneNodes.Count; curLane++)
+                _currentRow.Clear(_currentRow.NodeLane);
+                for (int curLane = 0; curLane < _laneNodes.Count; curLane++)
                 {
-                    LaneJunctionDetail lane = laneNodes[curLane];
+                    LaneJunctionDetail lane = _laneNodes[curLane];
                     if (lane.Count == 0)
                     {
                         continue;
                     }
 
-                    if (currentRow.Node != lane.Current)
+                    if (_currentRow.Node != lane.Current)
                     {
                         // We're only interested in columns that have the same node
                         // at the top of the junction as the current row's node
@@ -180,7 +187,7 @@ namespace GitUI.RevisionGridClasses
                     }
 
                     // Remove the item from the lane, since it is being drawn now.
-                    // We need to draw the graph line for this lane. If there are no items 
+                    // We need to draw the graph line for this lane. If there are no items
                     // left in the lane we don't draw it.
                     int intoLane = AdvanceLane(curLane);
                     if (intoLane < curLane)
@@ -204,79 +211,86 @@ namespace GitUI.RevisionGridClasses
 
                 // Look for crossing lanes
                 //   but only when there are not too many lanes taking up too much performance
-                if (currentRow.Count < 10)
-                    for (int lane = 0; lane < currentRow.Count; lane++)
+                if (_currentRow.Count < 10)
+                {
+                    for (int lane = 0; lane < _currentRow.Count; lane++)
                     {
-                        for (int item = 0; item < currentRow.LaneInfoCount(lane); item++)
+                        for (int item = 0; item < _currentRow.LaneInfoCount(lane); item++)
                         {
-                            Graph.LaneInfo laneInfo = currentRow[lane, item];
+                            Graph.LaneInfo laneInfo = _currentRow[lane, item];
                             if (laneInfo.ConnectLane <= lane)
                             {
                                 continue;
                             }
+
                             // Lane is moving to the right, check to see if it intersects
                             // with any lanes moving to the left.
                             for (int otherLane = lane + 1; otherLane <= laneInfo.ConnectLane; otherLane++)
                             {
-                                if (currentRow.LaneInfoCount(otherLane) != 1)
+                                if (_currentRow.LaneInfoCount(otherLane) != 1)
                                 {
                                     continue;
                                 }
-                                Graph.LaneInfo otherLaneInfo = currentRow[otherLane, 0];
+
+                                Graph.LaneInfo otherLaneInfo = _currentRow[otherLane, 0];
                                 if (otherLaneInfo.ConnectLane < otherLane)
                                 {
-                                    currentRow.Swap(otherLaneInfo.ConnectLane, otherLane);
-                                    LaneJunctionDetail temp = laneNodes[otherLane];
-                                    laneNodes[otherLane] = laneNodes[otherLaneInfo.ConnectLane];
-                                    laneNodes[otherLaneInfo.ConnectLane] = temp;
+                                    _currentRow.Swap(otherLaneInfo.ConnectLane, otherLane);
+                                    LaneJunctionDetail temp = _laneNodes[otherLane];
+                                    _laneNodes[otherLane] = _laneNodes[otherLaneInfo.ConnectLane];
+                                    _laneNodes[otherLaneInfo.ConnectLane] = temp;
                                 }
                             }
                         }
                     }
+                }
 
-                //// Keep the merge lanes next to each other
-                //int mergeFromCount = currentRow.LaneInfoCount(currentRow.NodeLane);
-                //if (mergeFromCount > 1)
-                //{
-                //    for (int i = 0; i < mergeFromCount; i++)
-                //    {
-                //        Graph.LaneInfo laneInfo = currentRow[currentRow.NodeLane, i];
-                //        // Check to see if the lane is currently next to us
-                //        if (laneInfo.ConnectLane - currentRow.NodeLane > mergeFromCount)
-                //        {
-                //            // Only move the lane if it isn't already being drawn.
-                //            if (currentRow.LaneInfoCount(laneInfo.ConnectLane) == 0)
-                //            {
-                //                // Remove the row laneInfo.ConnectLane and insert
-                //                // it at currentRow.NodeLane+1. 
-                //                // Then start over searching for others if i != mergeFromCount-1?
-                //                int adjacentLane = currentRow.NodeLane + 1;
-                //                if (adjacentLane >= laneNodes.Count) Debugger.Break();
-                //                currentRow.Expand(adjacentLane);
-                //                currentRow.Replace(laneInfo.ConnectLane + 1, adjacentLane);
-
-                //                LaneJunctionDetail temp = laneNodes[laneInfo.ConnectLane];
-                //                laneNodes.RemoveAt(laneInfo.ConnectLane);
-                //                laneNodes.Insert(adjacentLane, temp);
-                //            }
-                //        }
-                //    }
-                //}
+                // Keep the merge lanes next to each other
+                ////int mergeFromCount = currentRow.LaneInfoCount(currentRow.NodeLane);
+                ////if (mergeFromCount > 1)
+                ////{
+                ////   for (int i = 0; i < mergeFromCount; i++)
+                ////   {
+                ////       Graph.LaneInfo laneInfo = currentRow[currentRow.NodeLane, i];
+                ////       // Check to see if the lane is currently next to us
+                ////       if (laneInfo.ConnectLane - currentRow.NodeLane > mergeFromCount)
+                ////       {
+                ////           // Only move the lane if it isn't already being drawn.
+                ////           if (currentRow.LaneInfoCount(laneInfo.ConnectLane) == 0)
+                ////           {
+                ////               // Remove the row laneInfo.ConnectLane and insert
+                ////               // it at currentRow.NodeLane+1.
+                ////               // Then start over searching for others if i != mergeFromCount-1?
+                ////               int adjacentLane = currentRow.NodeLane + 1;
+                ////               if (adjacentLane >= laneNodes.Count) Debugger.Break();
+                ////               currentRow.Expand(adjacentLane);
+                ////               currentRow.Replace(laneInfo.ConnectLane + 1, adjacentLane);
+                ////
+                ////               LaneJunctionDetail temp = laneNodes[laneInfo.ConnectLane];
+                ////               laneNodes.RemoveAt(laneInfo.ConnectLane);
+                ////               laneNodes.Insert(adjacentLane, temp);
+                ////           }
+                ////       }
+                ////   }
+                ////}
 
                 #endregion
 
-                if (currentRow.Node != null)
+                if (_currentRow.Node != null)
                 {
-                    Graph.ILaneRow row = currentRow.Advance();
+                    Graph.ILaneRow row = _currentRow.Advance();
 
                     // This means there is a node that got put in the graph twice...
                     if (row.Node.InLane != int.MaxValue)
                     {
-                        if (Debugger.IsAttached) Debugger.Break();
+                        if (Debugger.IsAttached)
+                        {
+                            Debugger.Break();
+                        }
                     }
 
-                    row.Node.InLane = laneRows.Count;
-                    laneRows.Add(row);
+                    row.Node.InLane = _laneRows.Count;
+                    _laneRows.Add(row);
                     return true;
                 }
 
@@ -291,7 +305,7 @@ namespace GitUI.RevisionGridClasses
             /// <returns>True if there will still be nodes in this lane</returns>
             private int AdvanceLane(int curLane)
             {
-                LaneJunctionDetail lane = laneNodes[curLane];
+                LaneJunctionDetail lane = _laneNodes[curLane];
                 int minLane = curLane;
 
                 // Advance the lane
@@ -301,8 +315,8 @@ namespace GitUI.RevisionGridClasses
                 if (lane.Count == 0 && lane.Junction == null)
                 {
                     // Handle a single node branch.
-                    currentRow.Collapse(curLane);
-                    laneNodes.RemoveAt(curLane);
+                    _currentRow.Collapse(curLane);
+                    _laneNodes.RemoveAt(curLane);
                 }
                 else if (lane.Count == 0)
                 {
@@ -324,9 +338,9 @@ namespace GitUI.RevisionGridClasses
                         // add it to the laneNodes.
                         if (addedLane.Count == 1)
                         {
-                            for (int i = 0; i < laneNodes.Count; i++)
+                            for (int i = 0; i < _laneNodes.Count; i++)
                             {
-                                if (laneNodes[i].Current == addedLane.Current)
+                                if (_laneNodes[i].Current == addedLane.Current)
                                 {
                                     // We still advance the lane so it gets
                                     // marked as processed.
@@ -344,39 +358,43 @@ namespace GitUI.RevisionGridClasses
                             if (lane.Count == 0)
                             {
                                 lane = addedLane;
-                                laneNodes[curLane] = lane;
+                                _laneNodes[curLane] = lane;
                                 addedLaneLane = curLane;
                             }
                             else
                             {
                                 addedLaneLane = curLane + 1;
-                                laneNodes.Insert(addedLaneLane, addedLane);
-                                currentRow.Expand(addedLaneLane);
+                                _laneNodes.Insert(addedLaneLane, addedLane);
+                                _currentRow.Expand(addedLaneLane);
                             }
                         }
 
-                        currentRow.Add(curLane, new Graph.LaneInfo(addedLaneLane, parent));
+                        _currentRow.Add(curLane, new Graph.LaneInfo(addedLaneLane, parent));
                     }
 
                     // If the lane count after processing is still 0
                     // this is a root node of the graph
                     if (lane.Count == 0)
                     {
-                        currentRow.Collapse(curLane);
-                        laneNodes.RemoveAt(curLane);
+                        _currentRow.Collapse(curLane);
+                        _laneNodes.RemoveAt(curLane);
                     }
                 }
                 else if (lane.Count == 1)
                 {
                     // If any other lanes have this node on top, merge them together
-                    for (int i = 0; i < laneNodes.Count; i++)
+                    for (int i = 0; i < _laneNodes.Count; i++)
                     {
-                        if (i == curLane || curLane >= laneNodes.Count) continue;
-                        if (laneNodes[i].Current == laneNodes[curLane].Current)
+                        if (i == curLane || curLane >= _laneNodes.Count)
+                        {
+                            continue;
+                        }
+
+                        if (_laneNodes[i].Current == _laneNodes[curLane].Current)
                         {
                             int left;
                             int right;
-                            Junction junction = laneNodes[curLane].Junction;
+                            Junction junction = _laneNodes[curLane].Junction;
                             if (i > curLane)
                             {
                                 left = curLane;
@@ -388,12 +406,13 @@ namespace GitUI.RevisionGridClasses
                                 right = curLane;
                                 curLane = i;
                             }
-                            currentRow.Replace(right, left);
-                            currentRow.Collapse(right);
-                            laneNodes[right].Clear();
-                            laneNodes.RemoveAt(right);
 
-                            currentRow.Add(currentRow.NodeLane, new Graph.LaneInfo(left, junction));
+                            _currentRow.Replace(right, left);
+                            _currentRow.Collapse(right);
+                            _laneNodes[right].Clear();
+                            _laneNodes.RemoveAt(right);
+
+                            _currentRow.Add(_currentRow.NodeLane, new Graph.LaneInfo(left, junction));
                             minLane = Math.Min(minLane, left);
                         }
                     }
@@ -402,12 +421,13 @@ namespace GitUI.RevisionGridClasses
                     // if it got merged above.
                     if (!lane.IsClear)
                     {
-                        currentRow.Add(currentRow.NodeLane, new Graph.LaneInfo(curLane, lane.Junction));
+                        _currentRow.Add(_currentRow.NodeLane, new Graph.LaneInfo(curLane, lane.Junction));
                     }
                 }
-                else // lane.Count > 1
+                else
                 {
-                    currentRow.Add(currentRow.NodeLane, new Graph.LaneInfo(curLane, lane.Junction));
+                    // lane.Count > 1
+                    _currentRow.Add(_currentRow.NodeLane, new Graph.LaneInfo(curLane, lane.Junction));
                 }
 
                 return curLane;
@@ -417,9 +437,9 @@ namespace GitUI.RevisionGridClasses
 
             private sealed class ActiveLaneRow : Graph.ILaneRow
             {
-                private Edges edges;
+                private Edges _edges;
 
-                public Edge[] EdgeList => edges.EdgeList.ToArray();
+                public Edge[] EdgeList => _edges.EdgeList.ToArray();
 
                 #region LaneRow Members
 
@@ -427,77 +447,77 @@ namespace GitUI.RevisionGridClasses
 
                 public Node Node { get; set; }
 
-                public int Count => edges.CountCurrent();
+                public int Count => _edges.CountCurrent();
 
                 public int LaneInfoCount(int lane)
                 {
-                    return edges.CountCurrent(lane);
+                    return _edges.CountCurrent(lane);
                 }
 
-                public Graph.LaneInfo this[int col, int row] => edges.Current(col, row);
+                public Graph.LaneInfo this[int col, int row] => _edges.Current(col, row);
 
                 #endregion
 
                 public void Add(int lane, Graph.LaneInfo data)
                 {
-                    edges.Add(lane, data);
+                    _edges.Add(lane, data);
                 }
 
                 public void Clear()
                 {
-                    edges = new Edges();
+                    _edges = new Edges();
                 }
 
                 public void Clear(int lane)
                 {
-                    edges.Clear(lane);
+                    _edges.Clear(lane);
                 }
 
                 public void Collapse(int col)
                 {
-                    int edgeCount = Math.Max(edges.CountCurrent(), edges.CountNext());
+                    int edgeCount = Math.Max(_edges.CountCurrent(), _edges.CountNext());
                     for (int i = col; i < edgeCount; i++)
                     {
-                        while (edges.CountNext(i) > 0)
+                        while (_edges.CountNext(i) > 0)
                         {
-                            Graph.LaneInfo info = edges.RemoveNext(i, 0, out var start, out _);
+                            Graph.LaneInfo info = _edges.RemoveNext(i, 0, out var start, out _);
                             info.ConnectLane--;
-                            edges.Add(start, info);
+                            _edges.Add(start, info);
                         }
                     }
                 }
 
                 public void Expand(int col)
                 {
-                    int edgeCount = Math.Max(edges.CountCurrent(), edges.CountNext());
+                    int edgeCount = Math.Max(_edges.CountCurrent(), _edges.CountNext());
                     for (int i = edgeCount - 1; i >= col; --i)
                     {
-                        while (edges.CountNext(i) > 0)
+                        while (_edges.CountNext(i) > 0)
                         {
-                            Graph.LaneInfo info = edges.RemoveNext(i, 0, out var start, out _);
+                            Graph.LaneInfo info = _edges.RemoveNext(i, 0, out var start, out _);
                             info.ConnectLane++;
-                            edges.Add(start, info);
+                            _edges.Add(start, info);
                         }
                     }
                 }
 
-                public void Replace(int aOld, int aNew)
+                public void Replace(int old, int @new)
                 {
-                    for (int j = edges.CountNext(aOld) - 1; j >= 0; --j)
+                    for (int j = _edges.CountNext(old) - 1; j >= 0; --j)
                     {
-                        Graph.LaneInfo info = edges.RemoveNext(aOld, j, out var start, out _);
-                        info.ConnectLane = aNew;
-                        edges.Add(start, info);
+                        Graph.LaneInfo info = _edges.RemoveNext(old, j, out var start, out _);
+                        info.ConnectLane = @new;
+                        _edges.Add(start, info);
                     }
                 }
 
-                public void Swap(int aOld, int aNew)
+                public void Swap(int old, int @new)
                 {
                     // TODO: There is a more efficient way to do this
-                    int temp = edges.CountNext();
-                    Replace(aOld, temp);
-                    Replace(aNew, aOld);
-                    Replace(temp, aNew);
+                    int temp = _edges.CountNext();
+                    Replace(old, temp);
+                    Replace(@new, old);
+                    Replace(temp, @new);
                 }
 
                 public Graph.ILaneRow Advance()
@@ -505,21 +525,23 @@ namespace GitUI.RevisionGridClasses
                     var newLaneRow = new SavedLaneRow(this);
 
                     var newEdges = new Edges();
-                    for (int i = 0; i < edges.CountNext(); i++)
+                    for (int i = 0; i < _edges.CountNext(); i++)
                     {
-                        int edgeCount = edges.CountNext(i);
+                        int edgeCount = _edges.CountNext(i);
                         if (edgeCount > 0)
                         {
-                            Graph.LaneInfo info = edges.Next(i, 0).Clone();
+                            Graph.LaneInfo info = _edges.Next(i, 0).Clone();
                             for (int j = 1; j < edgeCount; j++)
                             {
-                                Graph.LaneInfo edgeInfo = edges.Next(i, j);
+                                Graph.LaneInfo edgeInfo = _edges.Next(i, j);
                                 info.UnionWith(edgeInfo);
                             }
+
                             newEdges.Add(i, info);
                         }
                     }
-                    edges = newEdges;
+
+                    _edges = newEdges;
 
                     return newLaneRow;
                 }
@@ -530,12 +552,19 @@ namespace GitUI.RevisionGridClasses
                     for (int i = 0; i < Count; i++)
                     {
                         if (i == NodeLane)
+                        {
                             s += "*";
+                        }
+
                         s += "{";
                         for (int j = 0; j < LaneInfoCount(i); j++)
+                        {
                             s += " " + this[i, j];
+                        }
+
                         s += " }, ";
                     }
+
                     s += Node;
                     return s;
                 }
@@ -544,12 +573,12 @@ namespace GitUI.RevisionGridClasses
 
                 private sealed class Edges
                 {
-                    private readonly List<int> countEnd = new List<int>();
-                    private readonly List<int> countStart = new List<int>();
+                    private readonly List<int> _countEnd = new List<int>();
+                    private readonly List<int> _countStart = new List<int>();
 
-                    #pragma warning disable 0649
-                    private readonly Graph.LaneInfo emptyItem;
-                    #pragma warning restore 0649
+#pragma warning disable 0649
+                    private readonly Graph.LaneInfo _emptyItem;
+#pragma warning restore 0649
 
                     public List<Edge> EdgeList { get; } = new List<Edge>();
 
@@ -564,10 +593,12 @@ namespace GitUI.RevisionGridClasses
                                 {
                                     return e.Data;
                                 }
+
                                 found++;
                             }
                         }
-                        return emptyItem;
+
+                        return _emptyItem;
                     }
 
                     public Graph.LaneInfo Next(int lane, int item)
@@ -581,10 +612,12 @@ namespace GitUI.RevisionGridClasses
                                 {
                                     return e.Data;
                                 }
+
                                 found++;
                             }
                         }
-                        return emptyItem;
+
+                        return _emptyItem;
                     }
 
                     public Graph.LaneInfo RemoveNext(int lane, int item, out int start, out int end)
@@ -599,18 +632,19 @@ namespace GitUI.RevisionGridClasses
                                     Graph.LaneInfo data = EdgeList[i].Data;
                                     start = EdgeList[i].Start;
                                     end = EdgeList[i].End;
-                                    countStart[start]--;
-                                    countEnd[end]--;
+                                    _countStart[start]--;
+                                    _countEnd[end]--;
                                     EdgeList.RemoveAt(i);
                                     return data;
                                 }
+
                                 found++;
                             }
                         }
 
                         start = -1;
                         end = -1;
-                        return emptyItem;
+                        return _emptyItem;
                     }
 
                     public void Add(int from, Graph.LaneInfo data)
@@ -618,16 +652,18 @@ namespace GitUI.RevisionGridClasses
                         var e = new Edge(data, from);
                         EdgeList.Add(e);
 
-                        while (countStart.Count <= e.Start)
+                        while (_countStart.Count <= e.Start)
                         {
-                            countStart.Add(0);
+                            _countStart.Add(0);
                         }
-                        countStart[e.Start]++;
-                        while (countEnd.Count <= e.End)
+
+                        _countStart[e.Start]++;
+                        while (_countEnd.Count <= e.End)
                         {
-                            countEnd.Add(0);
+                            _countEnd.Add(0);
                         }
-                        countEnd[e.End]++;
+
+                        _countEnd[e.End]++;
                     }
 
                     public void Clear(int lane)
@@ -638,8 +674,8 @@ namespace GitUI.RevisionGridClasses
                             if (start == lane)
                             {
                                 int end = EdgeList[i].End;
-                                countStart[start]--;
-                                countEnd[end]--;
+                                _countStart[start]--;
+                                _countEnd[end]--;
                                 EdgeList.RemoveAt(i);
                             }
                         }
@@ -647,11 +683,11 @@ namespace GitUI.RevisionGridClasses
 
                     public int CountCurrent()
                     {
-                        int count = countStart.Count;
-                        while (count > 0 && countStart[count - 1] == 0)
+                        int count = _countStart.Count;
+                        while (count > 0 && _countStart[count - 1] == 0)
                         {
                             count--;
-                            countStart.RemoveAt(count);
+                            _countStart.RemoveAt(count);
                         }
 
                         return count;
@@ -664,11 +700,11 @@ namespace GitUI.RevisionGridClasses
 
                     public int CountNext()
                     {
-                        int count = countEnd.Count;
-                        while (count > 0 && countEnd[count - 1] == 0)
+                        int count = _countEnd.Count;
+                        while (count > 0 && _countEnd[count - 1] == 0)
                         {
                             count--;
-                            countEnd.RemoveAt(count);
+                            _countEnd.RemoveAt(count);
                         }
 
                         return count;
@@ -677,19 +713,6 @@ namespace GitUI.RevisionGridClasses
                     public int CountNext(int lane)
                     {
                         return EdgeList.Count(e => e.End == lane);
-                    }
-
-                    public bool IsActive(int lane)
-                    {
-                        if (lane >= CountNext())
-                        {
-                            return false;
-                        }
-                        return (countEnd[lane] > 0);
-                    }
-
-                    private void Remove(int start, int end)
-                    {
                     }
                 }
 
@@ -703,7 +726,7 @@ namespace GitUI.RevisionGridClasses
             private struct Edge
             {
                 public readonly int Start;
-                public Graph.LaneInfo Data;
+                public readonly Graph.LaneInfo Data;
 
                 public Edge(Graph.LaneInfo data, int start)
                 {
@@ -725,12 +748,12 @@ namespace GitUI.RevisionGridClasses
 
             private sealed class LaneEnumerator : IEnumerator<Graph.ILaneRow>
             {
-                private readonly Lanes lanes;
-                private int index;
+                private readonly Lanes _lanes;
+                private int _index;
 
-                public LaneEnumerator(Lanes aLanes)
+                public LaneEnumerator(Lanes lanes)
                 {
-                    lanes = aLanes;
+                    _lanes = lanes;
                     Reset();
                 }
 
@@ -738,7 +761,7 @@ namespace GitUI.RevisionGridClasses
 
                 public void Reset()
                 {
-                    index = 0;
+                    _index = 0;
                 }
 
                 void IDisposable.Dispose()
@@ -747,12 +770,12 @@ namespace GitUI.RevisionGridClasses
 
                 object IEnumerator.Current => Current;
 
-                public Graph.ILaneRow Current => lanes[index];
+                public Graph.ILaneRow Current => _lanes[_index];
 
                 public bool MoveNext()
                 {
-                    index++;
-                    return index < lanes.laneRows.Count;
+                    _index++;
+                    return _index < _lanes._laneRows.Count;
                 }
 
                 #endregion
@@ -764,54 +787,55 @@ namespace GitUI.RevisionGridClasses
 
             private sealed class LaneJunctionDetail
             {
-                private int index;
-                private Node node;
-
-                public LaneJunctionDetail()
-                {
-                }
+                private int _index;
+                private Node _node;
 
                 public LaneJunctionDetail(Node n)
                 {
-                    node = n;
+                    _node = n;
                 }
 
                 public LaneJunctionDetail(Junction j)
                 {
                     Junction = j;
                     Junction.CurrentState = Junction.State.Processing;
-                    index = 0;
+                    _index = 0;
                 }
 
                 public int Count
                 {
                     get
                     {
-                        if (node != null)
-                            return 1 - index;
-                        return Junction?.NodesCount - index ?? 0;
+                        if (_node != null)
+                        {
+                            return 1 - _index;
+                        }
+
+                        return Junction?.NodesCount - _index ?? 0;
                     }
                 }
 
                 public Junction Junction { get; private set; }
 
-                public Node Current => node ?? (index < Junction.NodesCount ? Junction[index] : null);
+                public Node Current => _node ?? (_index < Junction.NodesCount ? Junction[_index] : null);
 
-                public bool IsClear => (Junction == null && node == null);
+                public bool IsClear => Junction == null && _node == null;
 
                 public void Clear()
                 {
-                    node = null;
+                    _node = null;
                     Junction = null;
-                    index = 0;
+                    _index = 0;
                 }
 
                 public void Next()
                 {
-                    index++;
+                    _index++;
 
-                    if (Junction != null && index >= Junction.NodesCount)
+                    if (Junction != null && _index >= Junction.NodesCount)
+                    {
                         Junction.CurrentState = Junction.State.Processed;
+                    }
                 }
 
                 public override string ToString()
@@ -819,14 +843,16 @@ namespace GitUI.RevisionGridClasses
                     if (Junction != null)
                     {
                         string nodeName = "(null)";
-                        if (index < Junction.NodesCount)
+                        if (_index < Junction.NodesCount)
                         {
-                            nodeName = Junction[index].ToString();
+                            nodeName = Junction[_index].ToString();
                         }
-                        return index + "/" + Junction.NodesCount + "~" + nodeName + "~" + Junction;
+
+                        return _index + "/" + Junction.NodesCount + "~" + nodeName + "~" + Junction;
                     }
-                    return node != null
-                        ? index + "/n~" + node + "~(null)"
+
+                    return _node != null
+                        ? _index + "/n~" + _node + "~(null)"
                         : "X/X~(null)~(null)";
                 }
             }
@@ -837,25 +863,25 @@ namespace GitUI.RevisionGridClasses
 
             private sealed class SavedLaneRow : Graph.ILaneRow
             {
-                private readonly Edge[] edges;
+                private readonly Edge[] _edges;
 
-                public SavedLaneRow(Node aNode)
+                public SavedLaneRow(Node node)
                 {
-                    Node = aNode;
+                    Node = node;
                     NodeLane = -1;
-                    edges = null;
+                    _edges = null;
                 }
 
                 public SavedLaneRow(ActiveLaneRow activeRow)
                 {
                     NodeLane = activeRow.NodeLane;
                     Node = activeRow.Node;
-                    edges = activeRow.EdgeList;
+                    _edges = activeRow.EdgeList;
                 }
 
                 #region LaneRow Members
 
-                public int NodeLane { get; } = -1;
+                public int NodeLane { get; }
 
                 public Node Node { get; }
 
@@ -864,7 +890,7 @@ namespace GitUI.RevisionGridClasses
                     get
                     {
                         int count = 0;
-                        foreach (Edge edge in edges)
+                        foreach (Edge edge in _edges)
                         {
                             if (edge.Start == col)
                             {
@@ -872,9 +898,11 @@ namespace GitUI.RevisionGridClasses
                                 {
                                     return edge.Data;
                                 }
+
                                 count++;
                             }
                         }
+
                         throw new Exception("Bad lane");
                     }
                 }
@@ -883,26 +911,27 @@ namespace GitUI.RevisionGridClasses
                 {
                     get
                     {
-                        if (edges == null)
+                        if (_edges == null)
                         {
                             return 0;
                         }
 
                         int count = -1;
-                        foreach (Edge edge in edges)
+                        foreach (Edge edge in _edges)
                         {
                             if (edge.Start > count)
                             {
                                 count = edge.Start;
                             }
                         }
+
                         return count + 1;
                     }
                 }
 
                 public int LaneInfoCount(int lane)
                 {
-                    return edges.Count(edge => edge.Start == lane);
+                    return _edges.Count(edge => edge.Start == lane);
                 }
 
                 #endregion
@@ -913,12 +942,19 @@ namespace GitUI.RevisionGridClasses
                     for (int i = 0; i < Count; i++)
                     {
                         if (i == NodeLane)
+                        {
                             s += "*";
+                        }
+
                         s += "{";
                         for (int j = 0; j < LaneInfoCount(i); j++)
+                        {
                             s += " " + this[i, j];
+                        }
+
                         s += " }, ";
                     }
+
                     s += Node;
                     return s;
                 }

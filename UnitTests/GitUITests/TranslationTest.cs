@@ -23,24 +23,26 @@ namespace GitUITests
 
             var testTranslation = new Dictionary<string, TranslationFile>();
 
-            foreach (var types in translatableTypes)
+            foreach (var (key, types) in translatableTypes)
             {
                 var tranlation = new TranslationFile();
-                foreach (Type type in types.Value)
+                foreach (Type type in types)
                 {
                     try
                     {
-                        ITranslate obj = TranslationUtl.CreateInstanceOfClass(type) as ITranslate;
+                        var obj = (ITranslate)TranslationUtl.CreateInstanceOfClass(type);
+
                         obj.AddTranslationItems(tranlation);
                         obj.TranslateItems(tranlation);
                     }
-                    catch (System.Exception)
+                    catch (Exception)
                     {
                         Trace.WriteLine("Problem with class: " + type.FullName);
                         throw;
                     }
                 }
-                testTranslation[types.Key] = tranlation;
+
+                testTranslation[key] = tranlation;
             }
         }
     }

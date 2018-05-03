@@ -18,7 +18,7 @@ namespace GitCommands.Utils
                     return false;
             }
         }
-        
+
         public static bool IsWindowsVistaOrGreater()
         {
             return Environment.OSVersion.Platform == PlatformID.Win32NT
@@ -45,35 +45,27 @@ namespace GitCommands.Utils
 
         public static bool RunningOnUnix()
         {
-            switch (Environment.OSVersion.Platform)
-            {
-                case PlatformID.Unix:
-                    return true;
-                default:
-                    return false;
-            }
+            return Environment.OSVersion.Platform == PlatformID.Unix;
         }
 
         public static bool RunningOnMacOSX()
         {
-            switch (Environment.OSVersion.Platform)
-            {
-                case PlatformID.MacOSX:
-                    return true;
-                default:
-                    return false;
-            }
+            return Environment.OSVersion.Platform == PlatformID.MacOSX;
         }
 
         public static bool IsNet4FullOrHigher()
         {
-            if (System.Environment.Version.Major > 4)
-                return true;
-
-            if (System.Environment.Version.Major == 4)
+            if (Environment.Version.Major > 4)
             {
-                if (System.Environment.Version.Minor >= 5)
+                return true;
+            }
+
+            if (Environment.Version.Major == 4)
+            {
+                if (Environment.Version.Minor >= 5)
+                {
                     return true;
+                }
 
                 try
                 {
@@ -83,7 +75,7 @@ namespace GitCommands.Utils
                         using (registryKey)
                         {
                             var v = registryKey.GetValue("Install");
-                            return v != null && v.ToString().Equals("1");
+                            return v != null && v.ToString() == "1";
                         }
                     }
                 }

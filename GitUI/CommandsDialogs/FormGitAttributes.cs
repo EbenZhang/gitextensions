@@ -9,7 +9,7 @@ namespace GitUI.CommandsDialogs
 {
     public partial class FormGitAttributes : GitModuleForm
     {
-        private readonly TranslationString noWorkingDir = 
+        private readonly TranslationString _noWorkingDir =
             new TranslationString(".gitattributes is only supported when there is a working directory.");
         private readonly TranslationString _noWorkingDirCaption =
             new TranslationString("No working directory");
@@ -27,8 +27,8 @@ namespace GitUI.CommandsDialogs
         public string GitAttributesFile = string.Empty;
         private readonly IFullPathResolver _fullPathResolver;
 
-        public FormGitAttributes(GitUICommands aCommands)
-            : base(aCommands)
+        public FormGitAttributes(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
@@ -49,7 +49,7 @@ namespace GitUI.CommandsDialogs
                 var path = _fullPathResolver.Resolve(".gitattributes");
                 if (File.Exists(path))
                 {
-                    _NO_TRANSLATE_GitAttributesText.ViewFile(path);
+                    _NO_TRANSLATE_GitAttributesText.ViewFileAsync(path);
                 }
             }
             catch (Exception ex)
@@ -73,10 +73,13 @@ namespace GitUI.CommandsDialogs
                         _fullPathResolver.Resolve(".gitattributes"),
                         x =>
                         {
-                            this.GitAttributesFile = _NO_TRANSLATE_GitAttributesText.GetText();
-                            if (!this.GitAttributesFile.EndsWith(Environment.NewLine))
-                                this.GitAttributesFile += Environment.NewLine;
-                            File.WriteAllBytes(x, GitModule.SystemEncoding.GetBytes(this.GitAttributesFile));
+                            GitAttributesFile = _NO_TRANSLATE_GitAttributesText.GetText();
+                            if (!GitAttributesFile.EndsWith(Environment.NewLine))
+                            {
+                                GitAttributesFile += Environment.NewLine;
+                            }
+
+                            File.WriteAllBytes(x, GitModule.SystemEncoding.GetBytes(GitAttributesFile));
                         });
 
                 return true;
@@ -99,26 +102,35 @@ namespace GitUI.CommandsDialogs
                 {
                     case DialogResult.Yes:
                         if (SaveFile())
+                        {
                             needToClose = true;
+                        }
+
                         break;
                     case DialogResult.No:
                         needToClose = true;
                         break;
-                    default:
-                        break;
                 }
             }
             else
+            {
                 needToClose = true;
+            }
 
             if (!needToClose)
+            {
                 e.Cancel = true;
+            }
         }
 
         private void FormGitAttributesLoad(object sender, EventArgs e)
         {
-            if (!Module.IsBareRepository()) return;
-            MessageBox.Show(this, noWorkingDir.Text, _noWorkingDirCaption.Text);
+            if (!Module.IsBareRepository())
+            {
+                return;
+            }
+
+            MessageBox.Show(this, _noWorkingDir.Text, _noWorkingDirCaption.Text);
             Close();
         }
 
@@ -129,8 +141,7 @@ namespace GitUI.CommandsDialogs
 
         private void GitAttributesFileLoaded(object sender, EventArgs e)
         {
-            GitAttributesFile = _NO_TRANSLATE_GitAttributesText.GetText();           
+            GitAttributesFile = _NO_TRANSLATE_GitAttributesText.GetText();
         }
     }
 }
-

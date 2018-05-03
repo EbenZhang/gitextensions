@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using GitCommands.Settings;
@@ -7,56 +6,52 @@ using GitUIPluginInterfaces;
 
 namespace GitUI.CommandsDialogs.SettingsDialog
 {
-    public abstract partial class AutoLayoutSettingsPage : RepoDistSettingsPage, SettingsLayout
+    public abstract partial class AutoLayoutSettingsPage : RepoDistSettingsPage, ISettingsLayout
     {
-        internal readonly IList<string> _autoGenKeywords = new List<string>();
-        private SettingsLayout settingsLayout;
-
-        protected override string GetCommaSeparatedKeywordList()
-        {
-            return string.Join(",", _autoGenKeywords);
-        }
+        private ISettingsLayout _settingsLayout;
 
         protected override ISettingsSource GetCurrentSettings()
         {
             return CurrentSettings;
         }
 
-        protected virtual SettingsLayout GetSettingsLayout()
+        protected virtual ISettingsLayout GetSettingsLayout()
         {
-            if (settingsLayout == null)
+            if (_settingsLayout == null)
             {
-                settingsLayout = CreateSettingsLayout();
-                if (settingsLayout.GetControl().Parent == null)
+                _settingsLayout = CreateSettingsLayout();
+                if (_settingsLayout.GetControl().Parent == null)
                 {
-                    this.Controls.Add(settingsLayout.GetControl());
+                    Controls.Add(_settingsLayout.GetControl());
                 }
             }
 
-            return settingsLayout;
+            return _settingsLayout;
         }
 
-        protected virtual SettingsLayout CreateSettingsLayout()
+        protected virtual ISettingsLayout CreateSettingsLayout()
         {
             return new TableSettingsLayout(this, CreateDefaultTableLayoutPanel());
         }
 
         public static TableLayoutPanel CreateDefaultTableLayoutPanel()
         {
-            TableLayoutPanel layout = new TableLayoutPanel();
-
-            layout.AutoSize = true;
-            layout.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            layout.ColumnCount = 3;
-            layout.ColumnStyles.Add(new ColumnStyle());
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            layout.ColumnStyles.Add(new ColumnStyle());
-            layout.Dock = DockStyle.Top;
-            layout.Location = new Point(0, 0);
-            layout.RowCount = 0;
-            layout.Size = new Size(951, 518);
-
-            return layout;
+            return new TableLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 3,
+                ColumnStyles =
+                {
+                    new ColumnStyle(),
+                    new ColumnStyle(SizeType.Percent, 100F),
+                    new ColumnStyle()
+                },
+                Dock = DockStyle.Top,
+                Location = new Point(0, 0),
+                RowCount = 0,
+                Size = new Size(951, 518)
+            };
         }
 
         public void AddSettingControl(ISettingControlBinding controlBinding)
@@ -69,33 +64,27 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             throw new NotImplementedException();
         }
 
-        public void AddKeyword(string aKeyword)
+        public void AddSettingsLayout(ISettingsLayout layout)
         {
-            _autoGenKeywords.Add(aKeyword);
-        }
-
-        public void AddSettingsLayout(SettingsLayout aLayout)
-        {
-            GetSettingsLayout().AddSettingsLayout(aLayout);
+            GetSettingsLayout().AddSettingsLayout(layout);
         }
     }
 
-    public interface SettingsLayout
+    public interface ISettingsLayout
     {
         void AddSettingControl(ISettingControlBinding controlBinding);
-        void AddSettingsLayout(SettingsLayout aLayout);
+        void AddSettingsLayout(ISettingsLayout layout);
         Control GetControl();
-        void AddKeyword(string aKeyword);
         void AddControlBinding(ISettingControlBinding controlBinding);
     }
 
-    public abstract class BaseSettingsLayout : SettingsLayout
+    public abstract class BaseSettingsLayout : ISettingsLayout
     {
-        public readonly SettingsLayout ParentLayout;
+        public readonly ISettingsLayout ParentLayout;
 
-        public BaseSettingsLayout(SettingsLayout aParentLayout)
+        protected BaseSettingsLayout(ISettingsLayout parentLayout)
         {
-            ParentLayout = aParentLayout;
+            ParentLayout = parentLayout;
         }
 
         public void AddControlBinding(ISettingControlBinding aControlBinding)
@@ -103,64 +92,58 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             ParentLayout.AddControlBinding(aControlBinding);
         }
 
-        public void AddKeyword(string aKeyword)
-        {
-            ParentLayout.AddKeyword(aKeyword);
-        }
-
         public void AddSettingControl(ISettingControlBinding aControlBinding)
         {
-            AddKeyword(aControlBinding.GetSetting().Caption);
             AddControlBinding(aControlBinding);
             AddSettingControlImpl(aControlBinding);
         }
 
         public abstract void AddSettingControlImpl(ISettingControlBinding controlBinding);
-        public abstract void AddSettingsLayout(SettingsLayout aLayout);
+        public abstract void AddSettingsLayout(ISettingsLayout layout);
         public abstract Control GetControl();
     }
 
     public class TableSettingsLayout : BaseSettingsLayout
     {
-        protected TableLayoutPanel Panel;
-        private int currentRow = -1;
+        protected TableLayoutPanel Panel { get; }
+        private int _currentRow = -1;
 
-        public TableSettingsLayout(SettingsLayout aParentLayout, TableLayoutPanel aPanel)
-            : base(aParentLayout)
+        public TableSettingsLayout(ISettingsLayout parentLayout, TableLayoutPanel panel)
+            : base(parentLayout)
         {
-            Panel = aPanel;
+            Panel = panel;
         }
 
         public override void AddSettingControlImpl(ISettingControlBinding controlBinding)
         {
-            currentRow++;
+            _currentRow++;
             var tableLayout = Panel;
 
             var caption = controlBinding.Caption();
 
             if (caption != null)
             {
-                var label =
-                    new Label
-                    {
-                        Text = controlBinding.Caption(),
-                        AutoSize = true
-                    };
+                var label = new Label
+                {
+                    Text = controlBinding.Caption(),
+                    AutoSize = true,
+                    Anchor = AnchorStyles.Left
+                };
 
-                label.Anchor = AnchorStyles.Left;
-                tableLayout.Controls.Add(label, 0, currentRow);
+                tableLayout.Controls.Add(label, 0, _currentRow);
             }
+
             var control = controlBinding.GetControl();
             control.Dock = DockStyle.Fill;
-            tableLayout.Controls.Add(control, 1, currentRow);
+            tableLayout.Controls.Add(control, 1, _currentRow);
         }
 
-        public override void AddSettingsLayout(SettingsLayout aLayout)
+        public override void AddSettingsLayout(ISettingsLayout layout)
         {
-            currentRow++;
-            var control = aLayout.GetControl();
+            _currentRow++;
+            var control = layout.GetControl();
             control.Dock = DockStyle.Fill;
-            Panel.Controls.Add(control, 1, currentRow);
+            Panel.Controls.Add(control, 1, _currentRow);
         }
 
         public override Control GetControl()
@@ -168,63 +151,4 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return Panel;
         }
     }
-
-    public class GroupBoxSettingsLayout : TableSettingsLayout
-    {
-        protected GroupBox groupBox;
-
-        public GroupBoxSettingsLayout(SettingsLayout aParentLayout, String aGroupBoxCaption)
-            : base(aParentLayout, AutoLayoutSettingsPage.CreateDefaultTableLayoutPanel())
-        {
-            CreateGroupBox(aGroupBoxCaption);
-        }
-
-        private void CreateGroupBox(String aGroupBoxCaption)
-        {
-            var gbox = new GroupBox();
-            groupBox = gbox;
-            groupBox.Text = aGroupBoxCaption;
-            groupBox.AutoSize = true;
-            groupBox.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            groupBox.Controls.Add(Panel);
-        }
-
-        public override Control GetControl()
-        {
-            return groupBox;
-        }
-    }
-
-    public static class SettingsLayoutExt
-    {
-        public static void AddSetting(this SettingsLayout aLayout, ISetting aSetting)
-        {
-            aLayout.AddSettingControl(aSetting.CreateControlBinding());
-        }
-
-        public static void AddBoolSetting(this SettingsLayout aLayout, string aCaption, BoolNullableSetting aSetting)
-        {
-            aLayout.AddSetting(new BoolNullableISettingAdapter(aCaption, aSetting));
-        }
-
-        public static void AddStringSetting(this SettingsLayout aLayout, string aCaption, GitCommands.Settings.StringSetting aSetting)
-        {
-            aLayout.AddSetting(new StringISettingAdapter(aCaption, aSetting));
-        }
-    }
-
-    public class BoolNullableISettingAdapter : GitUIPluginInterfaces.BoolSetting
-    {
-        public BoolNullableISettingAdapter(string aCaption, BoolNullableSetting setting)
-            : base(setting.FullPath, aCaption, setting.DefaultValue.Value)
-        { }
-    }
-
-    public class StringISettingAdapter : GitUIPluginInterfaces.StringSetting
-    {
-        public StringISettingAdapter(string aCaption, GitCommands.Settings.StringSetting setting)
-            : base(setting.FullPath, aCaption, setting.DefaultValue)
-        { }
-    }
-
 }

@@ -16,10 +16,12 @@ namespace GitUITests.UserControls
             string cmd = "\"C:\\Program Files\\Git\\bin\\git.exe\" rebase  -i --autosquash --autostash \"branch_foo\"";
             string outputData = "output data";
             string received = string.Empty;
-            Action<TextEventArgs> FireDataReceived = (e) =>
+
+            void FireDataReceived(TextEventArgs e)
             {
                 received += e.Text;
-            };
+            }
+
             var filter = new ConsoleCommandLineOutputProcessor(cmd.Length, FireDataReceived);
 
             string chunk1 = cmd.Substring(0, 10);
@@ -36,10 +38,12 @@ namespace GitUITests.UserControls
             string cmd = "\"C:\\Program Files\\Git\\bin\\git.exe\" rebase  -i --autosquash --autostash \"branch_foo\"";
             string outputData = "output data";
             string received = string.Empty;
-            Action<TextEventArgs> FireDataReceived = (e) =>
+
+            void FireDataReceived(TextEventArgs e)
             {
                 received += e.Text;
-            };
+            }
+
             var filter = new ConsoleCommandLineOutputProcessor(cmd.Length, FireDataReceived);
 
             string chunk1 = cmd.Substring(0, 10);
@@ -65,16 +69,19 @@ namespace GitUITests.UserControls
             outputData.Add("Receiving: 100%\nReceived data\n");
 
             List<string> received = new List<string>();
-            Action<TextEventArgs> FireDataReceived = (e) =>
+
+            void FireDataReceived(TextEventArgs e)
             {
                 received.Add(e.Text);
-            };
+            }
+
             var filter = new ConsoleCommandLineOutputProcessor(cmd.Length, FireDataReceived);
 
             foreach (string chunk in outputData)
             {
                 filter.AnsiStreamChunkReceived(null, new AnsiStreamChunkEventArgs(GitModule.SystemEncoding.GetBytes(chunk)));
             }
+
             filter.Flush();
 
             List<string> expectedData = new List<string>();
@@ -102,16 +109,19 @@ namespace GitUITests.UserControls
             outputData.Add("Receiving: 100%\nReceived\r\ndata\n");
 
             List<string> received = new List<string>();
-            Action<TextEventArgs> FireDataReceived = (e) =>
+
+            void FireDataReceived(TextEventArgs e)
             {
                 received.Add(e.Text);
-            };
+            }
+
             var filter = new ConsoleCommandLineOutputProcessor(cmd.Length, FireDataReceived);
 
             foreach (string chunk in outputData)
             {
                 filter.AnsiStreamChunkReceived(null, new AnsiStreamChunkEventArgs(GitModule.SystemEncoding.GetBytes(chunk)));
             }
+
             filter.Flush();
 
             List<string> expectedData = new List<string>();
@@ -126,6 +136,5 @@ namespace GitUITests.UserControls
 
             CollectionAssert.AreEqual(expectedData, received);
         }
-
     }
 }

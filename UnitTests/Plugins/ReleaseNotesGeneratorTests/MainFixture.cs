@@ -22,7 +22,7 @@ namespace ReleaseNotesGeneratorTests
             dataObject.GetFormats().Length.Should().Be(2);
             dataObject.GetText().Should().Be("<p>Hallo</p>");
             ((string)dataObject.GetData("HTML Format")).Should().Be(
-                "Version:0.9\r\n"+
+                "Version:0.9\r\n" +
                 "StartHTML:00000097\r\n" +
                 "EndHTML:00000177\r\n" +
                 "StartFragment:00000131\r\n" +
@@ -36,6 +36,7 @@ namespace ReleaseNotesGeneratorTests
         public void CopyToClipboard()
         {
             HtmlFragment.CopyToClipboard("<p>Hallo</p>");
+
             // Verify manually that the content can be pasted as text and into MS Word or
             // LibreOffice Writer. There it should create a formatted table.
         }

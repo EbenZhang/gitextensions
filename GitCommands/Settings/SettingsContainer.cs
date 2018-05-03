@@ -3,15 +3,15 @@ using GitUIPluginInterfaces;
 
 namespace GitCommands.Settings
 {
-    public class SettingsContainer<L, C> : ISettingsSource where L : SettingsContainer<L, C> where C : SettingsCache
+    public class SettingsContainer<TLowerPriority, TCache> : ISettingsSource where TLowerPriority : SettingsContainer<TLowerPriority, TCache> where TCache : SettingsCache
     {
-        public L LowerPriority { get; private set; }
-        public C SettingsCache { get; private set; }
+        public TLowerPriority LowerPriority { get; }
+        public TCache SettingsCache { get; }
 
-        public SettingsContainer(L aLowerPriority, C aSettingsCache)
+        public SettingsContainer(TLowerPriority lowerPriority, TCache settingsCache)
         {
-            LowerPriority = aLowerPriority;
-            SettingsCache = aSettingsCache;
+            LowerPriority = lowerPriority;
+            SettingsCache = settingsCache;
         }
 
         public void LockedAction(Action action)
@@ -44,28 +44,31 @@ namespace GitCommands.Settings
         /// <summary>
         /// sets given value at the possible lowest priority level
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="name"></param>
-        /// <param name="value"></param>
-        /// <param name="encode"></param>
         public override void SetValue<T>(string name, T value, Func<T, string> encode)
         {
             if (LowerPriority == null || SettingsCache.HasValue(name))
+            {
                 SettingsCache.SetValue(name, value, encode);
+            }
             else
+            {
                 LowerPriority.SetValue(name, value, encode);
+            }
         }
 
         public virtual bool TryGetValue<T>(string name, T defaultValue, Func<string, T> decode, out T value)
         {
-            if (SettingsCache.TryGetValue<T>(name, defaultValue, decode, out value))
+            if (SettingsCache.TryGetValue(name, defaultValue, decode, out value))
+            {
                 return true;
+            }
 
             if (LowerPriority != null && LowerPriority.TryGetValue(name, defaultValue, decode, out value))
+            {
                 return true;
+            }
 
             return false;
         }
-
     }
 }

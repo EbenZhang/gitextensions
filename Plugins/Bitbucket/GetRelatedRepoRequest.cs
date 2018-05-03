@@ -4,26 +4,27 @@ using RestSharp;
 
 namespace Bitbucket
 {
-    class Repository
+    internal class Repository
     {
         public static Repository Parse(JObject json)
         {
             return new Repository
-                       {
-                           Id = json["id"].ToString(),
-                           RepoName = json["name"].ToString(),
-                           ProjectName = json["project"]["name"].ToString(),
-                           ProjectKey = json["project"]["key"].ToString()
-                       };
+            {
+                Id = json["id"].ToString(),
+                RepoName = json["name"].ToString(),
+                ProjectName = json["project"]["name"].ToString(),
+                ProjectKey = json["project"]["key"].ToString()
+            };
         }
+
         public string Id { get; set; }
         public string ProjectKey { get; set; }
         public string ProjectName { get; set; }
         public string RepoName { get; set; }
         public string DisplayName => string.Format("{0}/{1}", ProjectName, RepoName);
     }
-    
-    class GetRelatedRepoRequest : BitbucketRequestBase<List<Repository>>
+
+    internal class GetRelatedRepoRequest : BitbucketRequestBase<List<Repository>>
     {
         public GetRelatedRepoRequest(Settings settings) : base(settings)
         {
@@ -44,6 +45,7 @@ namespace Bitbucket
             {
                 result.Add(Repository.Parse(val));
             }
+
             return result;
         }
     }

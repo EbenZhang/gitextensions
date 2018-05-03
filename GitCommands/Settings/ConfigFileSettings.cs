@@ -10,27 +10,27 @@ namespace GitCommands.Settings
 {
     public class ConfigFileSettings : SettingsContainer<ConfigFileSettings, ConfigFileSettingsCache>, IConfigFileSettings
     {
-        public ConfigFileSettings(ConfigFileSettings aLowerPriority, ConfigFileSettingsCache aSettingsCache)
-            : base(aLowerPriority, aSettingsCache)
+        public ConfigFileSettings(ConfigFileSettings lowerPriority, ConfigFileSettingsCache settingsCache)
+            : base(lowerPriority, settingsCache)
         {
             core = new CorePath(this);
             mergetool = new MergeToolPath(this);
         }
 
-        public static ConfigFileSettings CreateEffective(GitModule aModule)
+        public static ConfigFileSettings CreateEffective(GitModule module)
         {
-            return CreateLocal(aModule, CreateGlobal(CreateSystemWide()));
+            return CreateLocal(module, CreateGlobal(CreateSystemWide()));
         }
 
-        public static ConfigFileSettings CreateLocal(GitModule aModule, bool allowCache = true)
+        public static ConfigFileSettings CreateLocal(GitModule module, bool allowCache = true)
         {
-            return CreateLocal(aModule, null, allowCache);
+            return CreateLocal(module, null, allowCache);
         }
 
-        private static ConfigFileSettings CreateLocal(GitModule aModule, ConfigFileSettings aLowerPriority, bool allowCache = true)
+        private static ConfigFileSettings CreateLocal(GitModule module, ConfigFileSettings lowerPriority, bool allowCache = true)
         {
-            return new ConfigFileSettings(aLowerPriority,
-                ConfigFileSettingsCache.Create(Path.Combine(aModule.GitCommonDirectory, "config"), true, allowCache));
+            return new ConfigFileSettings(lowerPriority,
+                ConfigFileSettingsCache.Create(Path.Combine(module.GitCommonDirectory, "config"), true, allowCache));
         }
 
         public static ConfigFileSettings CreateGlobal(bool allowCache = true)
@@ -38,13 +38,15 @@ namespace GitCommands.Settings
             return CreateGlobal(null, allowCache);
         }
 
-        public static ConfigFileSettings CreateGlobal(ConfigFileSettings aLowerPriority, bool allowCache = true)
+        public static ConfigFileSettings CreateGlobal(ConfigFileSettings lowerPriority, bool allowCache = true)
         {
-            string configPath = Path.Combine(GitCommandHelpers.GetHomeDir(), ".config", "git", "config");
+            string configPath = Path.Combine(EnvironmentConfiguration.GetHomeDir(), ".config", "git", "config");
             if (!File.Exists(configPath))
-                configPath = Path.Combine(GitCommandHelpers.GetHomeDir(), ".gitconfig");
+            {
+                configPath = Path.Combine(EnvironmentConfiguration.GetHomeDir(), ".gitconfig");
+            }
 
-            return new ConfigFileSettings(aLowerPriority,
+            return new ConfigFileSettings(lowerPriority,
                 ConfigFileSettingsCache.Create(configPath, false, allowCache));
         }
 
@@ -57,23 +59,24 @@ namespace GitCommands.Settings
                 // Git 1.xx
                 configPath = Path.Combine(AppSettings.GitBinDir, "..", "etc", "gitconfig");
                 if (!File.Exists(configPath))
+                {
                     return null;
+                }
             }
 
             return new ConfigFileSettings(null,
                 ConfigFileSettingsCache.Create(configPath, false, allowCache));
         }
 
-
         public readonly CorePath core;
         public readonly MergeToolPath mergetool;
 
         public string GetValue(string setting)
         {
-            return this.GetString(setting, string.Empty);
+            return GetString(setting, string.Empty);
         }
 
-        public IList<string> GetValues(string setting)
+        public IReadOnlyList<string> GetValues(string setting)
         {
             return SettingsCache.GetValues(setting);
         }
@@ -82,11 +85,11 @@ namespace GitCommands.Settings
         {
             if (value.IsNullOrEmpty())
             {
-                //to remove setting
+                // to remove setting
                 value = null;
             }
 
-            this.SetString(setting, value);
+            SetString(setting, value);
         }
 
         public void SetPathValue(string setting, string value)
@@ -94,7 +97,7 @@ namespace GitCommands.Settings
             SetValue(setting, ConfigSection.FixPath(value));
         }
 
-        public IList<IConfigSection> GetConfigSections()
+        public IReadOnlyList<IConfigSection> GetConfigSections()
         {
             return SettingsCache.GetConfigSections();
         }
@@ -136,7 +139,9 @@ namespace GitCommands.Settings
             string encodingName = GetValue(settingName);
 
             if (string.IsNullOrEmpty(encodingName))
+            {
                 result = null;
+            }
             else if (!AppSettings.AvailableEncodings.TryGetValue(encodingName, out result))
             {
                 try
@@ -181,5 +186,4 @@ namespace GitCommands.Settings
             keepBackup = new BoolNullableSetting("keepBackup", this, true);
         }
     }
-
 }

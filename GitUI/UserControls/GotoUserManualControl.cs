@@ -15,26 +15,40 @@ namespace GitUI.UserControls
             Translate();
         }
 
-        bool isLoaded = false;
+        private bool _isLoaded;
 
         private void GotoUserManualControl_Load(object sender, EventArgs e)
         {
-            isLoaded = true;
+            _isLoaded = true;
             UpdateTooltip();
         }
 
-        string _manualSectionAnchorName;
+        private string _manualSectionAnchorName;
         public string ManualSectionAnchorName
         {
             get { return _manualSectionAnchorName; }
-            set { _manualSectionAnchorName = value; if (isLoaded) { UpdateTooltip(); } }
+            set
+            {
+                _manualSectionAnchorName = value;
+                if (_isLoaded)
+                {
+                    UpdateTooltip();
+                }
+            }
         }
 
-        string _manualSectionSubfolder;
+        private string _manualSectionSubfolder;
         public string ManualSectionSubfolder
         {
             get { return _manualSectionSubfolder; }
-            set { _manualSectionSubfolder = value; if (isLoaded) { UpdateTooltip(); } }
+            set
+            {
+                _manualSectionSubfolder = value;
+                if (_isLoaded)
+                {
+                    UpdateTooltip();
+                }
+            }
         }
 
         private void UpdateTooltip()
@@ -53,11 +67,6 @@ namespace GitUI.UserControls
         private string GetUrl()
         {
             return UserManual.UserManual.UrlFor(ManualSectionSubfolder, ManualSectionAnchorName);
-        }
-
-        private void labelHelpIcon_Click(object sender, EventArgs e)
-        {
-            OpenManual();
         }
 
         private void linkLabelHelp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)

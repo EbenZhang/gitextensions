@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -11,23 +12,28 @@ using ResourceManager;
 
 namespace Github3
 {
-    class GithubAPIInfo
+    internal static class GithubAPIInfo
     {
         internal static string client_id = "ebc0e8947c206610d737";
         internal static string client_secret = "c993907df3f45145bf638842692b69c56d1ace4d";
     }
 
-    class GithubLoginInfo
+    internal static class GithubLoginInfo
     {
         private static string _username;
-        public static string username
+        public static string Username
         {
             get
             {
                 if (_username == "")
+                {
                     return null;
+                }
+
                 if (_username != null)
+                {
                     return _username;
+                }
 
                 try
                 {
@@ -35,11 +41,13 @@ namespace Github3
                     if (user != null)
                     {
                         _username = user.Login;
-                        //MessageBox.Show("Github username: " + _username);
+                        ////MessageBox.Show("Github username: " + _username);
                         return _username;
                     }
                     else
+                    {
                         _username = "";
+                    }
 
                     return null;
                 }
@@ -62,19 +70,23 @@ namespace Github3
         }
     }
 
+    [Export(typeof(IGitPlugin))]
     public class Github3Plugin : GitPluginBase, IRepositoryHostPlugin
     {
         public readonly StringSetting OAuthToken = new StringSetting("OAuth Token", "");
 
         internal static Github3Plugin instance;
         internal static Client github;
+
         public Github3Plugin()
         {
             SetNameAndDescription("Github");
             Translate();
 
             if (instance == null)
+            {
                 instance = this;
+            }
 
             github = new Client();
         }
@@ -92,28 +104,31 @@ namespace Github3
             }
         }
 
-        public override bool Execute(GitUIBaseEventArgs gitUiCommands)
+        public override bool Execute(GitUIEventArgs args)
         {
             if (string.IsNullOrEmpty(GithubLoginInfo.OAuthToken))
             {
                 using (var frm = new OAuth())
-                    frm.ShowDialog(gitUiCommands.OwnerForm);
+                {
+                    frm.ShowDialog(args.OwnerForm);
+                }
             }
             else
             {
-                MessageBox.Show(gitUiCommands.OwnerForm, "You already have an OAuth token. To get a new one, delete your old one in Plugins > Settings first.");
+                MessageBox.Show(args.OwnerForm, "You already have an OAuth token. To get a new one, delete your old one in Plugins > Settings first.");
             }
+
             return false;
         }
 
         // --
 
-        public IList<IHostedRepository> SearchForRepository(string search)
+        public IReadOnlyList<IHostedRepository> SearchForRepository(string search)
         {
             return github.searchRepositories(search).Select(repo => (IHostedRepository)new GithubRepo(repo)).ToList();
         }
 
-        public IList<IHostedRepository> GetRepositoriesOfUser(string user)
+        public IReadOnlyList<IHostedRepository> GetRepositoriesOfUser(string user)
         {
             return github.getRepositories(user).Select(repo => (IHostedRepository)new GithubRepo(repo)).ToList();
         }
@@ -123,41 +138,47 @@ namespace Github3
             return new GithubRepo(github.getRepository(user, repositoryName));
         }
 
-        public IList<IHostedRepository> GetMyRepos()
+        public IReadOnlyList<IHostedRepository> GetMyRepos()
         {
             return github.getRepositories().Select(repo => (IHostedRepository)new GithubRepo(repo)).ToList();
         }
 
         public bool ConfigurationOk => true;
 
-        public bool GitModuleIsRelevantToMe(IGitModule aModule)
+        public bool GitModuleIsRelevantToMe(IGitModule module)
         {
-            return GetHostedRemotesForModule(aModule).Count > 0;
+            return GetHostedRemotesForModule(module).Count > 0;
         }
 
         /// <summary>
         /// Returns all relevant github-remotes for the current working directory
         /// </summary>
-        /// <returns></returns>
-        public List<IHostedRemote> GetHostedRemotesForModule(IGitModule aModule)
+        public IReadOnlyList<IHostedRemote> GetHostedRemotesForModule(IGitModule module)
         {
             var repoInfos = new List<IHostedRemote>();
 
-            string[] remotes = aModule.GetRemotes(false);
+            string[] remotes = module.GetRemotes(false);
             foreach (string remote in remotes)
             {
-                var url = aModule.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote));
+                var url = module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote));
                 if (string.IsNullOrEmpty(url))
+                {
                     continue;
+                }
 
                 var m = Regex.Match(url, @"git(?:@|://)github.com[:/]([^/]+)/([\w_\.\-]+)\.git");
                 if (!m.Success)
+                {
                     m = Regex.Match(url, @"https?://(?:[^@:]+)?(?::[^/@:]+)?@?github.com/([^/]+)/([\w_\.\-]+)(?:.git)?");
+                }
+
                 if (m.Success)
                 {
                     var hostedRemote = new GithubHostedRemote(remote, m.Groups[1].Value, m.Groups[2].Value.Replace(".git", ""));
                     if (!repoInfos.Contains(hostedRemote))
+                    {
                         repoInfos.Add(hostedRemote);
+                    }
                 }
             }
 

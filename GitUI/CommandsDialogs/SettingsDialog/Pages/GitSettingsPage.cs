@@ -17,11 +17,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             Translate();
         }
 
-        protected override string GetCommaSeparatedKeywordList()
-        {
-            return "path,home,environment,variable,msys,cygwin,download,git,command,linux,tools";
-        }
-
         public static SettingsPageReference GetPageReference()
         {
             return new SettingsPageReferenceByType(typeof(GitSettingsPage));
@@ -35,8 +30,8 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         protected override void SettingsToPage()
         {
-            GitCommandHelpers.SetEnvironmentVariable();
-            homeIsSetToLabel.Text = string.Concat(_homeIsSetToString.Text, " ", GitCommandHelpers.GetHomeDir());
+            EnvironmentConfiguration.SetEnvironmentVariables();
+            homeIsSetToLabel.Text = string.Concat(_homeIsSetToString.Text, " ", EnvironmentConfiguration.GetHomeDir());
 
             GitPath.Text = AppSettings.GitCommandValue;
             GitBinPath.Text = AppSettings.GitBinDir;
@@ -58,7 +53,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 Filter = "Git.cmd (git.cmd)|git.cmd|Git.exe (git.exe)|git.exe|Git (git)|git"
             })
             {
-
                 if (browseDialog.ShowDialog(this) == DialogResult.OK)
                 {
                     GitPath.Text = browseDialog.FileName;
@@ -98,8 +92,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private void ChangeHomeButton_Click(object sender, EventArgs e)
         {
             PageHost.SaveAll();
-            using (var frm = new FormFixHome()) frm.ShowDialog(this);
+            using (var frm = new FormFixHome())
+            {
+                frm.ShowDialog(this);
+            }
+
             PageHost.LoadAll();
+
             // TODO?: rescan
 
             // orginal:

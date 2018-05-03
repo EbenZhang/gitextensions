@@ -4,11 +4,11 @@ using System.Collections.ObjectModel;
 using System.Windows.Forms;
 using FluentAssertions;
 using GitCommands;
+using GitCommands.Git;
 using NSubstitute;
 using NUnit.Framework;
 using ResourceManager;
 using ResourceManager.CommitDataRenders;
-using GitCommands.Git;
 
 namespace ResourceManagerTests.CommitDataRenders
 {
@@ -23,14 +23,14 @@ namespace ResourceManagerTests.CommitDataRenders
         private IDateFormatter _dateFormatter;
         private CommitDataHeaderRenderer _renderer;
         private IGitRevisionProvider _revisionProvider;
-        private List<string> _childrenHashes = new List<string>
+        private readonly List<string> _childrenHashes = new List<string>
         {
             "3b6ce324e30ed7fda24483fd56a180c34a262202",
             "2a8788ff15071a202505a96f80796dbff5750ddf",
             "8e66fa8095a86138a7c7fb22318d2f819669831e"
         };
 
-        private List<string> _parentHashes = new List<string>
+        private readonly List<string> _parentHashes = new List<string>
         {
             "5542334ab518b329426783d74c8f4204c2d75a43",
             "92bc4ad5e509f7dbe87dc4e679fcb879c3235788",
@@ -82,7 +82,7 @@ namespace ResourceManagerTests.CommitDataRenders
         [Test]
         public void Render_should_throw_if_data_null()
         {
-            ((Action)(() => _renderer.Render(null, true, _revisionProvider))).ShouldThrow<ArgumentNullException>();
+            ((Action)(() => _renderer.Render(null, true, _revisionProvider))).Should().Throw<ArgumentNullException>();
         }
 
         [Test]
@@ -180,7 +180,7 @@ namespace ResourceManagerTests.CommitDataRenders
                 new ReadOnlyCollection<string>(new List<string>()),
                 author, authorDate,
                 committer, commitDate, "");
-            data.ChildrenGuids = _childrenHashes; 
+            data.ChildrenGuids = _childrenHashes;
 
             _linkFactory.CreateLink(author, Arg.Any<string>()).Returns(x => author);
             _dateFormatter.FormatDateAsRelativeLocal(authorDate).Returns("6 months ago (06/17/2017 23:38:40)");
@@ -257,7 +257,7 @@ namespace ResourceManagerTests.CommitDataRenders
         [Test]
         public void RenderPlain_should_throw_if_data_null()
         {
-            ((Action)(() => _renderer.RenderPlain(null))).ShouldThrow<ArgumentNullException>();
+            ((Action)(() => _renderer.RenderPlain(null))).Should().Throw<ArgumentNullException>();
         }
 
         [Test]

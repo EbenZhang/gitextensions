@@ -8,7 +8,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Plugins
     public partial class PluginSettingsPage : AutoLayoutSettingsPage
     {
         private IGitPlugin _gitPlugin;
-        private GitPluginSettingsContainer settingsCointainer;
+        private GitPluginSettingsContainer _settingsCointainer;
 
         public PluginSettingsPage()
         {
@@ -22,29 +22,29 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Plugins
 
             foreach (var setting in settings)
             {
-               this.AddSetting(setting);
+                AddSettingControl(setting.CreateControlBinding());
             }
         }
 
-        private void Init(IGitPlugin _gitPlugin)
+        private void Init(IGitPlugin gitPlugin)
         {
-            this._gitPlugin = _gitPlugin;
-            settingsCointainer = new GitPluginSettingsContainer(_gitPlugin.Name);
+            _gitPlugin = gitPlugin;
+            _settingsCointainer = new GitPluginSettingsContainer(gitPlugin.Name);
             CreateSettingsControls();
             Translate();
         }
 
-        public static PluginSettingsPage CreateSettingsPageFromPlugin(ISettingsPageHost aPageHost, IGitPlugin gitPlugin)
+        public static PluginSettingsPage CreateSettingsPageFromPlugin(ISettingsPageHost pageHost, IGitPlugin gitPlugin)
         {
-            var result = SettingsPageBase.Create<PluginSettingsPage>(aPageHost);
+            var result = Create<PluginSettingsPage>(pageHost);
             result.Init(gitPlugin);
             return result;
         }
 
         protected override ISettingsSource GetCurrentSettings()
         {
-            settingsCointainer.SetSettingsSource(base.GetCurrentSettings());
-            return settingsCointainer;
+            _settingsCointainer.SetSettingsSource(base.GetCurrentSettings());
+            return _settingsCointainer;
         }
 
         public override string GetTitle()
@@ -55,20 +55,22 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Plugins
         private IEnumerable<ISetting> GetSettings()
         {
             if (_gitPlugin == null)
+            {
                 throw new ApplicationException();
+            }
 
             return _gitPlugin.GetSettings();
         }
 
         public override SettingsPageReference PageReference => new SettingsPageReferenceByType(_gitPlugin.GetType());
 
-        protected override SettingsLayout CreateSettingsLayout()
+        protected override ISettingsLayout CreateSettingsLayout()
         {
             labelNoSettings.Visible = !GetSettings().Any();
 
             var layout = base.CreateSettingsLayout();
 
-            this.tableLayoutPanel1.Controls.Add(layout.GetControl(), 0, 1);
+            tableLayoutPanel1.Controls.Add(layout.GetControl(), 0, 1);
 
             return layout;
         }

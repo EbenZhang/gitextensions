@@ -10,7 +10,12 @@ namespace GitUI.CommandsDialogs
     {
         // CANCEL must be placed at first position because it is the default value when
         // closing the dialog via the X button
-        public enum ActionEnum { Cancel, Reset, ResetAndDelete };
+        public enum ActionEnum
+        {
+            Cancel,
+            Reset,
+            ResetAndDelete
+        }
 
         public ActionEnum SelectedAction { get; private set; }
 
@@ -60,7 +65,7 @@ namespace GitUI.CommandsDialogs
 
         private void btnReset_Click(object sender, EventArgs e)
         {
-            SelectedAction = (cbDeleteNewFilesAndDirectories.Checked) ? ActionEnum.ResetAndDelete : ActionEnum.Reset;
+            SelectedAction = cbDeleteNewFilesAndDirectories.Checked ? ActionEnum.ResetAndDelete : ActionEnum.Reset;
             Close();
         }
     }

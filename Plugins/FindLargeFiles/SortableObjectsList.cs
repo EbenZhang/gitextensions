@@ -13,17 +13,17 @@ namespace FindLargeFiles
     {
         public void AddRange(IEnumerable<GitObject> objects)
         {
-            gitObjects.AddRange(objects);
+            GitObjects.AddRange(objects);
         }
 
         protected override bool SupportsSortingCore => true;
 
         protected override void ApplySortCore(PropertyDescriptor propertyDescriptor, ListSortDirection direction)
         {
-            gitObjects.Sort(GitObjectsComparer.Create(propertyDescriptor, direction == ListSortDirection.Descending));
+            GitObjects.Sort(GitObjectsComparer.Create(propertyDescriptor, direction == ListSortDirection.Descending));
         }
 
-        private List<GitObject> gitObjects => (List<GitObject>)Items;
+        private List<GitObject> GitObjects => (List<GitObject>)Items;
 
         private static class GitObjectsComparer
         {
@@ -35,8 +35,8 @@ namespace FindLargeFiles
                 AddSortableProperty(branch => branch.Path, (x, y) => string.Compare(x.Path, y.Path, StringComparison.CurrentCulture));
                 AddSortableProperty(branch => branch.SHA, (x, y) => string.Compare(x.SHA, y.SHA));
                 AddSortableProperty(branch => branch.CommitCount, (x, y) => x.CommitCount.CompareTo(y.CommitCount));
-                AddSortableProperty(branch => branch.Size, (x, y) => x.sizeInBytes.CompareTo(y.sizeInBytes));
-                AddSortableProperty(branch => branch.CompressedSize, (x, y) => x.compressedSizeInBytes.CompareTo(y.compressedSizeInBytes));
+                AddSortableProperty(branch => branch.Size, (x, y) => x.SizeInBytes.CompareTo(y.SizeInBytes));
+                AddSortableProperty(branch => branch.CompressedSize, (x, y) => x.CompressedSizeInBytes.CompareTo(y.CompressedSizeInBytes));
             }
 
             /// <summary>
@@ -47,7 +47,10 @@ namespace FindLargeFiles
             public static Comparison<GitObject> Create(PropertyDescriptor propertyDescriptor, bool isReversedComparing)
             {
                 if (PropertyComparers.TryGetValue(propertyDescriptor.Name, out var comparer))
+                {
                     return isReversedComparing ? (x, y) => comparer(y, x) : comparer;
+                }
+
                 throw new NotSupportedException(string.Format("Custom sort by {0} property is not supported.", propertyDescriptor.Name));
             }
 

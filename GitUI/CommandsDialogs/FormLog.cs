@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Windows.Forms;
-using GitCommands;
 
 namespace GitUI.CommandsDialogs
 {
@@ -11,19 +9,13 @@ namespace GitUI.CommandsDialogs
         {
         }
 
-        public FormLog(GitUICommands aCommands)
-            : base(true, aCommands)
+        public FormLog(GitUICommands commands)
+            : base(enablePositionRestore: true, commands)
         {
             InitializeComponent();
             Translate();
 
             diffViewer.ExtraDiffArgumentsChanged += DiffViewerExtraDiffArgumentsChanged;
-        }
-
-        public FormLog(GitUICommands aCommands, GitRevision revision)
-            : this(aCommands)
-        {
-            RevisionGrid.SetSelectedRevision(revision);
         }
 
         private void FormDiffLoad(object sender, EventArgs e)
@@ -44,17 +36,18 @@ namespace GitUI.CommandsDialogs
                 return;
             }
 
-            Cursor.Current = Cursors.WaitCursor;
-            diffViewer.ViewChanges(RevisionGrid.GetSelectedRevisions(), DiffFiles.SelectedItem, String.Empty);
-            Cursor.Current = Cursors.Default;
+            using (WaitCursorScope.Enter())
+            {
+                diffViewer.ViewChangesAsync(RevisionGrid.GetSelectedRevisions(), DiffFiles.SelectedItem, string.Empty);
+            }
         }
 
         private void RevisionGridSelectionChanged(object sender, EventArgs e)
         {
-            Cursor.Current = Cursors.WaitCursor;
-            DiffFiles.GitItemStatuses = null;
-            DiffFiles.SetDiffs(RevisionGrid.GetSelectedRevisions());
-            Cursor.Current = Cursors.Default;
+            using (WaitCursorScope.Enter())
+            {
+                DiffFiles.SetDiffs(RevisionGrid.GetSelectedRevisions());
+            }
         }
 
         private void DiffViewerExtraDiffArgumentsChanged(object sender, EventArgs e)

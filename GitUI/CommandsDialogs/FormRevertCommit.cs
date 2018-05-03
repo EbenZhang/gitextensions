@@ -8,15 +8,15 @@ namespace GitUI.CommandsDialogs
 {
     public partial class FormRevertCommit : GitModuleForm
     {
-        private readonly TranslationString _noneParentSelectedText =  new TranslationString("None parent is selected!");
+        private readonly TranslationString _noneParentSelectedText = new TranslationString("None parent is selected!");
         private readonly TranslationString _noneParentSelectedTextCaption = new TranslationString("Error");
 
         private bool _isMerge;
 
-        public FormRevertCommit(GitUICommands aCommands, GitRevision Revision)
-            : base(aCommands)
+        public FormRevertCommit(GitUICommands commands, GitRevision revision)
+            : base(commands)
         {
-            this.Revision = Revision;
+            Revision = revision;
 
             InitializeComponent();
             Translate();
@@ -44,6 +44,7 @@ namespace GitUI.CommandsDialogs
                     item.SubItems.Add(parents[i].CommitDate.ToShortDateString());
                     ParentsList.Items.Add(item);
                 }
+
                 ParentsList.TopItem.Selected = true;
                 Size size = MinimumSize;
                 size.Height += 100;

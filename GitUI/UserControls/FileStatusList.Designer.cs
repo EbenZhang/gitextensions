@@ -71,7 +71,7 @@ namespace GitUI
             // 
             this.NoFiles.BackColor = System.Drawing.SystemColors.Window;
             this.NoFiles.ForeColor = System.Drawing.SystemColors.InactiveCaption;
-            this.NoFiles.Location = new System.Drawing.Point(6, 6);
+            this.NoFiles.Location = new System.Drawing.Point(5, 5);
             this.NoFiles.Margin = new System.Windows.Forms.Padding(0);
             this.NoFiles.Name = "NoFiles";
             this.NoFiles.Size = new System.Drawing.Size(201, 56);
@@ -102,6 +102,7 @@ namespace GitUI
             this.FilterWatermarkLabel.Size = new System.Drawing.Size(65, 13);
             this.FilterWatermarkLabel.TabIndex = 3;
             this.FilterWatermarkLabel.Text = "Filter files...";
+            this.FilterWatermarkLabel.Click += new System.EventHandler(this.FilterWatermarkLabel_Click);
             // 
             // FilterToolTip
             // 

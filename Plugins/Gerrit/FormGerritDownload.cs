@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitUI;
 using GitUIPluginInterfaces;
 using Newtonsoft.Json.Linq;
 using ResourceManager;
@@ -30,25 +32,18 @@ namespace Gerrit
             Translate();
         }
 
-        public void PushAndShowDialogWhenFailed(IWin32Window owner)
-        {
-            if (!DownloadChange(owner))
-                ShowDialog(owner);
-        }
-
-        public void PushAndShowDialogWhenFailed()
-        {
-            PushAndShowDialogWhenFailed(null);
-        }
-
         private void DownloadClick(object sender, EventArgs e)
         {
-            if (DownloadChange(this))
+            if (ThreadHelper.JoinableTaskFactory.Run(() => DownloadChangeAsync(this)))
+            {
                 Close();
+            }
         }
 
-        private bool DownloadChange(IWin32Window owner)
+        private async Task<bool> DownloadChangeAsync(IWin32Window owner)
         {
+            await this.SwitchToMainThreadAsync();
+
             string change = _NO_TRANSLATE_Change.Text.Trim();
 
             if (string.IsNullOrEmpty(_NO_TRANSLATE_Remotes.Text))
@@ -56,6 +51,7 @@ namespace Gerrit
                 MessageBox.Show(owner, _selectRemote.Text);
                 return false;
             }
+
             if (string.IsNullOrEmpty(change))
             {
                 MessageBox.Show(owner, _selectChange.Text);
@@ -64,9 +60,10 @@ namespace Gerrit
 
             GerritUtil.StartAgent(owner, Module, _NO_TRANSLATE_Remotes.Text);
 
-            var reviewInfo = LoadReviewInfo();
+            var reviewInfo = await LoadReviewInfoAsync();
+            await this.SwitchToMainThreadAsync();
 
-            if (reviewInfo == null || reviewInfo["id"] == null)
+            if (reviewInfo?["id"] == null)
             {
                 MessageBox.Show(owner, _cannotGetChangeDetails.Text);
                 return false;
@@ -96,7 +93,9 @@ namespace Gerrit
             fetchCommand.CommandText = FetchCommand(_NO_TRANSLATE_Remotes.Text, refspec);
 
             if (!RunCommand(fetchCommand, change))
+            {
                 return false;
+            }
 
             var checkoutCommand = UICommands.CreateRemoteCommand();
 
@@ -114,14 +113,18 @@ namespace Gerrit
                         recycleCommand.CommandText = "checkout " + branchName;
 
                         if (!RunCommand(recycleCommand, change))
+                        {
                             return;
+                        }
 
                         var resetCommand = UICommands.CreateRemoteCommand();
 
                         resetCommand.CommandText = GitCommandHelpers.ResetHardCmd("FETCH_HEAD");
 
                         if (!RunCommand(resetCommand, change))
+                        {
                             return;
+                        }
 
                         e.IsError = false;
                     }
@@ -142,15 +145,17 @@ namespace Gerrit
             return !command.ErrorOccurred;
         }
 
-        private string FetchCommand(string remote, string remoteBranch)
+        private static string FetchCommand(string remote, string remoteBranch)
         {
             var progressOption = "";
             if (GitCommandHelpers.VersionInUse.FetchCanAskForProgress)
+            {
                 progressOption = "--progress ";
+            }
 
             remote = FixPath(remote);
 
-            //Remove spaces...
+            // Remove spaces...
             remoteBranch = remoteBranch?.Replace(" ", "");
 
             return "fetch " + progressOption + "\"" + remote.Trim() + "\" " + remoteBranch;
@@ -162,27 +167,29 @@ namespace Gerrit
             return path.ToPosixPath();
         }
 
-        private JObject LoadReviewInfo()
+        private async Task<JObject> LoadReviewInfoAsync()
         {
             var fetchUrl = GerritUtil.GetFetchUrl(Module, _currentBranchRemote);
 
             string projectName = fetchUrl.AbsolutePath.TrimStart('/');
 
             if (projectName.EndsWith(".git"))
+            {
                 projectName = projectName.Substring(0, projectName.Length - 4);
+            }
 
-            string change = GerritUtil.RunGerritCommand(
-                this,
-                Module,
-                String.Format(
-                    "gerrit query --format=JSON project:{0} --current-patch-set change:{1}",
-                    projectName,
-                    _NO_TRANSLATE_Change.Text
-                ),
-                fetchUrl,
-                _currentBranchRemote,
-                null
-            );
+            string change = await GerritUtil
+                .RunGerritCommandAsync(
+                    this,
+                    Module,
+                    string.Format(
+                        "gerrit query --format=JSON project:{0} --current-patch-set change:{1}",
+                        projectName,
+                        _NO_TRANSLATE_Change.Text),
+                    fetchUrl,
+                    _currentBranchRemote,
+                    stdIn: null)
+                .ConfigureAwait(false);
 
             foreach (string line in change.Split('\n'))
             {
@@ -205,7 +212,7 @@ namespace Gerrit
 
             _currentBranchRemote = Settings.DefaultRemote;
 
-            IList<string> remotes = (IList<string>)_NO_TRANSLATE_Remotes.DataSource;
+            var remotes = (IList<string>)_NO_TRANSLATE_Remotes.DataSource;
             int i = remotes.IndexOf(_currentBranchRemote);
             _NO_TRANSLATE_Remotes.SelectedIndex = i >= 0 ? i : 0;
 

@@ -11,23 +11,23 @@ namespace GitUI.UserControls.RevisionGridClasses
             IsIndexChanged = isIndexChanged;
         }
 
-        public bool IsIndexChanged { get; private set; }
+        public bool IsIndexChanged { get; }
     }
 
     public sealed class IndexWatcher : IDisposable
     {
         public event EventHandler<IndexChangedEventArgs> Changed;
 
-        private readonly IGitUICommandsSource UICommandsSource;
+        private readonly IGitUICommandsSource _uICommandsSource;
 
-        private GitUICommands UICommands => UICommandsSource.UICommands;
+        private GitUICommands UICommands => _uICommandsSource.UICommands;
 
         private GitModule Module => UICommands.Module;
 
-        public IndexWatcher(IGitUICommandsSource aUICommandsSource)
+        public IndexWatcher(IGitUICommandsSource uiCommandsSource)
         {
-            UICommandsSource = aUICommandsSource;
-            UICommandsSource.GitUICommandsChanged += UICommandsSource_GitUICommandsChanged;
+            _uICommandsSource = uiCommandsSource;
+            _uICommandsSource.GitUICommandsChanged += UICommandsSource_GitUICommandsChanged;
             GitIndexWatcher = new FileSystemWatcher();
             RefsWatcher = new FileSystemWatcher();
             SetFileSystemWatcher();
@@ -37,7 +37,7 @@ namespace GitUI.UserControls.RevisionGridClasses
             RefsWatcher.Changed += fileSystemWatcher_Changed;
         }
 
-        void UICommandsSource_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
+        private void UICommandsSource_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
         {
             Clear();
         }
@@ -53,52 +53,56 @@ namespace GitUI.UserControls.RevisionGridClasses
             {
                 try
                 {
-                    enabled = AppSettings.UseFastChecks;
+                    _enabled = AppSettings.UseFastChecks;
 
                     _gitDirPath = Module.WorkingDirGitDir;
 
                     GitIndexWatcher.Path = _gitDirPath;
                     GitIndexWatcher.Filter = "index";
                     GitIndexWatcher.IncludeSubdirectories = false;
-                    GitIndexWatcher.EnableRaisingEvents = enabled;
+                    GitIndexWatcher.EnableRaisingEvents = _enabled;
 
                     RefsWatcher.Path = Path.Combine(Module.GitCommonDirectory, "refs");
                     RefsWatcher.IncludeSubdirectories = true;
-                    RefsWatcher.EnableRaisingEvents = enabled;
+                    RefsWatcher.EnableRaisingEvents = _enabled;
                 }
                 catch
                 {
-                    enabled = false;
+                    _enabled = false;
                 }
             }
         }
 
-        private bool indexChanged;
+        private bool _indexChanged;
         public bool IndexChanged
         {
             get
             {
-                if (!enabled)
+                if (!_enabled)
+                {
                     return true;
+                }
 
                 if (_gitDirPath != Module.WorkingDirGitDir)
+                {
                     return true;
+                }
 
-                return indexChanged;
+                return _indexChanged;
             }
             set
             {
-                indexChanged = value;
+                _indexChanged = value;
                 GitIndexWatcher.EnableRaisingEvents = !IndexChanged;
 
                 Changed?.Invoke(this, new IndexChangedEventArgs(IndexChanged));
             }
         }
 
-        private bool enabled;
+        private bool _enabled;
         private string _gitDirPath;
-        private FileSystemWatcher GitIndexWatcher { get; set; }
-        private FileSystemWatcher RefsWatcher { get; set; }
+        private FileSystemWatcher GitIndexWatcher { get; }
+        private FileSystemWatcher RefsWatcher { get; }
 
         private void fileSystemWatcher_Changed(object sender, FileSystemEventArgs e)
         {
@@ -119,13 +123,15 @@ namespace GitUI.UserControls.RevisionGridClasses
 
         private void RefreshWatcher()
         {
-            if (_gitDirPath != Module.WorkingDirGitDir || enabled != AppSettings.UseFastChecks)
+            if (_gitDirPath != Module.WorkingDirGitDir || _enabled != AppSettings.UseFastChecks)
+            {
                 SetFileSystemWatcher();
+            }
         }
 
         public void Dispose()
         {
-            enabled = false;
+            _enabled = false;
             GitIndexWatcher.EnableRaisingEvents = false;
             GitIndexWatcher.Changed -= fileSystemWatcher_Changed;
             RefsWatcher.Changed -= fileSystemWatcher_Changed;

@@ -13,158 +13,167 @@ namespace GitUI.CommandsDialogs
 {
     public class BuildReportTabPageExtension
     {
-        private readonly TabControl tabControl;
+        private readonly TabControl _tabControl;
         private readonly string _caption;
 
-        private TabPage buildReportTabPage;
-        private WebBrowserCtrl buildReportWebBrowser;
-        private GitRevision selectedGitRevision;
-        private String url;
+        private TabPage _buildReportTabPage;
+        private WebBrowserCtrl _buildReportWebBrowser;
+        private GitRevision _selectedGitRevision;
+        private string _url;
 
         public BuildReportTabPageExtension(TabControl tabControl, string caption)
         {
-            this.tabControl = tabControl;
+            _tabControl = tabControl;
             _caption = caption;
         }
 
         public void FillBuildReport(GitRevision revision)
         {
-            if (selectedGitRevision != null) selectedGitRevision.PropertyChanged -= RevisionPropertyChanged;
-            selectedGitRevision = revision;
-            if (selectedGitRevision != null) selectedGitRevision.PropertyChanged += RevisionPropertyChanged;
+            if (_selectedGitRevision != null)
+            {
+                _selectedGitRevision.PropertyChanged -= RevisionPropertyChanged;
+            }
 
-            var buildInfoIsAvailable =
-                !(revision == null || revision.BuildStatus == null || string.IsNullOrEmpty(revision.BuildStatus.Url));
+            _selectedGitRevision = revision;
 
-            tabControl.SuspendLayout();
+            if (_selectedGitRevision != null)
+            {
+                _selectedGitRevision.PropertyChanged += RevisionPropertyChanged;
+            }
+
+            _tabControl.SuspendLayout();
 
             try
             {
+                var buildInfoIsAvailable = !string.IsNullOrEmpty(revision?.BuildStatus?.Url);
+
                 if (buildInfoIsAvailable)
                 {
-                    if (buildReportTabPage == null)
+                    if (_buildReportTabPage == null)
                     {
-                        CreateBuildReportTabPage(tabControl);
+                        CreateBuildReportTabPage(_tabControl);
                     }
 
-                    var isFavIconMissing = buildReportTabPage.ImageIndex < 0;
+                    var isFavIconMissing = _buildReportTabPage.ImageIndex < 0;
 
-                    if (isFavIconMissing || tabControl.SelectedTab == buildReportTabPage)
+                    if (isFavIconMissing || _tabControl.SelectedTab == _buildReportTabPage)
                     {
                         try
                         {
                             if (revision.BuildStatus.ShowInBuildReportTab)
                             {
-                                url = null;
-                                buildReportWebBrowser.Navigate(revision.BuildStatus.Url);
+                                _url = null;
+                                _buildReportWebBrowser.Navigate(revision.BuildStatus.Url);
                             }
                             else
                             {
-                                url = revision.BuildStatus.Url;
-                                buildReportWebBrowser.Navigate("about:blank");
+                                _url = revision.BuildStatus.Url;
+                                _buildReportWebBrowser.Navigate("about:blank");
                             }
 
                             if (isFavIconMissing)
                             {
-                                buildReportWebBrowser.Navigated += BuildReportWebBrowserOnNavigated;
+                                _buildReportWebBrowser.Navigated += BuildReportWebBrowserOnNavigated;
                             }
                         }
                         catch
                         {
-                            //No propagation to the user if the report fails
+                            // No propagation to the user if the report fails
                         }
                     }
 
-                    if (!tabControl.Controls.Contains(buildReportTabPage))
+                    if (!_tabControl.Controls.Contains(_buildReportTabPage))
                     {
-                        tabControl.Controls.Add(buildReportTabPage);
+                        _tabControl.Controls.Add(_buildReportTabPage);
                     }
                 }
                 else
                 {
-                    if (buildReportTabPage != null && tabControl.Controls.Contains(buildReportTabPage))
+                    if (_buildReportTabPage != null && _tabControl.Controls.Contains(_buildReportTabPage))
                     {
-                        buildReportWebBrowser.Stop();
-                        buildReportWebBrowser.Document.Write(string.Empty);
-                        tabControl.Controls.Remove(buildReportTabPage);
+                        _buildReportWebBrowser.Stop();
+                        _buildReportWebBrowser.Document.Write(string.Empty);
+                        _tabControl.Controls.Remove(_buildReportTabPage);
                     }
                 }
             }
             finally
             {
-                tabControl.ResumeLayout();
+                _tabControl.ResumeLayout();
             }
         }
 
         private void RevisionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == "BuildStatus")
+            if (e.PropertyName == nameof(GitRevision.BuildStatus))
             {
                 // Refresh the selected Git revision
-                this.FillBuildReport(this.selectedGitRevision);
+                FillBuildReport(_selectedGitRevision);
             }
         }
 
         private void CreateBuildReportTabPage(TabControl tabControl)
         {
-            this.buildReportTabPage = new TabPage
-                {
-                    Padding = new Padding(3),
-                    TabIndex = tabControl.Controls.Count,
-                    Text = _caption,
-                    UseVisualStyleBackColor = true
-                };
-            this.buildReportWebBrowser = new WebBrowserCtrl
+            _buildReportTabPage = new TabPage
+            {
+                Padding = new Padding(3),
+                TabIndex = tabControl.Controls.Count,
+                Text = _caption,
+                UseVisualStyleBackColor = true
+            };
+            _buildReportWebBrowser = new WebBrowserCtrl
             {
                 Dock = DockStyle.Fill
             };
-            this.buildReportTabPage.Controls.Add(this.buildReportWebBrowser);
+            _buildReportTabPage.Controls.Add(_buildReportWebBrowser);
         }
 
         private void BuildReportWebBrowserOnNavigated(object sender,
                                                       WebBrowserNavigatedEventArgs webBrowserNavigatedEventArgs)
         {
-            buildReportWebBrowser.Navigated -= BuildReportWebBrowserOnNavigated;
+            _buildReportWebBrowser.Navigated -= BuildReportWebBrowserOnNavigated;
 
-            var favIconUrl = DetermineFavIconUrl(buildReportWebBrowser.Document);
+            var favIconUrl = DetermineFavIconUrl(_buildReportWebBrowser.Document);
 
             if (favIconUrl != null)
             {
-                DownloadRemoteImageFileAsync(favIconUrl).ContinueWith(
-                    task =>
+                ThreadHelper.JoinableTaskFactory.RunAsync(
+                    async () =>
+                    {
+                        using (var imageStream = await DownloadRemoteImageFileAsync(favIconUrl))
                         {
-                            using (var imageStream = task.Result)
+                            if (imageStream != null)
                             {
-                                if (imageStream != null)
+                                await _tabControl.SwitchToMainThreadAsync();
+
+                                var favIconImage = Image.FromStream(imageStream)
+                                                        .GetThumbnailImage(16, 16, null, IntPtr.Zero);
+                                var imageCollection = _tabControl.ImageList.Images;
+                                var imageIndex = _buildReportTabPage.ImageIndex;
+
+                                if (imageIndex < 0)
                                 {
-                                    var favIconImage = Image.FromStream(imageStream)
-                                                            .GetThumbnailImage(16, 16, null, IntPtr.Zero);
-                                    var imageCollection = tabControl.ImageList.Images;
-                                    var imageIndex = buildReportTabPage.ImageIndex;
-
-                                    if (imageIndex < 0)
-                                    {
-                                        buildReportTabPage.ImageIndex = imageCollection.Count;
-                                        imageCollection.Add(favIconImage);
-                                    }
-                                    else
-                                    {
-                                        imageCollection[imageIndex] = favIconImage;
-                                    }
-
-                                    tabControl.Invalidate(false);
+                                    _buildReportTabPage.ImageIndex = imageCollection.Count;
+                                    imageCollection.Add(favIconImage);
                                 }
+                                else
+                                {
+                                    imageCollection[imageIndex] = favIconImage;
+                                }
+
+                                _tabControl.Invalidate(false);
                             }
-                        },
-                    TaskScheduler.FromCurrentSynchronizationContext());
+                        }
+                    });
             }
-            if (url != null)
+
+            if (_url != null)
             {
-                buildReportWebBrowser.Document.Write("<HTML><a href=\"" + url + "\" target=\"_blank\">Open report</a></HTML>");
+                _buildReportWebBrowser.Document.Write("<HTML><a href=\"" + _url + "\" target=\"_blank\">Open report</a></HTML>");
             }
         }
 
-        private string DetermineFavIconUrl(HtmlDocument htmlDocument)
+        private static string DetermineFavIconUrl(HtmlDocument htmlDocument)
         {
             var links = htmlDocument.GetElementsByTagName("link");
             var favIconLink =
@@ -175,46 +184,42 @@ namespace GitUI.CommandsDialogs
             {
                 return null;
             }
+
             var href = favIconLink.GetAttribute("href");
 
             if (htmlDocument.Url.PathAndQuery == "/")
             {
-                //Szenario: http://test.test/teamcity/....
+                // Szenario: http://test.test/teamcity/....
                 return htmlDocument.Url.AbsoluteUri.Replace(htmlDocument.Url.PathAndQuery, href);
             }
             else
             {
-                //Szenario: http://teamcity.domain.test/
+                // Szenario: http://teamcity.domain.test/
                 return new Uri(new Uri(htmlDocument.Url.AbsoluteUri), href).ToString();
             }
         }
 
-        private static Task<Stream> DownloadRemoteImageFileAsync(string uri)
+        private static async Task<Stream> DownloadRemoteImageFileAsync(string uri)
         {
-            var request = (HttpWebRequest) WebRequest.Create(uri);
+            var request = (HttpWebRequest)WebRequest.Create(uri);
 
-            return GetWebResponseAsync(request).ContinueWith(
-                task =>
-                    {
-                        var response = task.Result;
+            var response = await GetWebResponseAsync(request).ConfigureAwait(false);
 
-                        // Check that the remote file was found. The ContentType
-                        // check is performed since a request for a non-existent
-                        // image file might be redirected to a 404-page, which would
-                        // yield the StatusCode "OK", even though the image was not
-                        // found.
-                        if ((response.StatusCode == HttpStatusCode.OK ||
-                             response.StatusCode == HttpStatusCode.Moved ||
-                             response.StatusCode == HttpStatusCode.Redirect) &&
-                            response.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // if the remote file was found, download it
-                            return response.GetResponseStream();
-                        }
+            // Check that the remote file was found. The ContentType
+            // check is performed since a request for a non-existent
+            // image file might be redirected to a 404-page, which would
+            // yield the StatusCode "OK", even though the image was not
+            // found.
+            if ((response.StatusCode == HttpStatusCode.OK ||
+                    response.StatusCode == HttpStatusCode.Moved ||
+                    response.StatusCode == HttpStatusCode.Redirect) &&
+                response.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase))
+            {
+                // if the remote file was found, download it
+                return response.GetResponseStream();
+            }
 
-                        return null;
-                    },
-                TaskContinuationOptions.ExecuteSynchronously);
+            return null;
         }
 
         private static Task<HttpWebResponse> GetWebResponseAsync(HttpWebRequest webRequest)

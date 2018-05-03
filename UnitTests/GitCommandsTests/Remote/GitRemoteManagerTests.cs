@@ -13,12 +13,11 @@ namespace GitCommandsTests.Remote
     [SetCulture("")]
     [SetUICulture("")]
     [TestFixture]
-    class GitRemoteManagerTests
+    internal class GitRemoteManagerTests
     {
         private IGitModule _module;
         private IConfigFileSettings _configFile;
         private IGitRemoteManager _controller;
-
 
         [SetUp]
         public void Setup()
@@ -31,13 +30,12 @@ namespace GitCommandsTests.Remote
             _controller = new GitRemoteManager(() => _module);
         }
 
-
         [Test]
         public void LoadRemotes_should_not_throw_if_module_is_null()
         {
             _module = null;
 
-            ((Action)(() => _controller.LoadRemotes(true))).ShouldNotThrow();
+            ((Action)(() => _controller.LoadRemotes(true))).Should().NotThrow();
         }
 
         [Test]
@@ -97,7 +95,7 @@ namespace GitCommandsTests.Remote
         [Test]
         public void RemoveRemote_should_throw_if_remote_is_null()
         {
-            ((Action)(() => _controller.RemoveRemote(null))).ShouldThrow<ArgumentNullException>()
+            ((Action)(() => _controller.RemoveRemote(null))).Should().Throw<ArgumentNullException>()
                 .WithMessage("Value cannot be null.\r\nParameter name: remote");
         }
 
@@ -114,11 +112,11 @@ namespace GitCommandsTests.Remote
         [Test]
         public void SaveRemote_should_throw_if_remoteName_is_null_or_empty()
         {
-            ((Action)(() => _controller.SaveRemote(null, null, "b", "c", "d"))).ShouldThrow<ArgumentNullException>()
+            ((Action)(() => _controller.SaveRemote(null, null, "b", "c", "d"))).Should().Throw<ArgumentNullException>()
                 .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
-            ((Action)(() => _controller.SaveRemote(null, "", "b", "c", "d"))).ShouldThrow<ArgumentNullException>()
+            ((Action)(() => _controller.SaveRemote(null, "", "b", "c", "d"))).Should().Throw<ArgumentNullException>()
                 .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
-            ((Action)(() => _controller.SaveRemote(null, "  ", "b", "c", "d"))).ShouldThrow<ArgumentNullException>()
+            ((Action)(() => _controller.SaveRemote(null, "  ", "b", "c", "d"))).Should().Throw<ArgumentNullException>()
                 .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
         }
 
@@ -219,7 +217,7 @@ namespace GitCommandsTests.Remote
         [Test]
         public void SetRemoteState_should_throw_if_remote_is_null()
         {
-            ((Action)(() => _controller.ToggleRemoteState(null, false))).ShouldThrow<ArgumentNullException>()
+            ((Action)(() => _controller.ToggleRemoteState(null, false))).Should().Throw<ArgumentNullException>()
                 .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
         }
 
@@ -250,6 +248,106 @@ namespace GitCommandsTests.Remote
 
             _configFile.Received(1).AddConfigSection(sections[remoteDisabled ? 1 : 0]);
             _configFile.Received(1).Save();
+        }
+
+        [Test]
+        public void ConfigureRemotes_Should_not_update_localHead_if_remoteHead_is_local()
+        {
+            var refs = new[]
+            {
+                CreateSubstituteRef("f6323b8e80f96dff017dd14bdb28a576556adab4", "refs/heads/local", ""),
+            };
+
+            _module.GetRefs().ReturnsForAnyArgs(refs);
+
+            _controller.ConfigureRemotes("origin");
+
+            var mergeWith = "";
+            Assert.AreEqual(mergeWith, refs[0].MergeWith);
+            refs[0].Received(0).MergeWith = mergeWith;
+        }
+
+        [Test]
+        public void ConfigureRemotes_Should_not_update_localHead_if_localHead_is_remote()
+        {
+            var refs = new[]
+            {
+                CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", "refs/remotes/origin/develop", "origin"),
+            };
+            _module.GetRefs().ReturnsForAnyArgs(refs);
+
+            _controller.ConfigureRemotes("origin");
+
+            var mergeWith = "";
+            Assert.AreEqual(mergeWith, refs[0].MergeWith);
+            refs[0].Received(0).MergeWith = mergeWith;
+        }
+
+        [Test]
+        public void ConfigureRemotes_Should_not_update_localHead_if_remoteHead_is_not_the_remote_origin_of_the_localHead()
+        {
+            var refs = new[]
+            {
+                CreateSubstituteRef("f6323b8e80f96dff017dd14bdb28a576556adab4", "refs/heads/develop", ""),
+                CreateSubstituteRef("ddca5a9cdc3ab10e042ae6cf5f8da2dd25c4b75f", "refs/remotes/origin/master", "origin"),
+            };
+            _module.GetRefs().ReturnsForAnyArgs(refs);
+
+            _controller.ConfigureRemotes("origin");
+
+            var mergeWith = "";
+
+            Assert.AreEqual(mergeWith, refs[0].MergeWith);
+            refs[0].Received(0).MergeWith = mergeWith;
+        }
+
+        [Test]
+        public void ConfigureRemotes_Should_not_update_localHead_if_remoteHead_is_Tag()
+        {
+            var refs = new[]
+            {
+                CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", "refs/tags/local-tag", ""),
+            };
+            _module.GetRefs().ReturnsForAnyArgs(refs);
+
+            _controller.ConfigureRemotes("origin");
+
+            var mergeWith = "";
+
+            Assert.AreEqual(mergeWith, refs[0].MergeWith);
+            refs[0].Received(0).MergeWith = mergeWith;
+        }
+
+        [Test]
+        public void ConfigureRemotes_Should_update_localHead_if_remoteHead_is_the_remote_origin_of_the_localHead()
+        {
+            var refs = new[]
+            {
+                CreateSubstituteRef("f6323b8e80f96dff017dd14bdb28a576556adab4", "refs/heads/develop", ""),
+                CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", "refs/remotes/origin/develop", "origin"),
+            };
+            _module.GetRefs().ReturnsForAnyArgs(refs);
+
+            _controller.ConfigureRemotes("origin");
+            var mergeWith = "develop";
+            Assert.AreEqual(mergeWith, refs[0].MergeWith);
+            refs[0].Received(1).MergeWith = mergeWith;
+        }
+
+        private IGitRef CreateSubstituteRef(string guid, string completeName, string remote)
+        {
+            var isRemote = !string.IsNullOrEmpty(remote);
+            var name = (isRemote ? remote + "/" : "") + completeName.Split('/').LastOrDefault();
+            var isTag = completeName.StartsWith("refs/tags/", StringComparison.InvariantCultureIgnoreCase);
+            var gitRef = Substitute.For<IGitRef>();
+            gitRef.Module.Returns(_module);
+            gitRef.Guid.Returns(guid);
+            gitRef.CompleteName.Returns(completeName);
+            gitRef.Name.Returns(name);
+            gitRef.Remote.Returns(remote);
+            gitRef.IsRemote.Returns(isRemote);
+            gitRef.IsTag.Returns(isTag);
+            return gitRef;
         }
     }
 }

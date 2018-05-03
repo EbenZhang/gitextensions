@@ -1,8 +1,8 @@
-﻿using GitCommands;
-using System;
+﻿using System;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using GitCommands;
 
 namespace GitUI.CommandsDialogs.SettingsDialog
 {
@@ -22,19 +22,20 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             try
             {
                 ListIncludedEncodings.Items.AddRange(includedEncoding.Values.ToArray());
-                ListIncludedEncodings.DisplayMember = "EncodingName";
+                ListIncludedEncodings.DisplayMember = nameof(Encoding.EncodingName);
             }
             finally
             {
                 ListIncludedEncodings.EndUpdate();
             }
 
-            var availableEncoding = System.Text.Encoding.GetEncodings()
+            var availableEncoding = Encoding.GetEncodings()
                 .Select(ei => ei.GetEncoding())
                 .Where(e => !includedEncoding.ContainsKey(e.HeaderName))
                 .ToList();
+
             // If exists utf-8, then replace to utf-8 without BOM
-            var utf8 = availableEncoding.Where(e => typeof(UTF8Encoding) == e.GetType()).FirstOrDefault();
+            var utf8 = availableEncoding.FirstOrDefault(e => typeof(UTF8Encoding) == e.GetType());
             if (utf8 != null)
             {
                 availableEncoding.Remove(utf8);
@@ -45,7 +46,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             try
             {
                 ListAvailableEncodings.Items.AddRange(availableEncoding.ToArray());
-                ListAvailableEncodings.DisplayMember = "EncodingName";
+                ListAvailableEncodings.DisplayMember = nameof(Encoding.EncodingName);
             }
             finally
             {
@@ -66,7 +67,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         private void ButtonOk_Click(object sender, EventArgs e)
         {
             AppSettings.AvailableEncodings.Clear();
-            foreach(Encoding encoding in ListIncludedEncodings.Items)
+            foreach (Encoding encoding in ListIncludedEncodings.Items)
             {
                 AppSettings.AvailableEncodings.Add(encoding.HeaderName, encoding);
             }
@@ -94,18 +95,21 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             // Get selected encoding
             var encoding = ListIncludedEncodings.SelectedItem as Encoding;
             Type encodingType = null;
+
             // Get type if exists
             if (encoding != null)
+            {
                 encodingType = encoding.GetType();
+            }
+
             // If selected encoding and encoding not default list
-            ToRight.Enabled = encoding != null && 
+            ToRight.Enabled = encoding != null &&
                 !(
                     encodingType == typeof(ASCIIEncoding) ||
                     encodingType == typeof(UnicodeEncoding) ||
                     encodingType == typeof(UTF8Encoding) ||
                     encodingType == typeof(UTF7Encoding) ||
-                    encoding == Encoding.Default
-                );
+                    encoding == Encoding.Default);
         }
 
         private void ListAvailableEncodings_SelectedValueChanged(object sender, EventArgs e)

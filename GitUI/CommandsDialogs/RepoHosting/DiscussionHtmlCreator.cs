@@ -7,14 +7,9 @@ using GitUIPluginInterfaces.RepositoryHosts;
 
 namespace GitUI.CommandsDialogs.RepoHosting
 {
-    class DiscussionHtmlCreator
+    internal static class DiscussionHtmlCreator
     {
-        public static string CreateFor(IPullRequestInformation currentPullRequestInfo)
-        {
-            return CreateFor(currentPullRequestInfo, null);
-        }
-
-        public static string CreateFor(IPullRequestInformation currentPullRequestInfo, List<IDiscussionEntry> entries)
+        public static string CreateFor(IPullRequestInformation currentPullRequestInfo, List<IDiscussionEntry> entries = null)
         {
             var html = new StringBuilder();
             AddLine(html, "<html><body><style type='text/css'>");
@@ -33,7 +28,10 @@ namespace GitUI.CommandsDialogs.RepoHosting
                     AddLine(html, "<span class='created'>{0}</span>\r\n", entry.Created);
                     AddLine(html, "<span class='author'>{0}</span>\r\n", entry.Author);
                     if (cde != null)
+                    {
                         AddLine(html, "<span class='commit'>Commit:  {0}</span>\r\n", cde.Sha);
+                    }
+
                     AddLine(html, "</div>");
                     AddLine(html, "<div class='commentBody'>{0}</div>\r\n", entry.Body);
 
@@ -59,7 +57,9 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 {
                     _cssData = _cssDataRaw;
                     foreach (var elem in SystemInfoReplacement)
+                    {
                         _cssData = _cssData.Replace(elem.Key, elem.Value);
+                    }
                 }
 
                 return _cssData;
@@ -77,16 +77,16 @@ namespace GitUI.CommandsDialogs.RepoHosting
                     var props = typeof(SystemColors).GetProperties(BindingFlags.Static | BindingFlags.Public | BindingFlags.GetProperty).ToList();
 
                     var kvps = from prop in props
-                               where prop.PropertyType.Equals(typeof(Color))
+                               where prop.PropertyType == typeof(Color)
                                let c = (Color)prop.GetValue(null, null)
-                               select new KeyValuePair<string,string>("SC." + prop.Name, string.Format("#{0:X2}{1:X2}{2:X2}", c.R, c.G, c.B));
+                               select new KeyValuePair<string, string>("SC." + prop.Name, string.Format("#{0:X2}{1:X2}{2:X2}", c.R, c.G, c.B));
 
                     _systemInfoReplacement = kvps.ToList();
 
                     _systemInfoReplacement.Add(new KeyValuePair<string, string>("SF.DialogFont", SystemFonts.DialogFont.Name));
-                    _systemInfoReplacement.Add(new KeyValuePair<string, string>("SF.DialogFontSize", string.Format( "{0}pt", SystemFonts.DialogFont.SizeInPoints)));
+                    _systemInfoReplacement.Add(new KeyValuePair<string, string>("SF.DialogFontSize", string.Format("{0}pt", SystemFonts.DialogFont.SizeInPoints)));
 
-                    _systemInfoReplacement.Sort((p1, p2) => p2.Key.CompareTo(p1.Key)); //Required.
+                    _systemInfoReplacement.Sort((p1, p2) => p2.Key.CompareTo(p1.Key)); // Required.
                 }
 
                 return _systemInfoReplacement;

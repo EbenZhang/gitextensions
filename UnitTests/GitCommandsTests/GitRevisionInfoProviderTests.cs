@@ -15,7 +15,6 @@ namespace GitCommandsTests
         private IGitModule _module;
         private GitRevisionInfoProvider _provider;
 
-
         [SetUp]
         public void Setup()
         {
@@ -26,7 +25,7 @@ namespace GitCommandsTests
         [Test]
         public void LoadChildren_should_throw_if_null()
         {
-            ((Action)(() => _provider.LoadChildren(null))).ShouldThrow<ArgumentNullException>();
+            ((Action)(() => _provider.LoadChildren(null))).Should().Throw<ArgumentNullException>();
         }
 
         [TestCase(null)]
@@ -37,7 +36,7 @@ namespace GitCommandsTests
             var item = Substitute.For<IGitItem>();
             item.Guid.Returns(guid);
 
-            ((Action)(() => _provider.LoadChildren(item))).ShouldThrow<ArgumentException>();
+            ((Action)(() => _provider.LoadChildren(item))).Should().Throw<ArgumentException>();
         }
 
         [Test]
@@ -49,7 +48,7 @@ namespace GitCommandsTests
 
             _provider = new GitRevisionInfoProvider(() => null);
 
-            ((Action)(() => _provider.LoadChildren(item))).ShouldThrow<ArgumentException>();
+            ((Action)(() => _provider.LoadChildren(item))).Should().Throw<ArgumentException>();
         }
 
         [Test]
@@ -72,9 +71,9 @@ namespace GitCommandsTests
         public void LoadChildren_should_return_shallow_tree_for_GitItem_with_updated_FileName()
         {
             var guid = Guid.NewGuid().ToString("N");
-            var item = new GitItem("", "", guid, "folder");
+            var item = new GitItem(0, GitObjectType.Tree, guid, "folder");
 
-            var items = new[] { Substitute.For<IGitItem>(), new GitItem("", "", "", "file2"), new GitItem("", "", "", "file3") };
+            var items = new[] { Substitute.For<IGitItem>(), new GitItem(0, GitObjectType.Blob, "", "file2"), new GitItem(0, GitObjectType.Blob, "", "file3") };
             _module.GetTree(guid, false).Returns(items);
 
             var children = _provider.LoadChildren(item);

@@ -11,7 +11,7 @@ namespace GitCommands.ExternalLinks
     [XmlType("GitExtLinkDef")]
     public class ExternalLinkDefinition : SimpleStructured
     {
-        //revision's parts that can be searched for candidates for a link
+        // revision's parts that can be searched for candidates for a link
         public enum RevisionPart
         {
             Message,
@@ -30,7 +30,6 @@ namespace GitCommands.ExternalLinks
         private string _remoteSearchPattern;
         private string _useRemotesPattern;
 
-
         /// <summary>
         /// Non-local link def can be locally disabled
         /// </summary>
@@ -39,7 +38,7 @@ namespace GitCommands.ExternalLinks
         /// <summary>
         /// List of formats to be applied for each revision part matched by SearchPattern
         /// </summary>
-        public BindingList<ExternalLinkFormat> LinkFormats = new BindingList<ExternalLinkFormat>();
+        public BindingList<ExternalLinkFormat> LinkFormats { get; } = new BindingList<ExternalLinkFormat>();
 
         /// <summary>Short name for this link def</summary>
         public string Name { get; set; }
@@ -65,14 +64,11 @@ namespace GitCommands.ExternalLinks
                         System.Diagnostics.Debug.Print(e.ToStringWithData());
                         return null;
                     }
-                }
-                );
-
-
+                });
             }
         }
 
-        public HashSet<RemotePart> RemoteSearchInParts = new HashSet<RemotePart>();
+        public HashSet<RemotePart> RemoteSearchInParts { get; } = new HashSet<RemotePart>();
 
         /// <summary>
         /// RegEx for remote parts that have to be transformed into links
@@ -95,12 +91,11 @@ namespace GitCommands.ExternalLinks
                         System.Diagnostics.Debug.Print(e.ToStringWithData());
                         return null;
                     }
-                }
-                );
+                });
             }
         }
 
-        public HashSet<RevisionPart> SearchInParts = new HashSet<RevisionPart>();
+        public HashSet<RevisionPart> SearchInParts { get; } = new HashSet<RevisionPart>();
 
         /// <summary>
         /// RegEx for revision parts that have to be transformed into links
@@ -123,8 +118,7 @@ namespace GitCommands.ExternalLinks
                             System.Diagnostics.Debug.Print(e.ToStringWithData());
                             return null;
                         }
-                    }
-                        );
+                    });
             }
         }
 
@@ -149,14 +143,12 @@ namespace GitCommands.ExternalLinks
                             System.Diagnostics.Debug.Print(e.ToStringWithData());
                             return null;
                         }
-                    }
-                );
+                    });
             }
         }
 
         /// <summary>Indicates if only the first among the matching remotes should be used</summary>
         public bool UseOnlyFirstRemote { get; set; }
-
 
         /// <summary>Compiled SearchPattern</summary>
         [XmlIgnore]
@@ -173,8 +165,6 @@ namespace GitCommands.ExternalLinks
         /// <summary>Compiled UseRemotesPattern</summary>
         [XmlIgnore]
         public Lazy<Regex> UseRemotesRegex { get; private set; }
-
-
 
         public override int GetHashCode()
         {

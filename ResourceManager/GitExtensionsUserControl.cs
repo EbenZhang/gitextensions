@@ -9,27 +9,13 @@ using GitCommands;
 namespace ResourceManager
 {
     /// <summary>Provides translation and hotkey plumbing for GitEx <see cref="UserControl"/>s.</summary>
-    public class GitExtensionsControl : UserControl, ITranslate
+    public abstract class GitExtensionsControl : UserControl, ITranslate
     {
-        public GitExtensionsControl()
+        protected GitExtensionsControl()
         {
             Font = AppSettings.Font;
 
             Load += GitExtensionsControl_Load;
-        }
-
-        public int GetCurrentDeviceDpi()
-        {
-#if TARGETING_DOTNET47
-            int deviceDpi = DeviceDpi;
-#else
-            int deviceDpi;
-            using (Graphics g = this.CreateGraphics())
-            {
-                deviceDpi = (int)g.DpiX;
-            }
-#endif
-            return deviceDpi;
         }
 
         [Browsable(false)] // because we always read from settings
@@ -46,14 +32,15 @@ namespace ResourceManager
             var component = value as IComponent;
             ISite site = component?.Site;
             if (site != null && site.DesignMode)
+            {
                 isComponentInDesignMode = true;
+            }
 
             return isComponentInDesignMode;
         }
 
-        protected virtual void OnRuntimeLoad(EventArgs e)
+        protected virtual void OnRuntimeLoad()
         {
-
         }
 
         protected override void OnLoad(EventArgs e)
@@ -61,25 +48,29 @@ namespace ResourceManager
             base.OnLoad(e);
 
             if (!CheckComponent(this))
-                OnRuntimeLoad(e);
+            {
+                OnRuntimeLoad();
+            }
         }
 
-        private bool translated;
+        private bool _translated;
 
-        void GitExtensionsControl_Load(object sender, EventArgs e)
+        private void GitExtensionsControl_Load(object sender, EventArgs e)
         {
             // find out if the value is a component and is currently in design mode
             bool isComponentInDesignMode = CheckComponent(this);
 
-            if (!translated && !isComponentInDesignMode)
+            if (!_translated && !isComponentInDesignMode)
+            {
                 throw new Exception("The control " + GetType().Name + " is not translated in the constructor. You need to call Translate() right after InitializeComponent().");
+            }
         }
 
         /// <summary>Translates the <see cref="UserControl"/>'s elements.</summary>
         protected void Translate()
         {
-            Translator.Translate(this, GitCommands.AppSettings.CurrentTranslation);
-            translated = true;
+            Translator.Translate(this, AppSettings.CurrentTranslation);
+            _translated = true;
         }
 
         public virtual void AddTranslationItems(ITranslation translation)
@@ -90,18 +81,6 @@ namespace ResourceManager
         public virtual void TranslateItems(ITranslation translation)
         {
             TranslationUtils.TranslateItemsFromFields(Name, this, translation);
-        }
-
-        protected void TranslateItem(string itemName, object item)
-        {
-            var translation = Translator.GetTranslation(AppSettings.CurrentTranslation);
-            if (translation.Count == 0)
-                return;
-            foreach (var pair in translation)
-            {
-                IEnumerable<Tuple<string, object>> itemsToTranslate = new[] { new Tuple<string, object>(itemName, item) };
-                TranslationUtils.TranslateItemsFromList(Name, pair.Value, itemsToTranslate);
-            }
         }
 
         #region Hotkeys
@@ -115,14 +94,16 @@ namespace ResourceManager
         /// <summary>Checks if a hotkey wants to handle the key before letting the message propagate.</summary>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (HotkeysEnabled && this.Hotkeys != null)
-                foreach (var hotkey in this.Hotkeys)
+            if (HotkeysEnabled && Hotkeys != null)
+            {
+                foreach (var hotkey in Hotkeys)
                 {
                     if (hotkey != null && hotkey.KeyData == keyData)
                     {
                         return ExecuteCommand(hotkey.CommandCode);
                     }
                 }
+            }
 
             return base.ProcessCmdKey(ref msg, keyData);
         }
@@ -132,7 +113,7 @@ namespace ResourceManager
             return GetHotkeyCommand(commandCode)?.KeyData ?? Keys.None;
         }
 
-        protected HotkeyCommand GetHotkeyCommand(int commandCode)
+        private HotkeyCommand GetHotkeyCommand(int commandCode)
         {
             return Hotkeys?.FirstOrDefault(h => h.CommandCode == commandCode);
         }
@@ -141,7 +122,6 @@ namespace ResourceManager
         /// Override this method to handle form-specific Hotkey commands.
         /// <remarks>This base method does nothing and returns false.</remarks>
         /// </summary>
-        /// <param name="command"></param>
         protected virtual bool ExecuteCommand(int command)
         {
             return false;

@@ -15,15 +15,17 @@ namespace GitUI.HelperDialogs
             Translate();
         }
 
-        public FormSelectMultipleBranches(IList<IGitRef> branchesToSelect)
+        public FormSelectMultipleBranches(IReadOnlyList<IGitRef> branchesToSelect)
         {
             InitializeComponent();
             Translate();
 
             if (branchesToSelect.Count > 350)
+            {
                 Branches.MultiColumn = true;
+            }
 
-            Branches.DisplayMember = "Name";
+            Branches.DisplayMember = nameof(IGitRef.Name);
             Branches.Items.AddRange(branchesToSelect.ToArray());
         }
 
@@ -32,22 +34,24 @@ namespace GitUI.HelperDialogs
             int index = 0;
             foreach (object item in Branches.Items)
             {
-                var branch = item as IGitRef;
-                if (branch != null && branch.Name == name)
+                if (item is IGitRef branch && branch.Name == name)
                 {
                     Branches.SetItemChecked(index, true);
                     return;
                 }
+
                 index++;
             }
         }
 
-        public IList<IGitRef> GetSelectedBranches()
+        public IReadOnlyList<IGitRef> GetSelectedBranches()
         {
-            IList<IGitRef> branches = new List<IGitRef>();
+            var branches = new List<IGitRef>();
 
             foreach (IGitRef head in Branches.CheckedItems)
+            {
                 branches.Add(head);
+            }
 
             return branches;
         }

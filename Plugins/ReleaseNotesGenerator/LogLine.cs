@@ -9,7 +9,8 @@ namespace ReleaseNotesGenerator
             Commit = hash;
             MessageLines = new List<string> { message };
         }
+
         public string Commit { get; }
-        public IList<string> MessageLines { get; } 
+        public IList<string> MessageLines { get; }
     }
 }

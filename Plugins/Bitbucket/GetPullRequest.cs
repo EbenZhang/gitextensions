@@ -1,14 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using RestSharp;
-using System.Linq;
-using System;
 
 namespace Bitbucket
 {
-    class PullRequest
+    internal class PullRequest
     {
-        //public string Ref { get; set; }
+        ////public string Ref { get; set; }
         public static PullRequest Parse(JObject json)
         {
             var request = new PullRequest
@@ -26,32 +26,40 @@ namespace Bitbucket
                 DestProjectKey = json["toRef"]["repository"]["project"]["key"].ToString(),
                 DestRepo = json["toRef"]["repository"]["name"].ToString(),
                 DestBranch = json["toRef"]["displayId"].ToString(),
-                CreatedDate = Convert.ToDouble(json["createdDate"].ToString().Substring(0,10))
-                
+                CreatedDate = Convert.ToDouble(json["createdDate"].ToString().Substring(0, 10))
             };
             var reviewers = json["reviewers"];
             var participants = json["participants"];
 
             if (!reviewers.HasValues)
+            {
                 request.Reviewers = "None";
+            }
             else
             {
-                reviewers.ForEach(r => request.Reviewers += r["user"]["displayName"] + " (" + r["approved"] + ")" + System.Environment.NewLine);
+                reviewers.ForEach(r => request.Reviewers += r["user"]["displayName"] + " (" + r["approved"] + ")" + Environment.NewLine);
                 if (request.Reviewers.EndsWith(", "))
+                {
                     request.Reviewers = request.Reviewers.Substring(0, request.Reviewers.Length - 2);
+                }
             }
 
             if (!participants.HasValues)
+            {
                 request.Participants = "None";
+            }
             else
             {
-                participants.ForEach(r => request.Reviewers += r["user"]["displayName"] + " (" + r["approved"] + ")" + System.Environment.NewLine);
+                participants.ForEach(r => request.Reviewers += r["user"]["displayName"] + " (" + r["approved"] + ")" + Environment.NewLine);
                 if (request.Reviewers.EndsWith(", "))
+                {
                     request.Reviewers = request.Reviewers.Substring(0, request.Reviewers.Length - 2);
+                }
             }
 
             return request;
         }
+
         public string Id { get; set; }
         public string Version { get; set; }
         public string DestProjectKey { get; set; }
@@ -72,7 +80,7 @@ namespace Bitbucket
 
         public string DestDisplayName => string.Format("{0}/{1}", DestProjectName, DestRepo);
 
-        public string DisplayName => string.Format("#{0}: {1}, {2}", Id, Title, (ConvertFromUnixTimestamp(CreatedDate)).ToString("yyyy-MM-dd"));
+        public string DisplayName => string.Format("#{0}: {1}, {2}", Id, Title, ConvertFromUnixTimestamp(CreatedDate).ToString("yyyy-MM-dd"));
 
         public static DateTime ConvertFromUnixTimestamp(double timestamp)
         {
@@ -81,7 +89,7 @@ namespace Bitbucket
         }
     }
 
-    class GetPullRequest : BitbucketRequestBase<List<PullRequest>>
+    internal class GetPullRequest : BitbucketRequestBase<List<PullRequest>>
     {
         private readonly string _projectKey;
         private readonly string _repoName;
@@ -106,6 +114,7 @@ namespace Bitbucket
             {
                 result.Add(PullRequest.Parse(val));
             }
+
             return result;
         }
     }

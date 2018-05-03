@@ -21,7 +21,6 @@ namespace GitCommandsTests.ExternalLinks
         private ExternalLinkDefinition _linkDef;
         private GitRevision _revision;
 
-
         [SetUp]
         public void Setup()
         {
@@ -35,14 +34,13 @@ namespace GitCommandsTests.ExternalLinks
             _parser = new ExternalLinkRevisionParser(_remoteManager);
         }
 
-
         [Test]
         public void ParseGithubIssueForUpstreamLink()
         {
             _revision.Body = "Merge pull request #3657 from RussKie/tweak_FormRemotes_tooltips";
             IEnumerable<ExternalLink> expectedLinks = new[]
             {
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/gitextensions/gitextensions/issues/3657"
@@ -60,7 +58,7 @@ namespace GitCommandsTests.ExternalLinks
             _revision.Body = "Merge pull request #3657 from RussKie/tweak_FormRemotes_tooltips";
             IEnumerable<ExternalLink> expectedLinks = new[]
             {
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/jbialobr/gitextensions/issues/3657"
@@ -71,7 +69,6 @@ namespace GitCommandsTests.ExternalLinks
             actualLinks.Should().Equal(expectedLinks);
         }
 
-
         [Test]
         public void ParseGithubIssueForUpstreamAndOriginLink()
         {
@@ -79,12 +76,12 @@ namespace GitCommandsTests.ExternalLinks
             _revision.Body = "Merge pull request #3657 from RussKie/tweak_FormRemotes_tooltips";
             IEnumerable<ExternalLink> expectedLinks = new[]
             {
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/gitextensions/gitextensions/issues/3657"
                 },
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/jbialobr/gitextensions/issues/3657"
@@ -103,17 +100,17 @@ namespace GitCommandsTests.ExternalLinks
             _revision.Body = "Merge pull request #3657 from RussKie/tweak_FormRemotes_tooltips";
             IEnumerable<ExternalLink> expectedLinks = new[]
             {
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/jbialobr/gitextensions/issues/3657"
                 },
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/gitextensions/gitextensions/issues/3657"
                 },
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/russkie/gitextensions/issues/3657"
@@ -124,7 +121,6 @@ namespace GitCommandsTests.ExternalLinks
             actualLinks.Should().Equal(expectedLinks);
         }
 
-
         [Test]
         public void ParseLinkWithEmptyRemotePart()
         {
@@ -132,7 +128,7 @@ namespace GitCommandsTests.ExternalLinks
             _revision.Body = "Merge pull request #3657 from RussKie/tweak_FormRemotes_tooltips";
             IEnumerable<ExternalLink> expectedLinks = new[]
             {
-                new ExternalLink()
+                new ExternalLink
                 {
                     Caption = "Issue 3657",
                     URI = "https://github.com/gitextensions/gitextensions/issues/3657"
@@ -143,23 +139,22 @@ namespace GitCommandsTests.ExternalLinks
             actualLinks.Should().Equal(expectedLinks);
         }
 
-
         private static BindingList<GitRemote> GetDefaultRemotes()
         {
             var remotes = new BindingList<GitRemote>();
-            remotes.Add(new GitRemote()
+            remotes.Add(new GitRemote
             {
                 Name = "origin",
                 Url = "https://github.com/jbialobr/gitextensions.git"
             });
 
-            remotes.Add(new GitRemote()
+            remotes.Add(new GitRemote
             {
                 Name = "upstream",
                 Url = "https://github.com/gitextensions/gitextensions.git"
             });
 
-            remotes.Add(new GitRemote()
+            remotes.Add(new GitRemote
             {
                 Name = "RussKie",
                 Url = "https://github.com/russkie/gitextensions.git"
@@ -168,7 +163,7 @@ namespace GitCommandsTests.ExternalLinks
             return remotes;
         }
 
-        private static IList<ExternalLinkDefinition> Parse(string xml)
+        private static IReadOnlyList<ExternalLinkDefinition> Parse(string xml)
         {
             var serializer = new XmlSerializer(typeof(List<ExternalLinkDefinition>));
             using (var stringReader = new StringReader(xml))
@@ -210,7 +205,6 @@ namespace GitCommandsTests.ExternalLinks
 </ArrayOfGitExtLinkDef>
        ";
         }
-
 
         private static string GetEmptyRemotePartXmlDef()
         {

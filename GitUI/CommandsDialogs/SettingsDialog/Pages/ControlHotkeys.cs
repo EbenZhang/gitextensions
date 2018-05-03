@@ -16,26 +16,26 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         #region Properties
 
         #region Settings
-        private HotkeySettings[] _Settings;
+        private HotkeySettings[] _settings;
         private HotkeySettings[] Settings
         {
-            get { return _Settings; }
+            get { return _settings; }
             set
             {
-                _Settings = value;
+                _settings = value;
                 UpdateCombobox(value);
             }
         }
         #endregion
 
         #region SelectedHotkeySettings
-        private HotkeySettings _SelectedHotkeySettings;
+        private HotkeySettings _selectedHotkeySettings;
         private HotkeySettings SelectedHotkeySettings
         {
-            get { return _SelectedHotkeySettings; }
+            get { return _selectedHotkeySettings; }
             set
             {
-                _SelectedHotkeySettings = value;
+                _selectedHotkeySettings = value;
                 UpdateListViewItems(value);
             }
         }
@@ -43,13 +43,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         #endregion
 
         #region SelectedHotkeyCommand
-        private HotkeyCommand _SelectedHotkeyCommand;
+        private HotkeyCommand _selectedHotkeyCommand;
         private HotkeyCommand SelectedHotkeyCommand
         {
-            get { return _SelectedHotkeyCommand; }
+            get { return _selectedHotkeyCommand; }
             set
             {
-                _SelectedHotkeyCommand = value;
+                _selectedHotkeyCommand = value;
                 UpdateTextBox(value);
             }
         }
@@ -61,44 +61,52 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             InitializeComponent();
             Translate();
+
+            cmbSettings.DisplayMember = nameof(HotkeySettings.Name);
         }
 
         #region Methods
 
         public void SaveSettings()
         {
-            HotkeySettingsManager.SaveSettings(this.Settings);
+            HotkeySettingsManager.SaveSettings(Settings);
         }
 
         public void ReloadSettings()
         {
-            this.Settings = HotkeySettingsManager.LoadSettings();
+            Settings = HotkeySettingsManager.LoadSettings();
         }
 
         private void UpdateCombobox(HotkeySettings[] settings)
         {
-            this.SelectedHotkeySettings = null;
+            SelectedHotkeySettings = null;
 
-            this.cmbSettings.Items.Clear();
+            cmbSettings.Items.Clear();
             if (settings != null)
+            {
                 foreach (var setting in settings)
+                {
                     cmbSettings.Items.Add(setting);
+                }
+            }
         }
 
         private void UpdateListViewItems(HotkeySettings setting)
         {
-            this.SelectedHotkeyCommand = null;
+            SelectedHotkeyCommand = null;
 
-            this.listMappings.Items.Clear();
+            listMappings.Items.Clear();
             if (setting != null)
             {
                 foreach (var cmd in setting.Commands)
                 {
                     if (cmd != null)
                     {
-                        var item = new ListViewItem(new[] {cmd.Name, cmd.KeyData.ToText() ?? _hotkeyNotSet.Text});
-                        item.Tag = cmd;
-                        this.listMappings.Items.Add(item);
+                        listMappings.Items.Add(
+                            new ListViewItem(new[] { cmd.Name, cmd.KeyData.ToText() ?? _hotkeyNotSet.Text })
+                            {
+                                Tag = cmd
+                            });
                     }
                 }
             }
@@ -112,54 +120,58 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private void ControlHotkeys_Load(object sender, EventArgs e)
         {
             if (DesignMode)
+            {
                 return;
+            }
+
             ReloadSettings();
         }
 
         private void cmbSettings_SelectedIndexChanged(object sender, EventArgs e)
         {
-            this.SelectedHotkeySettings = this.cmbSettings.SelectedItem as HotkeySettings;
+            SelectedHotkeySettings = cmbSettings.SelectedItem as HotkeySettings;
         }
 
         private void listMappings_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var lvi = this.listMappings.SelectedItems.Count > 0 ? this.listMappings.SelectedItems[0] : null;
+            var lvi = listMappings.SelectedItems.Count > 0 ? listMappings.SelectedItems[0] : null;
             if (lvi != null)
             {
                 var hotkey = lvi.Tag as HotkeyCommand;
-                this.SelectedHotkeyCommand = hotkey;
+                SelectedHotkeyCommand = hotkey;
             }
         }
 
         private void bApply_Click(object sender, EventArgs e)
         {
-            var hotkey = this.SelectedHotkeyCommand;
+            var hotkey = SelectedHotkeyCommand;
             if (hotkey != null)
             {
                 // Update the KeyData with the chosen one
                 hotkey.KeyData = txtHotkey.KeyData;
 
                 // Refresh the ListView
-                UpdateListViewItems(this.SelectedHotkeySettings);
+                UpdateListViewItems(SelectedHotkeySettings);
             }
         }
 
         private void bClear_Click(object sender, EventArgs e)
         {
-            var hotkey = this.SelectedHotkeyCommand;
+            var hotkey = SelectedHotkeyCommand;
             if (hotkey != null)
             {
                 // Update the KeyData with the chosen one
                 hotkey.KeyData = Keys.None;
+
                 // Refresh the ListView
-                UpdateListViewItems(this.SelectedHotkeySettings);
+                UpdateListViewItems(SelectedHotkeySettings);
                 txtHotkey.KeyData = hotkey.KeyData;
             }
         }
 
         private void bResetToDefaults_Click(object sender, EventArgs e)
         {
-            this.Settings = HotkeySettingsManager.CreateDefaultSettings();
+            Settings = HotkeySettingsManager.CreateDefaultSettings();
         }
 
         #endregion

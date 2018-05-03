@@ -14,13 +14,14 @@ namespace GitCommandsTests.ExternalLinks
     public class ConfiguredLinkDefinitionsProviderTests
     {
         private GitModuleTestHelper _testHelper;
-        private string _level1, _level2, _level3;
+        private string _level1;
+        private string _level2;
+        private string _level3;
         private RepoDistSettings _userRoaming;
         private RepoDistSettings _repoDistributed;
         private RepoDistSettings _repoLocal;
         private IExternalLinksLoader _externalLinksLoader;
         private ConfiguredLinkDefinitionsProvider _provider;
-
 
         [SetUp]
         public void Setup()
@@ -54,11 +55,10 @@ namespace GitCommandsTests.ExternalLinks
             _testHelper = null;
         }
 
-
         [Test]
         public void Get_should_throw_if_data_null()
         {
-            ((Action)(() => _provider.Get(null))).ShouldThrow<ArgumentNullException>();
+            ((Action)(() => _provider.Get(null))).Should().Throw<ArgumentNullException>();
         }
 
         [Test]
@@ -87,8 +87,7 @@ namespace GitCommandsTests.ExternalLinks
                     new ExternalLinkDefinition { Name = "distributed definition 1" },
                     new ExternalLinkDefinition { Name = "distributed definition 2" },
                     new ExternalLinkDefinition { Name = "distributed definition 3" },
-                }
-            );
+                });
 
             var effectiveSettings = _provider.Get(_repoDistributed);
 
@@ -114,8 +113,7 @@ namespace GitCommandsTests.ExternalLinks
                 new List<ExternalLinkDefinition>
                 {
                     new ExternalLinkDefinition { Name = "user definition 1" },
-                }
-            );
+                });
 
             var effectiveSettings = _provider.Get(_repoLocal);
 

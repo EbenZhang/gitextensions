@@ -23,10 +23,14 @@ namespace GitUI
         public PathFormatter(Graphics graphics, Font font)
         {
             if (graphics == null)
+            {
                 throw new ArgumentNullException(nameof(graphics));
+            }
 
             if (font == null)
+            {
                 throw new ArgumentNullException(nameof(font));
+            }
 
             _graphics = graphics;
             _font = font;
@@ -35,39 +39,47 @@ namespace GitUI
         private static string TruncatePath(string path, int length)
         {
             if (path.Length == length)
+            {
                 return path;
+            }
 
             if (length <= 0)
+            {
                 return string.Empty;
+            }
 
+            // The win32 method PathCompactPathEx is only supported on Windows
             string truncatePathMethod = AppSettings.TruncatePathMethod;
             if (truncatePathMethod.Equals("compact", StringComparison.OrdinalIgnoreCase) &&
-                EnvUtils.RunningOnWindows()) //The win32 method PathCompactPathEx is only supported on Windows
+                EnvUtils.RunningOnWindows())
             {
                 var result = new StringBuilder(length);
                 NativeMethods.PathCompactPathEx(result, path, length, 0);
                 return result.ToString();
             }
+
             if (truncatePathMethod.Equals("trimStart", StringComparison.OrdinalIgnoreCase))
             {
                 return "..." + path.Substring(path.Length - length);
             }
 
-            return path;//.Substring(0, length+1);
+            return path; ////.Substring(0, length+1);
         }
 
         public string FormatTextForDrawing(int width, string name, string oldName)
         {
             string truncatePathMethod = AppSettings.TruncatePathMethod;
 
-            if (truncatePathMethod.Equals("fileNameOnly"))
+            if (truncatePathMethod == "fileNameOnly")
             {
                 return FormatTextForFileNameOnly(name, oldName);
             }
 
             if ((!truncatePathMethod.Equals("compact", StringComparison.OrdinalIgnoreCase) || !EnvUtils.RunningOnWindows()) &&
                 !truncatePathMethod.Equals("trimStart", StringComparison.OrdinalIgnoreCase))
+            {
                 return FormatString(name, oldName, 0, false);
+            }
 
             int step = 0;
             bool isNameBeingTruncated = true;
@@ -79,7 +91,9 @@ namespace GitUI
                 result = FormatString(name, oldName, step, isNameBeingTruncated);
 
                 if (_graphics.MeasureString(result, _font).Width <= width)
+                {
                     break;
+                }
 
                 step++;
                 isNameBeingTruncated = !isNameBeingTruncated;
@@ -94,8 +108,10 @@ namespace GitUI
             var fileName = Path.GetFileName(name);
             var oldFileName = Path.GetFileName(oldName);
 
-            if (fileName.Equals(oldFileName))
+            if (fileName == oldFileName)
+            {
                 oldFileName = null;
+            }
 
             return fileName.Combine(" ", oldFileName.AddParenthesesNE());
         }

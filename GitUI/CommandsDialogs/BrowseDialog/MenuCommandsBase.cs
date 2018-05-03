@@ -1,14 +1,13 @@
-﻿using GitCommands;
-using ResourceManager;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using GitCommands;
+using ResourceManager;
 
 namespace GitUI.CommandsDialogs.BrowseDialog
 {
-    abstract class MenuCommandsBase : ITranslate
+    internal abstract class MenuCommandsBase : ITranslate
     {
-        //for translation category
+        // for translation category
         protected string TranslationCategoryName { get; set; }
 
         public void Translate()
@@ -28,12 +27,12 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             TranslationUtils.TranslateItemsFromList(TranslationCategoryName, translation, GetMenuCommandsForTranslationImpl());
         }
 
-        //override and return all commands created by extending class
+        // override and return all commands created by extending class
         protected abstract IEnumerable<MenuCommand> GetMenuCommandsForTranslation();
 
-        private IEnumerable<Tuple<string, object>> GetMenuCommandsForTranslationImpl()
+        private IEnumerable<(string name, object item)> GetMenuCommandsForTranslationImpl()
         {
-            return GetMenuCommandsForTranslation().Select(menu => new Tuple<string, object>(menu.Name, menu));
+            return GetMenuCommandsForTranslation().Select(menu => (menu.Name, (object)menu));
         }
     }
 }

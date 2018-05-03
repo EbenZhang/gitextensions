@@ -11,8 +11,8 @@ namespace GitUI.Editor
     public partial class FileViewerInternal : GitExtensionsControl, IFileViewer
     {
         private readonly FindAndReplaceForm _findAndReplaceForm = new FindAndReplaceForm();
-        private DiffHighlightService _diffHighlightService = DiffHighlightService.Instance;
         private readonly DiffViewerLineNumberCtrl _lineNumbersControl;
+        private DiffHighlightService _diffHighlightService = DiffHighlightService.Instance;
         private bool _isGotoLineUIApplicable = true;
 
         public FileViewerInternal()
@@ -27,6 +27,7 @@ namespace GitUI.Editor
             TextEditor.ActiveTextAreaControl.TextArea.MouseEnter += TextArea_MouseEnter;
             TextEditor.ActiveTextAreaControl.TextArea.MouseLeave += TextArea_MouseLeave;
             TextEditor.ActiveTextAreaControl.TextArea.MouseDown += TextAreaMouseDown;
+            TextEditor.ActiveTextAreaControl.TextArea.KeyUp += TextArea_KeyUp;
             TextEditor.KeyDown += BlameFileKeyUp;
             TextEditor.ActiveTextAreaControl.TextArea.KeyDown += BlameFileKeyUp;
             TextEditor.ActiveTextAreaControl.TextArea.DoubleClick += ActiveTextAreaControlDoubleClick;
@@ -36,27 +37,33 @@ namespace GitUI.Editor
             VRulerPosition = GitCommands.AppSettings.DiffVerticalRulerPosition;
         }
 
+        private void TextArea_KeyUp(object sender, KeyEventArgs e)
+        {
+            KeyUp?.Invoke(sender, e);
+        }
+
         public new Font Font
         {
-            get { return TextEditor.Font; }
-            set { TextEditor.Font = value; }
+            get => TextEditor.Font;
+            set => TextEditor.Font = value;
         }
 
         public new event MouseEventHandler MouseMove;
         public new event EventHandler MouseEnter;
         public new event EventHandler MouseLeave;
+        public new event System.Windows.Forms.KeyEventHandler KeyUp;
 
-        void TextArea_MouseEnter(object sender, EventArgs e)
+        private void TextArea_MouseEnter(object sender, EventArgs e)
         {
             MouseEnter?.Invoke(sender, e);
         }
 
-        void TextArea_MouseLeave(object sender, EventArgs e)
+        private void TextArea_MouseLeave(object sender, EventArgs e)
         {
             MouseLeave?.Invoke(sender, e);
         }
 
-        void TextArea_MouseMove(object sender, MouseEventArgs e)
+        private void TextArea_MouseMove(object sender, MouseEventArgs e)
         {
             MouseMove?.Invoke(sender, e);
         }
@@ -71,12 +78,18 @@ namespace GitUI.Editor
         private async void BlameFileKeyUp(object sender, KeyEventArgs e)
         {
             if (e.Modifiers == Keys.Control && e.KeyCode == Keys.F)
+            {
                 Find();
+            }
 
             if (e.Modifiers == Keys.Shift && e.KeyCode == Keys.F3)
-                await _findAndReplaceForm.FindNext(true, true, "Text not found");
+            {
+                await _findAndReplaceForm.FindNextAsync(true, true, "Text not found");
+            }
             else if (e.KeyCode == Keys.F3)
-                await _findAndReplaceForm.FindNext(true, false, "Text not found");
+            {
+                await _findAndReplaceForm.FindNextAsync(true, false, "Text not found");
+            }
 
             VScrollBar_ValueChanged(this, e);
         }
@@ -93,17 +106,17 @@ namespace GitUI.Editor
 
         public event EventHandler<SelectedLineEventArgs> SelectedLineChanged;
 
-        void OnSelectedLineChanged(int selectedLine)
+        private void OnSelectedLineChanged(int selectedLine)
         {
             SelectedLineChanged?.Invoke(this, new SelectedLineEventArgs(selectedLine));
         }
 
-        void VScrollBar_ValueChanged(object sender, EventArgs e)
+        private void VScrollBar_ValueChanged(object sender, EventArgs e)
         {
             ScrollPosChanged?.Invoke(sender, e);
         }
 
-        void TextEditor_TextChanged(object sender, EventArgs e)
+        private void TextEditor_TextChanged(object sender, EventArgs e)
         {
             TextChanged?.Invoke(sender, e);
         }
@@ -120,8 +133,8 @@ namespace GitUI.Editor
 
         public bool ShowLineNumbers
         {
-            get { return TextEditor.ShowLineNumbers; }
-            set { TextEditor.ShowLineNumbers = value; }
+            get => TextEditor.ShowLineNumbers;
+            set => TextEditor.ShowLineNumbers = value;
         }
 
         public void SetText(string text, bool isDiff = false)
@@ -155,6 +168,7 @@ namespace GitUI.Editor
             {
                 _lineNumbersControl.DisplayLineNumFor(text);
             }
+
             TextEditor.Refresh();
         }
 
@@ -168,9 +182,14 @@ namespace GitUI.Editor
         {
             IHighlightingStrategy highlightingStrategy = HighlightingManager.Manager.FindHighlighterForFile(filename);
             if (highlightingStrategy != null)
+            {
                 TextEditor.Document.HighlightingStrategy = highlightingStrategy;
+            }
             else
+            {
                 TextEditor.SetHighlighting("XML");
+            }
+
             TextEditor.Refresh();
         }
 
@@ -182,7 +201,9 @@ namespace GitUI.Editor
         public int GetSelectionPosition()
         {
             if (TextEditor.ActiveTextAreaControl.SelectionManager.SelectionCollection.Count > 0)
+            {
                 return TextEditor.ActiveTextAreaControl.SelectionManager.SelectionCollection[0].Offset;
+            }
 
             return TextEditor.ActiveTextAreaControl.Caret.Offset;
         }
@@ -190,11 +211,12 @@ namespace GitUI.Editor
         public int GetSelectionLength()
         {
             if (TextEditor.ActiveTextAreaControl.SelectionManager.SelectionCollection.Count > 0)
+            {
                 return TextEditor.ActiveTextAreaControl.SelectionManager.SelectionCollection[0].Length;
+            }
 
             return 0;
         }
-
 
         public void EnableScrollBars(bool enable)
         {
@@ -214,10 +236,11 @@ namespace GitUI.Editor
             set
             {
                 var scrollBar = TextEditor.ActiveTextAreaControl.VScrollBar;
-                if (scrollBar == null) 
+                if (scrollBar == null)
                 {
                     return;
                 }
+
                 int max = scrollBar.Maximum - scrollBar.LargeChange;
                 max = Math.Max(max, scrollBar.Minimum);
                 scrollBar.Value = max > value ? value : max;
@@ -226,62 +249,32 @@ namespace GitUI.Editor
 
         public bool ShowEOLMarkers
         {
-            get
-            {
-                return TextEditor.ShowEOLMarkers;
-            }
-            set
-            {
-                TextEditor.ShowEOLMarkers = value;
-            }
+            get => TextEditor.ShowEOLMarkers;
+            set => TextEditor.ShowEOLMarkers = value;
         }
 
         public bool ShowSpaces
         {
-            get
-            {
-                return TextEditor.ShowSpaces;
-            }
-            set
-            {
-                TextEditor.ShowSpaces = value;
-            }
+            get => TextEditor.ShowSpaces;
+            set => TextEditor.ShowSpaces = value;
         }
 
         public bool ShowTabs
         {
-            get
-            {
-                return TextEditor.ShowTabs;
-            }
-            set
-            {
-                TextEditor.ShowTabs = value;
-            }
+            get => TextEditor.ShowTabs;
+            set => TextEditor.ShowTabs = value;
         }
 
         public int VRulerPosition
         {
-            get
-            {
-                return TextEditor.VRulerRow;
-            }
-            set
-            {
-                TextEditor.VRulerRow = value;
-            }
+            get => TextEditor.VRulerRow;
+            set => TextEditor.VRulerRow = value;
         }
 
         public int FirstVisibleLine
         {
-            get
-            {
-                return TextEditor.ActiveTextAreaControl.TextArea.TextView.FirstVisibleLine;
-            }
-            set
-            {
-                TextEditor.ActiveTextAreaControl.TextArea.TextView.FirstVisibleLine = value;
-            }
+            get => TextEditor.ActiveTextAreaControl.TextArea.TextView.FirstVisibleLine;
+            set => TextEditor.ActiveTextAreaControl.TextArea.TextView.FirstVisibleLine = value;
         }
 
         public int GetLineFromVisualPosY(int visualPosY)
@@ -292,7 +285,9 @@ namespace GitUI.Editor
         public string GetLineText(int line)
         {
             if (line >= TextEditor.Document.TotalNumberOfLines)
+            {
                 return string.Empty;
+            }
 
             return TextEditor.Document.GetText(TextEditor.Document.GetLineSegment(line));
         }
@@ -327,21 +322,10 @@ namespace GitUI.Editor
 
         public int TotalNumberOfLines => TextEditor.Document.TotalNumberOfLines;
 
-        public void FocusTextArea()
-        {
-            TextEditor.ActiveTextAreaControl.TextArea.Select();
-        }
-
         public bool IsReadOnly
         {
-            get
-            {
-                return TextEditor.IsReadOnly;
-            }
-            set
-            {
-                TextEditor.IsReadOnly = value;
-            }
+            get => TextEditor.IsReadOnly;
+            set => TextEditor.IsReadOnly = value;
         }
 
         public void SetFileLoader(GetNextFileFnc fileLoader)

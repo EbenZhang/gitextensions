@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Threading;
 using System.Windows.Forms;
 using GitCommands.Statistics;
+using GitUI;
 using GitUIPluginInterfaces;
 using ResourceManager;
 
@@ -11,18 +11,14 @@ namespace GitImpact
     {
         private readonly TranslationString _authorCommits = new TranslationString("{0} ({1} Commits, {2} Changed Lines)");
 
-        private readonly SynchronizationContext syncContext;
-
-        public FormImpact(IGitModule Module)
+        public FormImpact(IGitModule module)
         {
-            syncContext = SynchronizationContext.Current;
-
             InitializeComponent();
             Translate();
             UpdateAuthorInfo("");
-            if (Module != null)
+            if (module != null)
             {
-                Impact.Init(Module);
+                Impact.Init(module);
                 Impact.UpdateData();
                 Impact.Invalidated += Impact_Invalidated;
             }
@@ -35,9 +31,14 @@ namespace GitImpact
             base.OnClosed(e);
         }
 
-        void Impact_Invalidated(object sender, InvalidateEventArgs e)
+        private void Impact_Invalidated(object sender, InvalidateEventArgs e)
         {
-            syncContext.Send(o => UpdateAuthorInfo(Impact.GetSelectedAuthor()), this);
+            ThreadHelper.JoinableTaskFactory.Run(
+                async () =>
+                {
+                    await this.SwitchToMainThreadAsync();
+                    UpdateAuthorInfo(Impact.GetSelectedAuthor());
+                });
         }
 
         private void UpdateAuthorInfo(string author)

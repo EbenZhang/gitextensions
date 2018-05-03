@@ -8,8 +8,9 @@ namespace ResourceManager
 {
     public static class Translator
     {
-        private static readonly string EnglishTranslationName = "English";
-        //Try to cache the translation as long as possible
+        private const string EnglishTranslationName = "English";
+
+        // Try to cache the translation as long as possible
         private static IDictionary<string, TranslationFile> _translation = new Dictionary<string, TranslationFile>();
         private static string _name;
 
@@ -19,7 +20,7 @@ namespace ResourceManager
             {
                 _translation = new Dictionary<string, TranslationFile>();
             }
-            else if (!translationName.Equals(_name))
+            else if (translationName != _name)
             {
                 _translation = new Dictionary<string, TranslationFile>();
                 string translationsDir = GetTranslationDir();
@@ -37,6 +38,7 @@ namespace ResourceManager
                     }
                 }
             }
+
             _name = translationName;
             return _translation;
         }
@@ -54,22 +56,29 @@ namespace ResourceManager
                 string translationDir = GetTranslationDir();
                 if (!Directory.Exists(translationDir))
                 {
-                    return new string[0];
+                    return Array.Empty<string>();
                 }
 
                 foreach (string fileName in Directory.GetFiles(translationDir, "*.xlf"))
                 {
                     var name = Path.GetFileNameWithoutExtension(fileName);
                     if (name.IndexOf(".") > 0)
+                    {
                         continue;
-                    if (String.Compare(EnglishTranslationName, name, StringComparison.CurrentCultureIgnoreCase) == 0)
+                    }
+
+                    if (string.Compare(EnglishTranslationName, name, StringComparison.CurrentCultureIgnoreCase) == 0)
+                    {
                         continue;
+                    }
+
                     translations.Add(name);
                 }
-            } catch
-            {
-
             }
+            catch
+            {
+            }
+
             return translations.ToArray();
         }
 
@@ -77,7 +86,10 @@ namespace ResourceManager
         {
             var translation = GetTranslation(translationName);
             if (translation.Count == 0)
+            {
                 return;
+            }
+
             foreach (var pair in translation)
             {
                 obj.TranslateItems(pair.Value);

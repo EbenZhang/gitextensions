@@ -18,26 +18,30 @@ namespace GitImpact
         private const int LinesFontSize = 10;
         private const int WeekFontSize = 8;
 
-
         private readonly object _dataLock = new object();
 
         private ImpactLoader _impactLoader;
 
         // <Author, <Commits, Added Lines, Deleted Lines>>
         private Dictionary<string, ImpactLoader.DataPoint> _authors;
+
         // <First weekday of commit date, <Author, <Commits, Added Lines, Deleted Lines>>>
         private SortedDictionary<DateTime, Dictionary<string, ImpactLoader.DataPoint>> _impact;
 
         // List of authors that determines the drawing order
         private List<string> _authorStack;
+
         // The paths for each author
         private Dictionary<string, GraphicsPath> _paths;
+
         // The brush for each author
         private Dictionary<string, SolidBrush> _brushes;
+
         // The changed-lines-labels for each author
-        private Dictionary<string, List<Tuple<PointF, int>>> _lineLabels;
+        private Dictionary<string, List<(PointF point, int size)>> _lineLabels;
+
         // The week-labels
-        private List<Tuple<PointF, DateTime>> _weekLabels;
+        private List<(PointF point, DateTime date)> _weekLabels;
 
         private HScrollBar _scrollBar;
 
@@ -48,16 +52,20 @@ namespace GitImpact
             InitializeComponent();
 
             // Set DoubleBuffer flag for flicker-free drawing
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint |
+            SetStyle(ControlStyles.AllPaintingInWmPaint |
                 ControlStyles.UserPaint | ControlStyles.DoubleBuffer, true);
 
             MouseWheel += ImpactControl_MouseWheel;
         }
 
-        public void Init(IGitModule Module)
+        public void Init(IGitModule module)
         {
-            _impactLoader = new ImpactLoader(Module);
-            _impactLoader.RespectMailmap = true; // respect the .mailmap file
+            _impactLoader = new ImpactLoader(module)
+            {
+                // respect the .mailmap file
+                RespectMailmap = true
+            };
+
             _impactLoader.Updated += OnImpactUpdate;
         }
 
@@ -71,8 +79,8 @@ namespace GitImpact
                 _authorStack = new List<string>();
                 _paths = new Dictionary<string, GraphicsPath>();
                 _brushes = new Dictionary<string, SolidBrush>();
-                _lineLabels = new Dictionary<string, List<Tuple<PointF, int>>>();
-                _weekLabels = new List<Tuple<PointF, DateTime>>();
+                _lineLabels = new Dictionary<string, List<(PointF, int)>>();
+                _weekLabels = new List<(PointF, DateTime)>();
             }
         }
 
@@ -81,14 +89,15 @@ namespace GitImpact
             _impactLoader?.Stop();
         }
 
-        void ImpactControl_MouseWheel(object sender, MouseEventArgs e)
+        private void ImpactControl_MouseWheel(object sender, MouseEventArgs e)
         {
-            this._scrollBar.Value = Math.Min(this._scrollBar.Maximum, Math.Max(this._scrollBar.Minimum, this._scrollBar.Value + e.Delta));
+            _scrollBar.Value = Math.Min(_scrollBar.Maximum, Math.Max(_scrollBar.Minimum, _scrollBar.Value + e.Delta));
+
             // Redraw when we've scrolled
             Invalidate();
         }
 
-        void OnImpactUpdate(object sender, ImpactLoader.CommitEventArgs e)
+        private void OnImpactUpdate(object sender, ImpactLoader.CommitEventArgs e)
         {
             var commit = e.Commit;
 
@@ -98,26 +107,36 @@ namespace GitImpact
 
                 // If week does not exist yet in the impact dictionary
                 if (!_impact.ContainsKey(commit.week))
+                {
                     // Create it
                     _impact.Add(commit.week, new Dictionary<string, ImpactLoader.DataPoint>());
+                }
 
                 // If author does not exist yet for this week in the impact dictionary
                 if (!_impact[commit.week].ContainsKey(commit.author))
+                {
                     // Create it
                     _impact[commit.week].Add(commit.author, commit.data);
+                }
                 else
+                {
                     // Otherwise just add the changes
                     _impact[commit.week][commit.author] += commit.data;
+                }
 
                 // UPDATE AUTHORS
 
                 // If author does not exist yet in the authors dictionary
                 if (!_authors.ContainsKey(commit.author))
+                {
                     // Create it
                     _authors.Add(commit.author, commit.data);
+                }
                 else
+                {
                     // Otherwise just add the changes
                     _authors[commit.author] += commit.data;
+                }
 
                 // Add authors to intermediate weeks where they didn't create commits
                 ImpactLoader.AddIntermediateEmptyWeeks(ref _impact, _authors);
@@ -126,8 +145,10 @@ namespace GitImpact
 
                 // If author does not exist yet in the author_stack
                 if (!_authorStack.Contains(commit.author))
+                {
                     // Add it to the front (drawn first)
                     _authorStack.Insert(0, commit.author);
+                }
             }
 
             UpdatePathsAndLabels();
@@ -159,36 +180,37 @@ namespace GitImpact
 
         private void InitializeComponent()
         {
-            this._scrollBar = new System.Windows.Forms.HScrollBar();
-            this.SuspendLayout();
+            _scrollBar = new HScrollBar();
+            SuspendLayout();
+
             //
             // scrollBar
             //
-            this._scrollBar.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._scrollBar.LargeChange = 0;
-            this._scrollBar.Location = new System.Drawing.Point(0, 133);
-            this._scrollBar.Maximum = 0;
-            this._scrollBar.Name = "_scrollBar";
-            this._scrollBar.Size = new System.Drawing.Size(150, 17);
-            this._scrollBar.SmallChange = 0;
-            this._scrollBar.TabIndex = 0;
-            this._scrollBar.Scroll += this.OnScroll;
+            _scrollBar.Dock = DockStyle.Bottom;
+            _scrollBar.LargeChange = 0;
+            _scrollBar.Location = new Point(0, 133);
+            _scrollBar.Maximum = 0;
+            _scrollBar.Name = "_scrollBar";
+            _scrollBar.Size = new Size(150, 17);
+            _scrollBar.SmallChange = 0;
+            _scrollBar.TabIndex = 0;
+            _scrollBar.Scroll += OnScroll;
+
             //
             // ImpactControl
             //
-            this.Controls.Add(this._scrollBar);
-            this.Name = "ImpactControl";
-            this.Paint += this.OnPaint;
-            this.Resize += this.OnResize;
-            this.ResumeLayout(false);
-
+            Controls.Add(_scrollBar);
+            Name = "ImpactControl";
+            Paint += OnPaint;
+            Resize += OnResize;
+            ResumeLayout(false);
         }
 
         private int GetGraphWidth()
         {
             lock (_dataLock)
             {
-                return Math.Max(0, _impact.Count * (BlockWidth + TransitionWidth) - TransitionWidth);
+                return Math.Max(0, (_impact.Count * (BlockWidth + TransitionWidth)) - TransitionWidth);
             }
         }
 
@@ -196,14 +218,14 @@ namespace GitImpact
         {
             lock (_dataLock)
             {
-                int RightValue = Math.Max(0, _scrollBar.Maximum - _scrollBar.LargeChange - _scrollBar.Value);
+                int rightValue = Math.Max(0, _scrollBar.Maximum - _scrollBar.LargeChange - _scrollBar.Value);
 
                 _scrollBar.Minimum = 0;
                 _scrollBar.Maximum = (int)(Math.Max(0, GetGraphWidth() - ClientSize.Width) * 1.1);
                 _scrollBar.SmallChange = _scrollBar.Maximum / 22;
                 _scrollBar.LargeChange = _scrollBar.Maximum / 11;
 
-                _scrollBar.Value = Math.Max(0, _scrollBar.Maximum - _scrollBar.LargeChange - RightValue);
+                _scrollBar.Value = Math.Max(0, _scrollBar.Maximum - _scrollBar.LargeChange - rightValue);
             }
         }
 
@@ -216,7 +238,9 @@ namespace GitImpact
             {
                 // Nothing to draw
                 if (_impact.Count == 0)
+                {
                     return;
+                }
 
                 // Activate AntiAliasing
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -229,16 +253,22 @@ namespace GitImpact
                 foreach (var author in _authorStack)
                 {
                     if (_brushes.ContainsKey(author) && _paths.ContainsKey(author))
+                    {
                         e.Graphics.FillPath(_brushes[author], _paths[author]);
+                    }
                 }
 
-                //Draw black border around selected author
+                // Draw black border around selected author
                 string selectedAuthor = _authorStack[_authorStack.Count - 1];
                 if (_brushes.ContainsKey(selectedAuthor) && _paths.ContainsKey(selectedAuthor))
+                {
                     e.Graphics.DrawPath(new Pen(Color.Black, 2), _paths[selectedAuthor]);
+                }
 
                 foreach (var author in _authorStack)
+                {
                     DrawAuthorLinesLabels(e.Graphics, author);
+                }
             }
 
             DrawWeekLabels(e.Graphics);
@@ -249,17 +279,19 @@ namespace GitImpact
             lock (_dataLock)
             {
                 if (!_lineLabels.ContainsKey(author))
+                {
                     return;
+                }
 
                 using (Font font = new Font("Arial", LinesFontSize))
                 {
                     Brush brush = Brushes.White;
 
-                    foreach (var label in _lineLabels[author])
+                    foreach (var (point, size) in _lineLabels[author])
                     {
-                        SizeF sz = g.MeasureString(label.Item2.ToString(), font);
-                        PointF pt = new PointF(label.Item1.X - sz.Width/2, label.Item1.Y - sz.Height/2);
-                        g.DrawString(label.Item2.ToString(), font, brush, pt);
+                        SizeF sz = g.MeasureString(size.ToString(), font);
+                        PointF pt = new PointF(point.X - (sz.Width / 2), point.Y - (sz.Height / 2));
+                        g.DrawString(size.ToString(), font, brush, pt);
                     }
                 }
             }
@@ -273,11 +305,11 @@ namespace GitImpact
                 {
                     Brush brush = Brushes.Gray;
 
-                    foreach (var label in _weekLabels)
+                    foreach (var (point, date) in _weekLabels)
                     {
-                        SizeF sz = g.MeasureString(label.Item2.ToString("dd. MMM yy"), font);
-                        PointF pt = new PointF(label.Item1.X - sz.Width/2, label.Item1.Y + sz.Height/2);
-                        g.DrawString(label.Item2.ToString("dd. MMM yy"), font, brush, pt);
+                        SizeF sz = g.MeasureString(date.ToString("dd. MMM yy"), font);
+                        PointF pt = new PointF(point.X - (sz.Width / 2), point.Y + (sz.Height / 2));
+                        g.DrawString(date.ToString("dd. MMM yy"), font, brush, pt);
                     }
                 }
             }
@@ -294,7 +326,7 @@ namespace GitImpact
         {
             int h_max = 0;
             int x = 0;
-            var author_points_dict = new Dictionary<string, List<Tuple<Rectangle, int>>>();
+            var author_points_dict = new Dictionary<string, List<(Rectangle, int changeCount)>>();
 
             lock (_dataLock)
             {
@@ -302,24 +334,24 @@ namespace GitImpact
                 _weekLabels.Clear();
 
                 // Iterate through weeks
-                foreach (var week in _impact)
+                foreach (var (weekDate, dataByAuthor) in _impact)
                 {
                     int y = 0;
 
                     // Iterate through authors
-                    foreach (var pair in (from entry in week.Value orderby entry.Value.ChangedLines descending select entry))
+                    foreach (var (author, data) in from entry in dataByAuthor orderby entry.Value.ChangedLines descending select entry)
                     {
-                        string author = pair.Key;
-
                         // Calculate week-author-rectangle
-                        int height = Math.Max(1, (int)Math.Round(Math.Pow(Math.Log(pair.Value.ChangedLines), 1.5) * 4));
+                        int height = Math.Max(1, (int)Math.Round(Math.Pow(Math.Log(data.ChangedLines), 1.5) * 4));
                         Rectangle rc = new Rectangle(x, y, BlockWidth, height);
 
                         // Add rectangle to temporary list
                         if (!author_points_dict.ContainsKey(author))
-                            author_points_dict.Add(author, new List<Tuple<Rectangle, int>>());
+                        {
+                            author_points_dict.Add(author, new List<(Rectangle, int)>());
+                        }
 
-                        author_points_dict[author].Add(Tuple.Create(rc, pair.Value.ChangedLines));
+                        author_points_dict[author].Add((rc, data.ChangedLines));
 
                         // Create a new random brush for the author if none exists yet
                         if (!_brushes.ContainsKey(author))
@@ -336,19 +368,24 @@ namespace GitImpact
                     h_max = Math.Max(h_max, y);
 
                     // Add week date label
-                    _weekLabels.Add(Tuple.Create(new PointF(x + BlockWidth / 2, y), week.Key));
+                    _weekLabels.Add((new PointF(x + (BlockWidth / 2), y), weekDate));
 
                     // Increase x for next week
                     x += BlockWidth + TransitionWidth;
                 }
 
                 // Pre-calculate height scale factor
-                double height_factor = 0.9 * (float)Height / (float)h_max;
+                double height_factor = 0.9 * Height / h_max;
 
                 // Scale week label coordinates
                 for (int i = 0; i < _weekLabels.Count; i++)
-                    _weekLabels[i] = Tuple.Create(new PointF(_weekLabels[i].Item1.X, _weekLabels[i].Item1.Y * (float)height_factor),
-                                                  _weekLabels[i].Item2);
+                {
+                    var (point, date) = _weekLabels[i];
+
+                    var adjustedPoint = new PointF(point.X, point.Y * (float)height_factor);
+
+                    _weekLabels[i] = (adjustedPoint, date);
+                }
 
                 // Clear previous paths
                 _paths.Clear();
@@ -357,72 +394,92 @@ namespace GitImpact
                 _lineLabels.Clear();
 
                 // Add points to each author's GraphicsPath
-                foreach (var author_points in author_points_dict)
+                foreach (var (author, points) in author_points_dict)
                 {
-                    string author = author_points.Key;
-
                     // Scale heights
-                    for (int i = 0; i < author_points.Value.Count; i++)
+                    for (int i = 0; i < points.Count; i++)
                     {
-                        author_points.Value[i] = Tuple.Create(
-                            new Rectangle(author_points.Value[i].Item1.Left, (int)(author_points.Value[i].Item1.Top * height_factor),
-                                          author_points.Value[i].Item1.Width, Math.Max(1, (int)(author_points.Value[i].Item1.Height * height_factor))),
-                                          author_points.Value[i].Item2);
+                        var (unscaledRect, num) = points[i];
+
+                        var rect = new Rectangle(unscaledRect.Left, (int)(unscaledRect.Top * height_factor),
+                            unscaledRect.Width, Math.Max(1, (int)(unscaledRect.Height * height_factor)));
+
+                        points[i] = (rect, num);
 
                         // Add lines-changed-labels
                         if (!_lineLabels.ContainsKey(author))
-                            _lineLabels.Add(author, new List<Tuple<PointF, int>>());
+                        {
+                            _lineLabels.Add(author, new List<(PointF, int)>());
+                        }
 
-                        if (author_points.Value[i].Item1.Height > LinesFontSize * 1.5)
-                            _lineLabels[author].Add(Tuple.Create(new PointF(author_points.Value[i].Item1.Left + BlockWidth / 2,
-                                author_points.Value[i].Item1.Top + author_points.Value[i].Item1.Height / 2),
-                                author_points.Value[i].Item2));
+                        if (rect.Height > LinesFontSize * 1.5)
+                        {
+                            var adjustedPoint = new PointF(rect.Left + (BlockWidth / 2), rect.Top + (rect.Height / 2));
+
+                            _lineLabels[author].Add((adjustedPoint, num));
+                        }
                     }
 
                     _paths.Add(author, new GraphicsPath());
 
+                    var (firstRect, _) = points[0];
+
                     // Left border
-                    _paths[author].AddLine(author_points.Value[0].Item1.Left, author_points.Value[0].Item1.Bottom,
-                                          author_points.Value[0].Item1.Left, author_points.Value[0].Item1.Top);
+                    _paths[author].AddLine(firstRect.Left, firstRect.Bottom,
+                                           firstRect.Left, firstRect.Top);
 
                     // Top borders
-                    for (int i = 0; i < author_points.Value.Count; i++)
+                    for (int i = 0; i < points.Count; i++)
                     {
-                        _paths[author].AddLine(author_points.Value[i].Item1.Left, author_points.Value[i].Item1.Top,
-                                              author_points.Value[i].Item1.Right, author_points.Value[i].Item1.Top);
+                        var (rect, _) = points[i];
 
-                        if (i < author_points.Value.Count - 1)
-                            _paths[author].AddBezier(author_points.Value[i].Item1.Right, author_points.Value[i].Item1.Top,
-                                                    author_points.Value[i].Item1.Right + TransitionWidth / 2, author_points.Value[i].Item1.Top,
-                                                    author_points.Value[i].Item1.Right + TransitionWidth / 2, author_points.Value[i + 1].Item1.Top,
-                                                    author_points.Value[i + 1].Item1.Left, author_points.Value[i + 1].Item1.Top);
+                        _paths[author].AddLine(rect.Left, rect.Top,
+                                               rect.Right, rect.Top);
+
+                        if (i < points.Count - 1)
+                        {
+                            var (nextRect, _) = points[i + 1];
+
+                            _paths[author].AddBezier(rect.Right, rect.Top,
+                                                     rect.Right + (TransitionWidth / 2), rect.Top,
+                                                     rect.Right + (TransitionWidth / 2), nextRect.Top,
+                                                     nextRect.Left, nextRect.Top);
+                        }
                     }
 
+                    var (lastRect, _) = points[points.Count - 1];
+
                     // Right border
-                    _paths[author].AddLine(author_points.Value[author_points.Value.Count - 1].Item1.Right,
-                                          author_points.Value[author_points.Value.Count - 1].Item1.Top,
-                                          author_points.Value[author_points.Value.Count - 1].Item1.Right,
-                                          author_points.Value[author_points.Value.Count - 1].Item1.Bottom);
+                    _paths[author].AddLine(lastRect.Right,
+                                           lastRect.Top,
+                                           lastRect.Right,
+                                           lastRect.Bottom);
 
                     // Bottom borders
-                    for (int i = author_points.Value.Count - 1; i >= 0; i--)
+                    for (int i = points.Count - 1; i >= 0; i--)
                     {
-                        _paths[author].AddLine(author_points.Value[i].Item1.Right, author_points.Value[i].Item1.Bottom,
-                                              author_points.Value[i].Item1.Left, author_points.Value[i].Item1.Bottom);
+                        var (rect, _) = points[i];
+
+                        _paths[author].AddLine(rect.Right, rect.Bottom,
+                                               rect.Left, rect.Bottom);
 
                         if (i > 0)
-                            _paths[author].AddBezier(author_points.Value[i].Item1.Left, author_points.Value[i].Item1.Bottom,
-                                                    author_points.Value[i].Item1.Left - TransitionWidth / 2, author_points.Value[i].Item1.Bottom,
-                                                    author_points.Value[i].Item1.Left - TransitionWidth / 2, author_points.Value[i - 1].Item1.Bottom,
-                                                    author_points.Value[i - 1].Item1.Right, author_points.Value[i - 1].Item1.Bottom);
+                        {
+                            var (prevRect, _) = points[i - 1];
+
+                            _paths[author].AddBezier(rect.Left, rect.Bottom,
+                                                     rect.Left - (TransitionWidth / 2), rect.Bottom,
+                                                     rect.Left - (TransitionWidth / 2), prevRect.Bottom,
+                                                     prevRect.Right, prevRect.Bottom);
+                        }
                     }
                 }
             }
         }
 
-        private int GenerateIntFromString(string text)
+        private static int GenerateIntFromString(string text)
         {
-            return text.Sum(c => (int) c);
+            return text.Sum(c => (int)c);
         }
 
         /// <summary>
@@ -436,9 +493,14 @@ namespace GitImpact
             lock (_dataLock)
             {
                 foreach (var author in _authorStack.Reverse<string>())
+                {
                     if (_paths.ContainsKey(author) && _paths[author].IsVisible(x + _scrollBar.Value, y))
+                    {
                         return author;
+                    }
+                }
             }
+
             return "";
         }
 
@@ -451,10 +513,13 @@ namespace GitImpact
             lock (_dataLock)
             {
                 if (!_authorStack.Contains(author))
+                {
                     return false;
+                }
 
                 // Remove author from the stack
                 _authorStack.Remove(author);
+
                 // and add it again at the end
                 _authorStack.Add(author);
             }
@@ -468,7 +533,9 @@ namespace GitImpact
         public string GetSelectedAuthor()
         {
             if (_authorStack.Count == 0)
+            {
                 return string.Empty;
+            }
 
             lock (_dataLock)
             {
@@ -487,20 +554,34 @@ namespace GitImpact
             lock (_dataLock)
             {
                 if (_brushes.ContainsKey(author))
+                {
                     return _brushes[author].Color;
+                }
             }
+
             return Color.Transparent;
         }
 
         [Browsable(false)]
-        public List<string> Authors { get { lock(_dataLock) return _authorStack; } }
+        public List<string> Authors
+        {
+            get
+            {
+                lock (_dataLock)
+                {
+                    return _authorStack;
+                }
+            }
+        }
 
         public ImpactLoader.DataPoint GetAuthorInfo(string author)
         {
             lock (_dataLock)
             {
                 if (_authors.ContainsKey(author))
+                {
                     return _authors[author];
+                }
 
                 return new ImpactLoader.DataPoint(0, 0, 0);
             }

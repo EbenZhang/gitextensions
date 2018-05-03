@@ -23,7 +23,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         public bool AutoSolveAllSettings()
         {
             if (!EnvUtils.RunningOnWindows())
+            {
                 return SolveGitCommand();
+            }
 
             bool valid = SolveGitCommand();
             valid = SolveLinuxToolsDir() && valid;
@@ -58,7 +60,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             }
 
             string gitpath = AppSettings.GitCommandValue;
-            if (!String.IsNullOrWhiteSpace(possibleNewPath))
+            if (!string.IsNullOrWhiteSpace(possibleNewPath))
             {
                 gitpath = possibleNewPath.Trim();
             }
@@ -96,28 +98,43 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     }
                 }
             }
+
             return false;
         }
 
         private IEnumerable<string> GetGitLocations()
         {
             string envVariable = Environment.GetEnvironmentVariable("GITEXT_GIT");
-            if (!String.IsNullOrEmpty(envVariable)) yield return envVariable;
+            if (!string.IsNullOrEmpty(envVariable))
+            {
+                yield return envVariable;
+            }
+
             yield return
                 CommonLogic.GetRegistryValue(Registry.LocalMachine,
                                  "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Git_is1", "InstallLocation");
             string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
             string programFilesX86 = null;
-            if (8 == IntPtr.Size
-                || !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROCESSOR_ARCHITEW6432")))
+            if (IntPtr.Size == 8
+                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROCESSOR_ARCHITEW6432")))
+            {
                 programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
+            }
+
             if (programFilesX86 != null)
+            {
                 yield return programFilesX86 + @"\Git\";
+            }
+
             yield return programFiles + @"\Git\";
             if (programFilesX86 != null)
+            {
                 yield return programFilesX86 + @"\msysgit\";
+            }
+
             yield return programFiles + @"\msysgit\";
             yield return @"C:\msysgit\";
+
             // cygwin has old git version on windows and bash has a lot of bugs
             yield return @"C:\cygwin\";
             yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -127,14 +144,23 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         private IEnumerable<string> GetWindowsCommandLocations(string possibleNewPath = null)
         {
             if (!string.IsNullOrEmpty(possibleNewPath) && File.Exists(possibleNewPath))
+            {
                 yield return possibleNewPath;
+            }
+
             if (!string.IsNullOrEmpty(AppSettings.GitCommandValue) && File.Exists(AppSettings.GitCommandValue))
+            {
                 yield return AppSettings.GitCommandValue;
+            }
+
             foreach (var path in GetGitLocations())
             {
                 if (Directory.Exists(path + @"bin\"))
+                {
                     yield return path + @"bin\git.exe";
+                }
             }
+
             foreach (var path in GetGitLocations())
             {
                 if (Directory.Exists(path + @"cmd\"))
@@ -143,6 +169,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     yield return path + @"cmd\git.cmd";
                 }
             }
+
             yield return "git";
             yield return "git.cmd";
         }
@@ -165,7 +192,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             if (EnvUtils.RunningOnWindows())
             {
                 var command = (from cmd in GetWindowsCommandLocations(possibleNewPath)
-                               let output = Module.RunCmd(cmd, string.Empty)
+                               let output = ThreadHelper.JoinableTaskFactory.Run(() => Module.RunCmdAsync(cmd, string.Empty))
                                where !string.IsNullOrEmpty(output)
                                select cmd).FirstOrDefault();
 
@@ -174,16 +201,17 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     AppSettings.GitCommandValue = command;
                     return true;
                 }
+
                 return false;
             }
+
             AppSettings.GitCommandValue = "git";
             return !string.IsNullOrEmpty(Module.RunGitCmd(""));
         }
 
         public static bool CheckIfFileIsInPath(string fileName)
         {
-            string foo;
-            return PathUtil.TryFindFullPath(fileName, out foo);
+            return PathUtil.TryFindFullPath(fileName, out _);
         }
 
         public bool SolveMergeToolForKDiff()
@@ -196,7 +224,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             }
 
             if (mergeTool.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase))
+            {
                 return SolveMergeToolPathForKDiff();
+            }
 
             return true;
         }
@@ -211,7 +241,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             }
 
             if (diffTool.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase))
+            {
                 return SolveDiffToolPathForKDiff();
+            }
 
             return true;
         }
@@ -230,7 +262,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         {
             string kdiff3path = MergeToolsHelper.FindPathForKDiff(GlobalConfigFileSettings.GetValue("difftool.kdiff3.path"));
             if (string.IsNullOrEmpty(kdiff3path))
+            {
                 return false;
+            }
 
             GlobalConfigFileSettings.SetPathValue("difftool.kdiff3.path", kdiff3path);
             return true;
@@ -240,7 +274,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         {
             string kdiff3path = MergeToolsHelper.FindPathForKDiff(GlobalConfigFileSettings.GetValue("mergetool.kdiff3.path"));
             if (string.IsNullOrEmpty(kdiff3path))
+            {
                 return false;
+            }
 
             GlobalConfigFileSettings.SetPathValue("mergetool.kdiff3.path", kdiff3path);
             return true;
@@ -253,9 +289,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
 
         public void AutoConfigMergeToolCmd()
         {
-            string exeName;
-            string exeFile = MergeToolsHelper.FindMergeToolFullPath(CommonLogic.ConfigFileSettingsSet, GetGlobalMergeToolText(), out exeName);
-            if (String.IsNullOrEmpty(exeFile))
+            string exeFile = MergeToolsHelper.FindMergeToolFullPath(CommonLogic.ConfigFileSettingsSet, GetGlobalMergeToolText(), out _);
+
+            if (string.IsNullOrEmpty(exeFile))
             {
                 SetMergetoolPathText("");
                 SetMergeToolCmdText("");
@@ -268,6 +304,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         private void SetMergetoolPathText(string text)
         {
             GlobalConfigFileSettings.SetPathValue(string.Format("mergetool.{0}.path", GetGlobalMergeToolText()), text);
+
             // orig (TODO: remove comment and rename method):
             //// MergetoolPath.Text = ...
         }
@@ -275,6 +312,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         private void SetMergeToolCmdText(string text)
         {
             GlobalConfigFileSettings.SetPathValue(string.Format("mergetool.{0}.cmd", GetGlobalMergeToolText()), text);
+
             // orig (TODO: remove comment and rename method):
             //// MergeToolCmd.Text = ...
         }
@@ -282,6 +320,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         private string GetGlobalMergeToolText()
         {
             return GlobalConfigFileSettings.GetValue("merge.tool");
+
             // orig (TODO: remove comment and rename method):
             //// GlobalMergeTool.Text;
         }
@@ -289,6 +328,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         public string GetMergeToolCmdText()
         {
             return GlobalConfigFileSettings.GetValue(string.Format("mergetool.{0}.cmd", GetGlobalMergeToolText()));
+
             // orig (TODO: remove comment and rename method):
             //// MergeToolCmd.Text
         }

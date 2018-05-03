@@ -10,17 +10,13 @@ namespace GitPluginShared.Commands
         private static string lastFile;
         private static string _lastUpdatedCaption;
 
-        public Commit()
-        {
-        }
-
         public override bool IsEnabled(EnvDTE80.DTE2 application)
         {
             bool enabled = base.IsEnabled(application);
 
             string fileName = GetSelectedFile(application);
 
-            if ((fileName != lastFile || DateTime.Now - lastBranchCheck > new TimeSpan(0, 0, 0, 2, 0)))
+            if (fileName != lastFile || DateTime.Now - lastBranchCheck > TimeSpan.FromSeconds(2))
             {
                 string newCaption = "&Commit";
                 if (enabled)
@@ -33,9 +29,13 @@ namespace GitPluginShared.Commands
                         {
                             string headShort;
                             if (head.Length > 27)
+                            {
                                 headShort = "..." + head.Substring(head.Length - 23);
+                            }
                             else
+                            {
                                 headShort = head;
+                            }
 
                             newCaption = "&Commit (" + headShort + ")";
                         }
@@ -53,7 +53,9 @@ namespace GitPluginShared.Commands
 
                     // try apply new caption (operation can fail)
                     if (!PluginHelpers.ChangeCommandCaption(application, PluginHelpers.GitCommandBarName, "Commit changes", newCaption))
+                    {
                         _lastUpdatedCaption = null;
+                    }
                 }
             }
 
@@ -81,18 +83,22 @@ namespace GitPluginShared.Commands
                 {
                     if (sel.ProjectItem.FileCount > 0)
                     {
-                        //Unfortunaly FileNames[1] is not supported by .net 3.5
+                        // Unfortunaly FileNames[1] is not supported by .net 3.5
                         return sel.ProjectItem.get_FileNames(1);
                     }
                 }
-                else
-                    if (sel.Project != null)
-                        return sel.Project.FullName;
+                else if (sel.Project != null)
+                {
+                    return sel.Project.FullName;
+                }
             }
+
             if (application.Solution.IsOpen)
+            {
                 return application.Solution.FullName;
+            }
+
             return string.Empty;
         }
     }
-
 }

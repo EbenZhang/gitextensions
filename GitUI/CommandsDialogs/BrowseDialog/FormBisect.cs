@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
@@ -18,13 +17,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
         private FormBisect()
             : this((GitUICommands)null)
-        { }
+        {
+        }
 
-        private FormBisect(GitUICommands aCommands)
-            : base(aCommands)
+        private FormBisect(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
-            Translate();        
+            Translate();
         }
 
         public FormBisect(RevisionGrid revisionGrid)
@@ -49,7 +49,8 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             FormProcess.ShowDialog(this, GitCommandHelpers.StartBisectCmd());
             UpdateButtonsState();
 
-            IList<GitRevision> revisions = _revisionGrid.GetSelectedRevisions();
+            var revisions = _revisionGrid.GetSelectedRevisions();
+
             if (revisions.Count > 1)
             {
                 if (MessageBox.Show(this, _bisectStart.Text, Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
@@ -65,7 +66,9 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             var command = GitCommandHelpers.ContinueBisectCmd(GitBisectOption.Good, startRevision);
             var errorOccurred = !FormProcess.ShowDialog(this, command);
             if (errorOccurred)
+            {
                 return;
+            }
 
             command = GitCommandHelpers.ContinueBisectCmd(GitBisectOption.Bad, endRevision);
             FormProcess.ShowDialog(this, command);

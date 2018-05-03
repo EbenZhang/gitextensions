@@ -4,7 +4,7 @@ using RestSharp;
 
 namespace Bitbucket
 {
-    class PullRequestInfo
+    internal class PullRequestInfo
     {
         public string Title { get; set; }
         public string Description { get; set; }
@@ -15,7 +15,7 @@ namespace Bitbucket
         public IEnumerable<BitbucketUser> Reviewers { get; set; }
     }
 
-    class CreatePullRequestRequest : BitbucketRequestBase<JObject>
+    internal class CreatePullRequestRequest : BitbucketRequestBase<JObject>
     {
         private readonly PullRequestInfo _info;
 
@@ -44,12 +44,12 @@ namespace Bitbucket
             resource["description"] = _info.Description;
 
             resource["fromRef"] = CreatePullRequestRef(
-                _info.SourceRepo.ProjectKey
-                , _info.SourceRepo.RepoName, _info.SourceBranch);
+                _info.SourceRepo.ProjectKey,
+                _info.SourceRepo.RepoName, _info.SourceBranch);
 
             resource["toRef"] = CreatePullRequestRef(
-                _info.TargetRepo.ProjectKey
-                , _info.TargetRepo.RepoName, _info.TargetBranch);
+                _info.TargetRepo.ProjectKey,
+                _info.TargetRepo.RepoName, _info.TargetBranch);
 
             var reviewers = new JArray();
             foreach (var reviewer in _info.Reviewers)
@@ -60,12 +60,13 @@ namespace Bitbucket
 
                 reviewers.Add(r);
             }
+
             resource["reviewers"] = reviewers;
 
             return resource.ToString();
         }
 
-        private JObject CreatePullRequestRef(string projectKey, string repoName, string branchName)
+        private static JObject CreatePullRequestRef(string projectKey, string repoName, string branchName)
         {
             var reference = new JObject();
             reference["id"] = branchName;

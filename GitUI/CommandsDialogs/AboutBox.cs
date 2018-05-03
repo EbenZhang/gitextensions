@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Drawing;
-using GitUI.Properties;
+using GitExtUtils.GitUI;
 using GitUI.CommandsDialogs.AboutBoxDialog;
 using GitUI.CommandsDialogs.BrowseDialog;
+using GitUI.Properties;
 
 namespace GitUI.CommandsDialogs
 {
@@ -10,30 +11,25 @@ namespace GitUI.CommandsDialogs
     {
         public AboutBox()
         {
-            _contributersList = string.Join(", ", new []{Coders, Translators,
-                Designers, Other})
+            _contributersList = string.Join(", ", Coders, Translators, Designers, Other)
                 .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
 
             InitializeComponent();
             Translate();
+            this.AdjustForDpiScaling();
         }
 
-        private string Coders => Resources.Coders.Replace(Environment.NewLine, " ");
+        private static string Coders => Resources.Coders.Replace(Environment.NewLine, " ");
 
-        private string Translators => Resources.Translators.Replace(Environment.NewLine, " ");
+        private static string Translators => Resources.Translators.Replace(Environment.NewLine, " ");
 
-        private string Designers => Resources.Designers.Replace(Environment.NewLine, " ");
+        private static string Designers => Resources.Designers.Replace(Environment.NewLine, " ");
 
-        private string Other => Resources.Other.Replace(Environment.NewLine, " ");
+        private static string Other => Resources.Other.Replace(Environment.NewLine, " ");
 
         private void okButton_Click(object sender, EventArgs e)
         {
             Close();
-        }
-
-        private void labelVersion_Click(object sender, EventArgs e)
-        {
-
         }
 
         private void pictureBox1_Click(object sender, EventArgs e)
@@ -45,7 +41,9 @@ namespace GitUI.CommandsDialogs
         {
             Bitmap image = Lemmings.GetPictureBoxImage(DateTime.Now);
             if (image != null)
-                logoPictureBox.Image = image;
+            {
+                logoPictureBox.Image = DpiUtil.Scale(image);
+            }
 
             thanksTimer_Tick(null, null);
             thanksTimer.Enabled = true;
@@ -73,8 +71,7 @@ namespace GitUI.CommandsDialogs
         {
             using (FormContributors formContributors = new FormContributors())
             {
-                formContributors.LoadContributors(Coders, Translators,
-                    Designers, Other);
+                formContributors.LoadContributors(Coders, Translators, Designers);
                 formContributors.ShowDialog(this);
             }
         }

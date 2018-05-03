@@ -5,7 +5,7 @@ namespace GitUI.UserControls.RevisionGridClasses
     /// <summary>
     /// no mouse over effect for disabled menu items, if the Tag is "caption"
     /// </summary>
-    class CaptionCustomMenuRenderer : ToolStripProfessionalRenderer
+    internal class CaptionCustomMenuRenderer : ToolStripProfessionalRenderer
     {
         protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
         {
@@ -17,7 +17,6 @@ namespace GitUI.UserControls.RevisionGridClasses
 
             if (!e.Item.Enabled)
             {
-
             }
             else
             {

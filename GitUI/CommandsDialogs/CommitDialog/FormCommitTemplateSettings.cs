@@ -35,24 +35,25 @@ namespace GitUI.CommandsDialogs.CommitDialog
 
             _commitTemplates = CommitTemplateItem.LoadFromSettings();
 
-            if (null == _commitTemplates)
+            if (_commitTemplates == null)
             {
                 _commitTemplates = new CommitTemplateItem[_maxCommitTemplates];
                 for (int i = 0; i < _commitTemplates.Length; i++)
+                {
                     _commitTemplates[i] = new CommitTemplateItem();
+                }
             }
 
             _NO_TRANSLATE_comboBoxCommitTemplates.Items.Clear();
 
             for (int i = 0; i < _commitTemplates.Length; i++)
-            {           
-                _NO_TRANSLATE_comboBoxCommitTemplates.Items.Add(String.Empty);
+            {
+                _NO_TRANSLATE_comboBoxCommitTemplates.Items.Add(string.Empty);
                 RefreshLineInListBox(i);
             }
 
             _NO_TRANSLATE_comboBoxCommitTemplates.SelectedIndex = 0;
             checkBoxAutoWrap.Checked = AppSettings.CommitValidationAutoWrap;
-
         }
 
         private void SaveSettings()
@@ -66,7 +67,6 @@ namespace GitUI.CommandsDialogs.CommitDialog
             CommitTemplateItem.SaveToSettings(_commitTemplates);
             AppSettings.CommitValidationAutoWrap = checkBoxAutoWrap.Checked;
         }
-
 
         private void buttonOk_Click(object sender, EventArgs e)
         {
@@ -102,13 +102,14 @@ namespace GitUI.CommandsDialogs.CommitDialog
 
             if (!_commitTemplates[line].Name.IsNullOrEmpty())
             {
-                comboBoxText = _commitTemplates[line].Name.Substring(0, _commitTemplates[line].Name.Length > _maxShownCharsForName ? (_maxShownCharsForName - 3) : _commitTemplates[line].Name.Length);
-                comboBoxText += _commitTemplates[line].Name.Length > _maxShownCharsForName ? "..." : "";
+                comboBoxText = _commitTemplates[line].Name.ShortenTo(_maxShownCharsForName);
             }
             else
+            {
                 comboBoxText = "<" + _emptyTemplate.Text + ">";
+            }
 
-            _NO_TRANSLATE_comboBoxCommitTemplates.Items[line] = String.Format("{0} : {1}", (line + 1), comboBoxText);
+            _NO_TRANSLATE_comboBoxCommitTemplates.Items[line] = string.Format("{0} : {1}", line + 1, comboBoxText);
         }
     }
 }

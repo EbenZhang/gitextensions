@@ -1,15 +1,15 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Linq;
 using System.Collections.Generic;
-using System.IO;
-using System.Net;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Windows.Forms;
 using Git.hub;
-using GitCommands.Config;
 using GitCommands;
+using GitCommands.Config;
 using GitUIPluginInterfaces;
 using ResourceManager;
 using RestSharp;
@@ -28,7 +28,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         #endregion
 
         public IWin32Window OwnerWindow;
-        public Version CurrentVersion;
+        public Version CurrentVersion { get; }
         public bool UpdateFound;
         public string InstallerPath;
         private string _releasePageUrl;
@@ -52,12 +52,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             Close();
         }
 
-        public void SearchForUpdatesAndShow(IWin32Window aOwnerWindow, bool alwaysShow)
+        public void SearchForUpdatesAndShow(IWin32Window ownerWindow, bool alwaysShow)
         {
-            OwnerWindow = aOwnerWindow;
+            OwnerWindow = ownerWindow;
             new Thread(SearchForUpdates).Start();
             if (alwaysShow)
-                ShowDialog(aOwnerWindow);
+            {
+                ShowDialog(ownerWindow);
+            }
         }
 
         private class GitHubReleaseInfo
@@ -83,11 +85,16 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                 Client github = new Client();
                 Repository gitExtRepo = github.getRepository("EbenZhang", "gitextensions");
                 if (gitExtRepo == null)
+                {
                     return;
+                }
 
                 var configData = GetLatestGitExtensionsRelease();
                 if (configData == null)
+                {
                     return;
+                }
+
                 CheckForNewerVersion(configData);
             }
             catch (InvalidAsynchronousStateException)
@@ -98,26 +105,29 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             }
             catch (Exception ex)
             {
-                this.InvokeSync(state =>
+                this.InvokeSync(() =>
                     {
                         if (Visible)
                         {
                             ExceptionUtils.ShowException(this, ex, string.Empty, true);
                         }
-                    }, null);
+                    });
                 Done();
             }
-
         }
 
-        void CheckForNewerVersion(GitHubReleaseInfo release)
+        private void CheckForNewerVersion(GitHubReleaseInfo release)
         {
             Version newVersion = null;
             try
             {
                 newVersion = new Version(release.tag_name);
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
+
             if (newVersion == null)
             {
                 UpdateFound = false;
@@ -126,9 +136,10 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             {
                 UpdateFound = CurrentVersion < new Version(release.tag_name);
             }
+
             if (UpdateFound)
             {
-                var setupFileName = string.Format("GitExtensions-{0}-Setup.msi", release.tag_name);
+                var setupFileName = $"GitExtensions-{release.tag_name}-Setup.msi";
                 try
                 {
                     var downloadToFolder = Path.Combine(Path.GetTempPath(), "GitExtensionReleases");
@@ -137,6 +148,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                     {
                         Directory.CreateDirectory(downloadToFolder);
                     }
+
                     _releasePageUrl = release.html_url;
                     InstallerPath = Path.Combine(downloadToFolder, setupFileName);
                     this.InvokeAsync(() =>
@@ -145,8 +157,9 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                         {
                             return;
                         }
+
                         UpdateLabel.Text = string.Format(_downloading.Text, release.tag_name);
-                    });
+                    }).FileAndForget();
                     DownloadNewRelease(release, setupFileName);
                     NewVersion = release.tag_name;
                     Done();
@@ -207,7 +220,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
         private void Done()
         {
-            this.InvokeSync(o =>
+            this.InvokeSync(() =>
             {
                 progressBar1.Visible = false;
 
@@ -218,13 +231,15 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                     linkChangeLog.Visible = true;
 
                     if (!Visible)
+                    {
                         ShowDialog(OwnerWindow);
+                    }
                 }
                 else
                 {
                     UpdateLabel.Text = _noUpdatesFound.Text;
                 }
-            }, this);
+            });
         }
 
         private void linkChangeLog_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
@@ -266,21 +281,20 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             }
             catch (Exception e)
             {
-                System.Diagnostics.Debug.WriteLine(e);
+                Debug.WriteLine(e);
                 return null;
             }
 
-            var version = new ReleaseVersion()
+            var version = new ReleaseVersion
             {
                 Version = ver,
                 ReleaseType = ReleaseType.Major,
                 DownloadPage = section.GetValue("DownloadPage")
             };
 
-            Enum.TryParse<ReleaseType>(section.GetValue("ReleaseType"), true, out version.ReleaseType);
+            Enum.TryParse(section.GetValue("ReleaseType"), true, out version.ReleaseType);
 
             return version;
-
         }
 
         public static IEnumerable<ReleaseVersion> Parse(string versionsStr)
@@ -301,11 +315,9 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             var versions = availableVersions.Where(version =>
                     version.ReleaseType == ReleaseType.Major ||
                     version.ReleaseType == ReleaseType.HotFix ||
-                    checkForReleaseCandidates && version.ReleaseType == ReleaseType.ReleaseCandidate);
+                    (checkForReleaseCandidates && version.ReleaseType == ReleaseType.ReleaseCandidate));
 
             return versions.Where(version => version.Version.CompareTo(currentVersion) > 0);
         }
-
     }
-
 }

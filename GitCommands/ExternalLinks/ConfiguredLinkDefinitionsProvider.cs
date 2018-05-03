@@ -13,7 +13,7 @@ namespace GitCommands.ExternalLinks
         /// <summary>
         /// Loads all persisted external link definitions across all setting layers.
         /// </summary>
-        IList<ExternalLinkDefinition> Get(RepoDistSettings settings);
+        IReadOnlyList<ExternalLinkDefinition> Get(RepoDistSettings settings);
     }
 
     /// <summary>
@@ -23,17 +23,15 @@ namespace GitCommands.ExternalLinks
     {
         private readonly IExternalLinksLoader _externalLinksLoader;
 
-
         public ConfiguredLinkDefinitionsProvider(IExternalLinksLoader externalLinksLoader)
         {
             _externalLinksLoader = externalLinksLoader;
         }
 
-
         /// <summary>
         /// Loads all persisted external link definitions across all setting layers.
         /// </summary>
-        public IList<ExternalLinkDefinition> Get(RepoDistSettings settings)
+        public IReadOnlyList<ExternalLinkDefinition> Get(RepoDistSettings settings)
         {
             if (settings == null)
             {

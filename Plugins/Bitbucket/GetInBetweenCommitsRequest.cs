@@ -4,7 +4,7 @@ using RestSharp;
 
 namespace Bitbucket
 {
-    class GetInBetweenCommitsRequest : BitbucketRequestBase<List<Commit>>
+    internal class GetInBetweenCommitsRequest : BitbucketRequestBase<List<Commit>>
     {
         private readonly Repository _sourceRepo;
         private readonly Repository _targetRepo;
@@ -12,7 +12,7 @@ namespace Bitbucket
         private readonly Commit _targetCommit;
 
         public GetInBetweenCommitsRequest(Repository sourceRepo, Repository targetRepo,
-            Commit sourceCommit, Commit targetCommit,Settings settings)
+            Commit sourceCommit, Commit targetCommit, Settings settings)
             : base(settings)
         {
             _sourceRepo = sourceRepo;
@@ -27,16 +27,17 @@ namespace Bitbucket
 
         protected override string ApiUrl => string.Format(
             "/projects/{0}/repos/{1}/commits?until={2}&since={3}&secondaryRepositoryId={4}&start=0&limit=10",
-            _sourceRepo.ProjectKey, _sourceRepo.RepoName, 
+            _sourceRepo.ProjectKey, _sourceRepo.RepoName,
             _sourceCommit.Hash, _targetCommit.Hash, _targetRepo.Id);
 
         protected override List<Commit> ParseResponse(JObject json)
         {
             var result = new List<Commit>();
-            foreach(JObject commit in json["values"])
+            foreach (JObject commit in json["values"])
             {
                 result.Add(Commit.Parse(commit));
             }
+
             return result;
         }
     }

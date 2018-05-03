@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.Repository;
+using GitCommands.UserRepositoryHistory;
 using ResourceManager;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace GitUI.CommandsDialogs.BrowseDialog
 {
@@ -17,22 +17,26 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         private readonly TranslationString _warningOpenFailedCaption =
             new TranslationString("Error");
 
-        private GitModule choosenModule = null;
+        private GitModule _choosenModule;
 
         public FormOpenDirectory(GitModule currentModule)
         {
             InitializeComponent();
             Translate();
 
-            _NO_TRANSLATE_Directory.DataSource = GetDirectories(currentModule);
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                var repositoryHistory = await RepositoryHistoryManager.Locals.LoadHistoryAsync();
 
-            Load.Select();
-
-            _NO_TRANSLATE_Directory.Focus();
-            _NO_TRANSLATE_Directory.Select();
+                await this.SwitchToMainThreadAsync();
+                _NO_TRANSLATE_Directory.DataSource = GetDirectories(currentModule, repositoryHistory);
+                Load.Select();
+                _NO_TRANSLATE_Directory.Focus();
+                _NO_TRANSLATE_Directory.Select();
+            });
         }
 
-        private IList<string> GetDirectories(GitModule currentModule)
+        private static IReadOnlyList<string> GetDirectories(GitModule currentModule, IEnumerable<Repository> repositoryHistory)
         {
             List<string> directories = new List<string>();
 
@@ -41,7 +45,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                 directories.Add(PathUtil.EnsureTrailingPathSeparator(AppSettings.DefaultCloneDestinationPath));
             }
 
-            if (currentModule != null && !string.IsNullOrWhiteSpace(currentModule.WorkingDir))
+            if (!string.IsNullOrWhiteSpace(currentModule?.WorkingDir))
             {
                 DirectoryInfo di = new DirectoryInfo(currentModule.WorkingDir);
                 if (di.Parent != null)
@@ -50,7 +54,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                 }
             }
 
-            directories.AddRange(Repositories.RepositoryHistory.Repositories.Select(r => r.Path));
+            directories.AddRange(repositoryHistory.Select(r => r.Path));
 
             if (directories.Count == 0)
             {
@@ -59,13 +63,13 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                     directories.Add(PathUtil.EnsureTrailingPathSeparator(AppSettings.RecentWorkingDir));
                 }
 
-                string homeDir = GitCommandHelpers.GetHomeDir();
+                string homeDir = EnvironmentConfiguration.GetHomeDir();
                 if (homeDir.IsNotNullOrWhitespace())
                 {
                     directories.Add(PathUtil.EnsureTrailingPathSeparator(homeDir));
                 }
             }
-            
+
             return directories.Distinct().ToList();
         }
 
@@ -74,7 +78,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             using (var open = new FormOpenDirectory(currentModule))
             {
                 open.ShowDialog(owner);
-                return open.choosenModule;
+                return open._choosenModule;
             }
         }
 
@@ -83,8 +87,8 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             _NO_TRANSLATE_Directory.Text = _NO_TRANSLATE_Directory.Text.Trim();
             if (Directory.Exists(_NO_TRANSLATE_Directory.Text))
             {
-                choosenModule = new GitModule(_NO_TRANSLATE_Directory.Text);
-                Repositories.AddMostRecentRepository(choosenModule.WorkingDir);
+                _choosenModule = new GitModule(_NO_TRANSLATE_Directory.Text);
+                ThreadHelper.JoinableTaskFactory.Run(() => RepositoryHistoryManager.Locals.AddAsMostRecentAsync(_choosenModule.WorkingDir));
                 Close();
             }
             else
@@ -107,7 +111,10 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             {
                 DirectoryInfo currentDirectory = new DirectoryInfo(_NO_TRANSLATE_Directory.Text);
                 if (currentDirectory.Parent == null)
+                {
                     return;
+                }
+
                 string parentPath = currentDirectory.Parent.FullName.TrimEnd('\\');
                 _NO_TRANSLATE_Directory.Text = parentPath;
                 _NO_TRANSLATE_Directory.Focus();
@@ -116,6 +123,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             }
             catch (Exception)
             {
+                // no-op
             }
         }
 

@@ -24,15 +24,19 @@ namespace GitUI
                 {
                     instance._active = value;
                     if (instance._active)
+                    {
                         Application.AddMessageFilter(instance);
+                    }
                     else
+                    {
                         Application.RemoveMessageFilter(instance);
+                    }
                 }
             }
         }
 
-        private IntPtr  _previousHWnd = IntPtr.Zero;
-        private bool    _GEControl;
+        private IntPtr _previousHWnd = IntPtr.Zero;
+        private bool _gEControl;
 
         public bool PreFilterMessage(ref Message m)
         {
@@ -42,24 +46,29 @@ namespace GitUI
             {
                 // WM_MOUSEWHEEL, find the control at screen position m.LParam
                 Point pos = new Point(m.LParam.ToInt32());
-                IntPtr hWnd = NativeMethods.WindowFromPoint(pos);
-                if (hWnd != IntPtr.Zero && hWnd != m.HWnd && Control.FromHandle(hWnd) != null)
+                IntPtr hwnd = NativeMethods.WindowFromPoint(pos);
+                if (hwnd != IntPtr.Zero && hwnd != m.HWnd && Control.FromHandle(hwnd) != null)
                 {
-                    if (_previousHWnd != hWnd)
+                    if (_previousHWnd != hwnd)
                     {
-                        Control control = Control.FromHandle(hWnd);
+                        Control control = Control.FromHandle(hwnd);
                         while (control != null && !(control is GitExtensionsControl))
+                        {
                             control = control.Parent;
-                        _previousHWnd = hWnd;
-                        _GEControl = control != null;
+                        }
+
+                        _previousHWnd = hwnd;
+                        _gEControl = control != null;
                     }
-                    if (_GEControl)
+
+                    if (_gEControl)
                     {
-                        NativeMethods.SendMessage(hWnd, m.Msg, m.WParam, m.LParam);
+                        NativeMethods.SendMessage(hwnd, m.Msg, m.WParam, m.LParam);
                         return true;
                     }
                 }
             }
+
             return false;
         }
 
@@ -76,8 +85,8 @@ namespace GitUI
             [StructLayout(LayoutKind.Sequential)]
             public struct POINT
             {
-                public int X;
-                public int Y;
+                public readonly int X;
+                public readonly int Y;
 
                 public POINT(int x, int y)
                 {
@@ -85,12 +94,12 @@ namespace GitUI
                     Y = y;
                 }
 
-                public static implicit operator System.Drawing.Point(POINT p)
+                public static implicit operator Point(POINT p)
                 {
-                    return new System.Drawing.Point(p.X, p.Y);
+                    return new Point(p.X, p.Y);
                 }
 
-                public static implicit operator POINT(System.Drawing.Point p)
+                public static implicit operator POINT(Point p)
                 {
                     return new POINT(p.X, p.Y);
                 }

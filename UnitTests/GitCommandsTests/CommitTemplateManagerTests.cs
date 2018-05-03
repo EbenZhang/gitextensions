@@ -13,13 +13,12 @@ namespace GitCommandsTests
     [TestFixture]
     public class CommitTemplateManagerTests
     {
-        private string _workingDir = @"c:\dev\repo";
+        private readonly string _workingDir = @"c:\dev\repo";
         private IGitModule _module;
         private FileBase _file;
         private IFileSystem _fileSystem;
         private IFullPathResolver _fullPathResolver;
         private CommitTemplateManager _manager;
-
 
         [SetUp]
         public void Setup()
@@ -33,7 +32,6 @@ namespace GitCommandsTests
             _fileSystem.File.Returns(_file);
             _manager = new CommitTemplateManager(_module, _fullPathResolver, _fileSystem);
         }
-
 
         [TestCase(null)]
         [TestCase("")]
@@ -52,7 +50,7 @@ namespace GitCommandsTests
             _module.WorkingDir.Returns(_workingDir);
             _module.GetEffectiveSetting("commit.template").Returns(template);
 
-            ((Action)(() => _manager.LoadGitCommitTemplate())).ShouldThrow<FileNotFoundException>();
+            ((Action)(() => _manager.LoadGitCommitTemplate())).Should().Throw<FileNotFoundException>();
         }
 
         [Test]

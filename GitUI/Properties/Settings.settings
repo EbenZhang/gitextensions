@@ -26,7 +26,7 @@
     <Setting Name="FormBrowse_MainSplitContainer_SplitterDistance" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">213</Value>
     </Setting>
-    <Setting Name="FormBrowse_LeftPanel_Collapsed" Type="System.Boolean" Scope="User">
+    <Setting Name="FormBrowse_BranchTreePanel_Collapsed" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="FormBrowse_RevisionsSplitContainer_SplitterDistance" Type="System.Int32" Scope="User">

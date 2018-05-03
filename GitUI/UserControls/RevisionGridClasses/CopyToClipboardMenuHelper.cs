@@ -4,17 +4,13 @@ using System.Windows.Forms;
 
 namespace GitUI.UserControls.RevisionGridClasses
 {
-    class CopyToClipboardMenuHelper
+    internal static class CopyToClipboardMenuHelper
     {
         /// <summary>
         /// ...
         /// sets also the visibility of captionItem
         /// ...
         /// </summary>
-        /// <param name="targetMenu"></param>
-        /// <param name="captionItem"></param>
-        /// <param name="gitNameList"></param>
-        /// <param name="itemFlag"></param>
         public static void SetCopyToClipboardMenuItems(
             ToolStripMenuItem targetMenu,
             ToolStripMenuItem captionItem,
@@ -52,8 +48,6 @@ namespace GitUI.UserControls.RevisionGridClasses
         /// <summary>
         /// adds or updates text in parentheses (...)
         /// </summary>
-        /// <param name="target"></param>
-        /// <param name="postfix"></param>
         public static void AddOrUpdateTextPostfix(ToolStripItem target, string postfix)
         {
             if (target.Text.EndsWith(")"))
@@ -62,34 +56,6 @@ namespace GitUI.UserControls.RevisionGridClasses
             }
 
             target.Text += string.Format("     ({0})", postfix);
-        }
-
-        /// <summary>
-        /// Substring with elipses but OK if shorter, will take 3 characters off character count if necessary
-        /// from http://blog.abodit.com/2010/02/string-extension-methods-for-truncating-and-adding-ellipsis/
-        /// </summary>
-        public static string StrLimitWithElipses(string str, int characterCount)
-        {
-            if (characterCount < 5)
-                return StrLimit(str, characterCount); // Can’t do much with such a short limit
-            if (str.Length <= characterCount - 3)
-                return str;
-            else
-                return str.Substring(0, characterCount - 3) + "...";
-        }
-
-        /// <summary>
-        /// Substring but OK if shorter
-        /// </summary>
-        /// <param name="str"></param>
-        /// <param name="characterCount"></param>
-        /// <returns></returns>
-        public static string StrLimit(string str, int characterCount)
-        {
-            if (str.Length <= characterCount)
-                return str;
-            else
-                return str.Substring(0, characterCount).TrimEnd(' ');
         }
     }
 }

@@ -2,121 +2,155 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Patches;
+using GitExtUtils.GitUI;
 using GitUI.Editor;
+using JetBrains.Annotations;
 using ResourceManager;
-using System.Threading.Tasks;
 
 namespace GitUI
 {
     public static class GitUIExtensions
     {
-        public static SynchronizationContext UISynchronizationContext;
-
-
-        public static void OpenWithDifftool(this RevisionGrid grid, string fileName, string oldFileName, GitUI.RevisionDiffKind diffKind, bool isTracked=true)
+        [CanBeNull]
+        private static Patch GetItemPatch(
+            [NotNull] GitModule module,
+            [NotNull] GitItemStatus file,
+            [CanBeNull] string firstRevision,
+            [CanBeNull] string secondRevision,
+            [NotNull] string diffArgs,
+            [NotNull] Encoding encoding)
         {
-            //Note: Order in revisions is that first clicked is last in array
+            // Files with tree guid should be presented with normal diff
+            var isTracked = file.IsTracked || (file.TreeGuid.IsNotNullOrWhitespace() && secondRevision.IsNotNullOrWhitespace());
 
-            string error = RevisionDiffInfoProvider.Get(grid.GetSelectedRevisions(), diffKind,
-                out var extraDiffArgs, out var firstRevision, out var secondRevision);
-
-            if (!string.IsNullOrEmpty(error))
-            {
-                MessageBox.Show(grid, error);
-            }
-            else
-            {
-                string output = grid.Module.OpenWithDifftool(fileName, oldFileName, firstRevision, secondRevision, extraDiffArgs, isTracked);
-                if (!string.IsNullOrEmpty(output))
-                    MessageBox.Show(grid, output);
-            }
+            return module.GetSingleDiff(firstRevision, secondRevision, file.Name, file.OldName, diffArgs, encoding, true, isTracked);
         }
 
-        private static PatchApply.Patch GetItemPatch(GitModule module, GitItemStatus file,
-            string firstRevision, string secondRevision, string diffArgs, Encoding encoding)
-        {
-            return module.GetSingleDiff(firstRevision, secondRevision, file.Name, file.OldName,
-                    diffArgs, encoding, true, file.IsTracked);
-        }
-
-        public static string GetSelectedPatch(this FileViewer diffViewer, string firstRevision, string secondRevision, GitItemStatus file)
+        [CanBeNull]
+        private static string GetSelectedPatch(
+            [NotNull] this FileViewer diffViewer,
+            [CanBeNull] string firstRevision,
+            [CanBeNull] string secondRevision,
+            [NotNull] GitItemStatus file)
         {
             if (!file.IsTracked)
             {
                 var fullPath = Path.Combine(diffViewer.Module.WorkingDir, file.Name);
                 if (Directory.Exists(fullPath) && GitModule.IsValidGitWorkingDir(fullPath))
                 {
-                    //git-status does not detect details for untracked and git-diff --no-index will not give info
+                    // git-status does not detect details for untracked and git-diff --no-index will not give info
                     return LocalizationHelpers.GetSubmoduleText(diffViewer.Module, file.Name.TrimEnd('/'), "");
                 }
             }
 
-            if (file.IsSubmodule && file.SubmoduleStatus != null)
-                return LocalizationHelpers.ProcessSubmoduleStatus(diffViewer.Module, file.SubmoduleStatus.Result);
+            if (file.IsSubmodule && file.GetSubmoduleStatusAsync() != null)
+            {
+                return LocalizationHelpers.ProcessSubmoduleStatus(diffViewer.Module, ThreadHelper.JoinableTaskFactory.Run(() => file.GetSubmoduleStatusAsync()));
+            }
 
-            PatchApply.Patch patch = GetItemPatch(diffViewer.Module, file, firstRevision, secondRevision,
+            Patch patch = GetItemPatch(diffViewer.Module, file, firstRevision, secondRevision,
                 diffViewer.GetExtraDiffArguments(), diffViewer.Encoding);
 
             if (patch == null)
+            {
                 return string.Empty;
+            }
 
             if (file.IsSubmodule)
+            {
                 return LocalizationHelpers.ProcessSubmodulePatch(diffViewer.Module, file.Name, patch);
+            }
+
             return patch.Text;
         }
 
-        public static Task ViewChanges(this FileViewer diffViewer, IList<GitRevision> revisions, GitItemStatus file, string defaultText)
+        public static Task ViewChangesAsync(this FileViewer diffViewer, IReadOnlyList<GitRevision> revisions, GitItemStatus file, string defaultText)
         {
             if (revisions.Count == 0)
-                return Task.FromResult(string.Empty);
+            {
+                return Task.CompletedTask;
+            }
 
             var selectedRevision = revisions[0];
             string secondRevision = selectedRevision?.Guid;
             string firstRevision = revisions.Count >= 2 ? revisions[1].Guid : null;
             if (firstRevision == null && selectedRevision != null)
+            {
                 firstRevision = selectedRevision.FirstParentGuid;
-            return ViewChanges(diffViewer, firstRevision, secondRevision, file, defaultText);
+            }
+
+            return ViewChangesAsync(diffViewer, firstRevision, secondRevision, file, defaultText);
         }
 
-        public static Task ViewChanges(this FileViewer diffViewer, string firstRevision, string secondRevision, GitItemStatus file, string defaultText)
+        public static Task ViewChangesAsync(
+            this FileViewer diffViewer,
+            [CanBeNull] string firstRevision,
+            string secondRevision,
+            [NotNull] GitItemStatus file,
+            [NotNull] string defaultText)
         {
-            return diffViewer.ViewPatch(() =>
+            if (firstRevision == null)
             {
-                string selectedPatch = diffViewer.GetSelectedPatch(firstRevision, secondRevision, file);
-                return selectedPatch ?? defaultText;
-            });
+                // The previous commit does not exist, nothing to compare with
+                if (file.TreeGuid.IsNullOrEmpty())
+                {
+                    if (secondRevision.IsNullOrWhiteSpace())
+                    {
+                        throw new ArgumentException(nameof(secondRevision));
+                    }
+
+                    return diffViewer.ViewGitItemRevisionAsync(file.Name, secondRevision);
+                }
+                else
+                {
+                    return diffViewer.ViewGitItemAsync(file.Name, file.TreeGuid);
+                }
+            }
+            else
+            {
+                return diffViewer.ViewPatchAsync(() =>
+                {
+                    string selectedPatch = diffViewer.GetSelectedPatch(firstRevision, secondRevision, file);
+                    return selectedPatch ?? defaultText;
+                });
+            }
         }
 
         public static void RemoveIfExists(this TabControl tabControl, TabPage page)
         {
             if (tabControl.TabPages.Contains(page))
+            {
                 tabControl.TabPages.Remove(page);
+            }
         }
 
         public static void InsertIfNotExists(this TabControl tabControl, int index, TabPage page)
         {
             if (!tabControl.TabPages.Contains(page))
+            {
                 tabControl.TabPages.Insert(index, page);
+            }
         }
 
         public static void Mask(this Control control)
         {
-            if (control.FindMaskPanel() == null)
+            if (FindMaskPanel(control) == null)
             {
-                MaskPanel panel = new MaskPanel();
+                var panel = new MaskPanel { Dock = DockStyle.Fill };
                 control.Controls.Add(panel);
-                panel.Dock = DockStyle.Fill;
                 panel.BringToFront();
             }
         }
 
         public static void UnMask(this Control control)
         {
-            MaskPanel panel = control.FindMaskPanel();
+            MaskPanel panel = FindMaskPanel(control);
             if (panel != null)
             {
                 control.Controls.Remove(panel);
@@ -124,20 +158,16 @@ namespace GitUI
             }
         }
 
-        private static MaskPanel FindMaskPanel(this Control control)
+        private static MaskPanel FindMaskPanel(Control control)
         {
-            foreach (var c in control.Controls)
-                if (c is MaskPanel)
-                    return c as MaskPanel;
-
-            return null;
+            return control.Controls.Cast<Control>().OfType<MaskPanel>().FirstOrDefault();
         }
 
-        public class MaskPanel : PictureBox
+        private class MaskPanel : PictureBox
         {
             public MaskPanel()
             {
-                Image = Properties.Resources.loadingpanel;
+                Image = DpiUtil.Scale(Properties.Resources.loadingpanel);
                 SizeMode = PictureBoxSizeMode.CenterImage;
                 BackColor = SystemColors.AppWorkspace;
             }
@@ -148,71 +178,87 @@ namespace GitUI
             return tree.Nodes.AllNodes();
         }
 
-        public static IEnumerable<TreeNode> AllNodes(this TreeNodeCollection nodes)
+        private static IEnumerable<TreeNode> AllNodes(this TreeNodeCollection nodes)
         {
             foreach (TreeNode node in nodes)
             {
                 yield return node;
 
-                foreach(TreeNode subNode in node.Nodes.AllNodes())
+                foreach (TreeNode subNode in node.Nodes.AllNodes())
+                {
                     yield return subNode;
+                }
             }
         }
 
-        public static void InvokeAsync(this Control control, Action action)
+        public static async Task InvokeAsync(this Control control, Action action)
         {
-            InvokeAsync(control, _ => action(), null);
+            await control.SwitchToMainThreadAsync();
+            action();
         }
 
-        public static void InvokeAsync(this Control control, SendOrPostCallback action, object state)
+        public static async Task InvokeAsync<T>(this Control control, Action<T> action, T state)
         {
-            SendOrPostCallback checkDisposedAndInvoke = (s) =>
-            {
-                if (!control.IsDisposed)
-                    action(s);
-            };
+            await control.SwitchToMainThreadAsync();
+            action(state);
+        }
 
-            if (!control.IsDisposed)
-                UISynchronizationContext.Post(checkDisposedAndInvoke, state);
+#pragma warning disable VSTHRD100 // Avoid async void methods
+        /// <summary>
+        /// Use <see cref="InvokeAsync(Control, Action)"/> instead. If the result of
+        /// <see cref="InvokeAsync(Control, Action)"/> is not awaited, use
+        /// <see cref="ThreadHelper.FileAndForget(Task, Func{Exception, bool})"/> to ignore it.
+        /// </summary>
+        public static async void InvokeAsyncDoNotUseInNewCode(this Control control, Action action)
+#pragma warning restore VSTHRD100 // Avoid async void methods
+        {
+            if (ThreadHelper.JoinableTaskContext.IsOnMainThread)
+            {
+                await Task.Yield();
+            }
+            else
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            }
+
+            if (control.IsDisposed)
+            {
+                return;
+            }
+
+            action();
         }
 
         public static void InvokeSync(this Control control, Action action)
         {
-            InvokeSync(control, _ => action(), null);
-        }
-
-        public static void InvokeSync(this Control control, SendOrPostCallback action, object state)
-        {
-            SendOrPostCallback checkDisposedAndInvoke = (s) =>
-            {
-                if (!control.IsDisposed)
+            ThreadHelper.JoinableTaskFactory.Run(
+                async () =>
                 {
                     try
                     {
-                        action(s);
+                        await InvokeAsync(control, action);
                     }
                     catch (Exception e)
                     {
                         e.Data["StackTrace" + e.Data.Count] = e.StackTrace;
                         throw;
                     }
-                }
-            };
-
-            if (!control.IsDisposed)
-                UISynchronizationContext.Send(checkDisposedAndInvoke, state);
+                });
         }
 
         public static Control FindFocusedControl(this ContainerControl container)
         {
-            var control = container.ActiveControl;
-            container = control as ContainerControl;
-
-            if (container == null)
-                return control;
-            else
-                return container.FindFocusedControl();
+            while (true)
+            {
+                if (container.ActiveControl is ContainerControl activeContainer)
+                {
+                    container = activeContainer;
+                }
+                else
+                {
+                    return container.ActiveControl;
+                }
+            }
         }
-
     }
 }

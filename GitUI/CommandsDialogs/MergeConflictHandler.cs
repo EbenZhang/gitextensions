@@ -1,48 +1,51 @@
-﻿using GitCommands;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
+using GitCommands;
 
 namespace GitUI.CommandsDialogs
 {
     public static class MergeConflictHandler
     {
-        public static bool HandleMergeConflicts(GitUICommands aCommands, IWin32Window owner, bool offerCommit = true, bool offerUpdateSubmodules = true)
+        public static bool HandleMergeConflicts(GitUICommands commands, IWin32Window owner, bool offerCommit = true, bool offerUpdateSubmodules = true)
         {
-            if (aCommands.Module.InTheMiddleOfConflictedMerge())
+            if (commands.Module.InTheMiddleOfConflictedMerge())
             {
                 if (AppSettings.DontConfirmResolveConflicts || MessageBoxes.UnresolvedMergeConflicts(owner))
                 {
-                    SolveMergeConflicts(aCommands, owner, offerCommit);
+                    SolveMergeConflicts(commands, owner, offerCommit);
                 }
+
                 return true;
             }
 
             if (offerUpdateSubmodules)
-                aCommands.UpdateSubmodules(owner);
+            {
+                commands.UpdateSubmodules(owner);
+            }
+
             return false;
         }
 
-        private static void SolveMergeConflicts(GitUICommands aCommands, IWin32Window owner, bool offerCommit)
+        private static void SolveMergeConflicts(GitUICommands commands, IWin32Window owner, bool offerCommit)
         {
-            if (aCommands.Module.InTheMiddleOfConflictedMerge())
+            if (commands.Module.InTheMiddleOfConflictedMerge())
             {
-                aCommands.StartResolveConflictsDialog(owner, offerCommit);
+                commands.StartResolveConflictsDialog(owner, offerCommit);
             }
 
-            if (aCommands.Module.InTheMiddleOfPatch())
+            if (commands.Module.InTheMiddleOfPatch())
             {
                 if (MessageBoxes.MiddleOfPatchApply(owner))
                 {
-                    aCommands.StartApplyPatchDialog(owner);
+                    commands.StartApplyPatchDialog(owner);
                 }
             }
-            else if (aCommands.Module.InTheMiddleOfRebase())
+            else if (commands.Module.InTheMiddleOfRebase())
             {
                 if (MessageBoxes.MiddleOfRebase(owner))
                 {
-                    aCommands.ContinueRebase(owner);
+                    commands.StartTheContinueRebaseDialog(owner);
                 }
             }
-
         }
     }
 }

@@ -13,25 +13,6 @@
     <FileAlignment>512</FileAlignment>
     <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile>gituikey.snk.pfx</AssemblyOriginatorKeyFile>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <OldToolsVersion>3.5</OldToolsVersion>
-    <UpgradeBackupLocation />
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -44,10 +25,9 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <NoWarn>1573</NoWarn>
     <Prefer32Bit>false</Prefer32Bit>
     <CodeAnalysisRuleSet>..\GitExtensions.ruleset</CodeAnalysisRuleSet>
+    <DocumentationFile>bin\Debug\GitUI.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -56,12 +36,21 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Prefer32Bit>false</Prefer32Bit>
     <CodeAnalysisRuleSet>..\GitExtensions.ruleset</CodeAnalysisRuleSet>
+    <DocumentationFile>bin\Release\GitUI.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="ICSharpCode.TextEditor">
+      <HintPath>..\Bin\ICSharpCode.TextEditor.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.WindowsAPICodePack">
+      <HintPath>..\Bin\Microsoft.WindowsAPICodePack.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAPICodePack.Shell">
+      <HintPath>..\Bin\Microsoft.WindowsAPICodePack.Shell.dll</HintPath>
+    </Reference>
     <Reference Include="PSTaskDialog">
       <HintPath>..\Bin\PSTaskDialog.dll</HintPath>
     </Reference>
@@ -71,41 +60,15 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Reference Include="System.Data" />
     <Reference Include="System.DirectoryServices" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Reactive.Core, Version=3.0.3000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.Core.3.1.1\lib\net46\System.Reactive.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Reactive.Interfaces, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.Interfaces.3.1.1\lib\net45\System.Reactive.Interfaces.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Reactive.Linq, Version=3.0.3000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.Linq.3.1.1\lib\net46\System.Reactive.Linq.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Reactive.PlatformServices, Version=3.0.3000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.PlatformServices.3.1.1\lib\net46\System.Reactive.PlatformServices.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System.Security" />
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="ICSharpCode.TextEditor">
-      <HintPath>..\Bin\ICSharpCode.TextEditor.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAPICodePack">
-      <HintPath>..\Bin\Microsoft.WindowsAPICodePack.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAPICodePack.Shell">
-      <HintPath>..\Bin\Microsoft.WindowsAPICodePack.Shell.dll</HintPath>
-    </Reference>
-    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="3.1.1" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\CommonAssemblyInfo.cs">
@@ -139,7 +102,6 @@
     <Compile Include="CommandsDialogs\BuildReportTabPageExtension.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\FormBrowseUtil.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\FormBrowseMenus.cs" />
-    <Compile Include="CommandsDialogs\BrowseDialog\FormBrowseMenuCommands.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\MenuCommand.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\MenuCommandsBase.cs" />
     <Compile Include="CommandsDialogs\FormBrowseController.cs" />
@@ -152,6 +114,7 @@
     <Compile Include="CommandsDialogs\RevisionDiff.Designer.cs">
       <DependentUpon>RevisionDiff.cs</DependentUpon>
     </Compile>
+    <Compile Include="CommandsDialogs\FileStatusListContextMenuController.cs" />
     <Compile Include="CommandsDialogs\RevisionDiffController.cs" />
     <Compile Include="CommandsDialogs\RevisionFileTree.cs">
       <SubType>UserControl</SubType>
@@ -282,6 +245,11 @@
       <DependentUpon>FormBrowseRepoSettingsPage.cs</DependentUpon>
     </Compile>
     <Compile Include="FindFilePredicateProvider.cs" />
+    <Compile Include="Properties\MsVsImages.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MsVsImages.resx</DependentUpon>
+    </Compile>
     <Compile Include="RevisionDiffInfoProvider.cs" />
     <Compile Include="RevisionDiffKind.cs" />
     <Compile Include="FormStatusOutputLog.cs" />
@@ -351,7 +319,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Script\PowerShellHelper.cs" />
-    <Compile Include="RepoHosts.cs" />
     <Compile Include="Script\ScriptRunner.cs" />
     <Compile Include="AutoCompletion\AutoCompleteWord.cs" />
     <Compile Include="SplitterManager.cs" />
@@ -371,6 +338,12 @@
       <DependentUpon>BranchSelector.cs</DependentUpon>
     </Compile>
     <Compile Include="UserControls\ComboBoxHelper.cs" />
+    <Compile Include="UserControls\CommitDiff.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UserControls\CommitDiff.Designer.cs">
+      <DependentUpon>CommitDiff.cs</DependentUpon>
+    </Compile>
     <Compile Include="UserControls\CommitPickerSmallControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -401,6 +374,7 @@
     <Compile Include="UserControls\GotoUserManualControl.Designer.cs">
       <DependentUpon>GotoUserManualControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="UserControls\MainThreadScheduler.cs" />
     <Compile Include="UserControls\PathFormatter.cs" />
     <Compile Include="UserControls\NativeListView.cs">
       <SubType>Component</SubType>
@@ -514,12 +488,6 @@
     </Compile>
     <Compile Include="HelperDialogs\FormSelectMultipleBranches.Designer.cs">
       <DependentUpon>FormSelectMultipleBranches.cs</DependentUpon>
-    </Compile>
-    <Compile Include="CommandsDialogs\FormSvnClone.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="CommandsDialogs\FormSvnClone.Designer.cs">
-      <DependentUpon>FormSvnClone.cs</DependentUpon>
     </Compile>
     <Compile Include="CommandsDialogs\FormVerify.LostObject.cs">
       <DependentUpon>FormVerify.cs</DependentUpon>
@@ -655,18 +623,6 @@
     <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\Dashboard.Designer.cs">
       <DependentUpon>Dashboard.cs</DependentUpon>
     </Compile>
-    <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardCategory.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardCategory.Designer.cs">
-      <DependentUpon>DashboardCategory.cs</DependentUpon>
-    </Compile>
-    <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardEditor.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardEditor.Designer.cs">
-      <DependentUpon>DashboardEditor.cs</DependentUpon>
-    </Compile>
     <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardItem.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -694,14 +650,13 @@
     <Compile Include="CommandsDialogs\BrowseDialog\GitFileTreeComparer.cs" />
     <Compile Include="Lemmings.cs" />
     <Compile Include="Plugin\GitPluginSettingsContainer.cs" />
-    <Compile Include="Plugin\LoadPlugins.cs" />
-    <Compile Include="Plugin\PluginExtraction.cs" />
+    <Compile Include="Plugin\PluginRegistry.cs" />
     <Compile Include="ProcessOutputTimer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Custom.cs">
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="RepoObjectsTree\ROT.ContextActions.cs">
+    <Compile Include="BranchTreePanel\RepoObjectsTree.ContextActions.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Script\ScriptInfo.cs" />
@@ -783,12 +738,6 @@
     </Compile>
     <Compile Include="CommandsDialogs\SettingsDialog\Pages\SshSettingsPage.Designer.cs">
       <DependentUpon>SshSettingsPage.cs</DependentUpon>
-    </Compile>
-    <Compile Include="CommandsDialogs\SettingsDialog\Pages\StartPageSettingsPage.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="CommandsDialogs\SettingsDialog\Pages\StartPageSettingsPage.Designer.cs">
-      <DependentUpon>StartPageSettingsPage.cs</DependentUpon>
     </Compile>
     <Compile Include="CommandsDialogs\SettingsDialog\Plugins\PluginSettingsPage.cs">
       <SubType>UserControl</SubType>
@@ -895,12 +844,6 @@
     </Compile>
     <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\FormDashboardCategoryTitle.Designer.cs">
       <DependentUpon>FormDashboardCategoryTitle.cs</DependentUpon>
-    </Compile>
-    <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\FormDashboardEditor.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="CommandsDialogs\BrowseDialog\DashboardControl\FormDashboardEditor.Designer.cs">
-      <DependentUpon>FormDashboardEditor.cs</DependentUpon>
     </Compile>
     <Compile Include="CommandsDialogs\FormDeleteBranch.cs">
       <SubType>Form</SubType>
@@ -1078,8 +1021,6 @@
       <DependentUpon>FormGitLog.cs</DependentUpon>
     </Compile>
     <Compile Include="GitUICommands.cs" />
-    <Compile Include="GitUIEventArgs.cs" />
-    <Compile Include="Plugin\LoadedPlugins.cs" />
     <Compile Include="UserControls\GravatarControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -1131,27 +1072,28 @@
     <Compile Include="UserControls\FolderBrowserButton.Designer.cs">
       <DependentUpon>FolderBrowserButton.cs</DependentUpon>
     </Compile>
-    <Compile Include="RepoObjectsTree\ROT.Nodes.cs">
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RepoObjectsTree\ROT.Nodes.Branches.cs">
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Branches.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RepoObjectsTree\RepoObjectsTree.cs">
+    <Compile Include="BranchTreePanel\RepoObjectsTree.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RepoObjectsTree\RepoObjectsTree.Designer.cs">
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Designer.cs">
       <DependentUpon>RepoObjectsTree.cs</DependentUpon>
     </Compile>
-    <Compile Include="RepoObjectsTree\ROT.Nodes.Remotes.cs">
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Remotes.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RepoObjectsTree\ROT.Nodes.Tags.cs">
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Tags.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="UserControls\WarningToolStripItem.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="WaitCursorScope.cs" />
     <Compile Include="WebBrowserEmulationMode.cs" />
     <Compile Include="WindowPositionList.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\WordWrapper.cs" />
@@ -1264,8 +1206,16 @@
     <EmbeddedResource Include="CommandsDialogs\SettingsDialog\Plugins\PluginRootIntroductionPage.resx">
       <DependentUpon>PluginRootIntroductionPage.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Properties\MsVsImages.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>MsVsImages.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="UserControls\BranchSelector.resx">
       <DependentUpon>BranchSelector.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UserControls\CommitDiff.resx">
+      <DependentUpon>CommitDiff.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="UserControls\CommitPickerSmallControl.resx">
       <DependentUpon>CommitPickerSmallControl.cs</DependentUpon>
@@ -1309,9 +1259,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="HelperDialogs\FormSelectMultipleBranches.resx">
       <DependentUpon>FormSelectMultipleBranches.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="CommandsDialogs\FormSvnClone.resx">
-      <DependentUpon>FormSvnClone.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\FormViewPatch.resx">
       <DependentUpon>FormViewPatch.cs</DependentUpon>
@@ -1359,14 +1306,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\BrowseDialog\DashboardControl\Dashboard.resx">
       <DependentUpon>Dashboard.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardCategory.resx">
-      <DependentUpon>DashboardCategory.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardEditor.resx">
-      <DependentUpon>DashboardEditor.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\BrowseDialog\DashboardControl\DashboardItem.resx">
@@ -1441,9 +1380,6 @@
     <EmbeddedResource Include="CommandsDialogs\SettingsDialog\Pages\SshSettingsPage.resx">
       <DependentUpon>SshSettingsPage.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="CommandsDialogs\SettingsDialog\Pages\StartPageSettingsPage.resx">
-      <DependentUpon>StartPageSettingsPage.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\SettingsDialog\Plugins\PluginSettingsPage.resx">
       <DependentUpon>PluginSettingsPage.cs</DependentUpon>
     </EmbeddedResource>
@@ -1507,10 +1443,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\BrowseDialog\DashboardControl\FormDashboardCategoryTitle.resx">
       <DependentUpon>FormDashboardCategoryTitle.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="CommandsDialogs\BrowseDialog\DashboardControl\FormDashboardEditor.resx">
-      <DependentUpon>FormDashboardEditor.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\FormDeleteBranch.resx">
@@ -1666,7 +1598,7 @@
     <EmbeddedResource Include="UserControls\FolderBrowserButton.resx">
       <DependentUpon>FolderBrowserButton.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RepoObjectsTree\RepoObjectsTree.resx">
+    <EmbeddedResource Include="BranchTreePanel\RepoObjectsTree.resx">
       <DependentUpon>RepoObjectsTree.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
@@ -1733,7 +1665,6 @@
       <SubType>Component</SubType>
     </Compile>
     <None Include="gituikey.snk.pfx" />
-    <None Include="packages.config" />
     <None Include="Properties\DataSources\GitCommands.GitItem.datasource" />
     <None Include="Properties\DataSources\GitCommands.GitItemStatus.datasource" />
     <None Include="Properties\DataSources\GitCommands.GitRevision.datasource" />
@@ -1778,7 +1709,6 @@
     <None Include="Resources\Icons\IconClean.png" />
     <None Include="Resources\Icons\IconCloneRepoGit.png" />
     <None Include="Resources\Icons\IconCloneRepoGithub.png" />
-    <None Include="Resources\Icons\IconCloneRepoSvn.png" />
     <None Include="Resources\Icons\IconCommit.png" />
     <None Include="Resources\Icons\IconCopyToClipboard.png" />
     <None Include="Resources\Icons\IconDiff.png" />
@@ -2000,6 +1930,13 @@
     <Content Include="Resources\Icons\ignore_all_whitespaces.png" />
     <Content Include="Resources\Icons\ignore_whitespaces.png" />
     <Content Include="Resources\Icons\increase.png" />
+    <None Include="Resources\Icons\VS2017Images\BranchRemote_16x.png" />
+    <None Include="Resources\Icons\VS2017Images\Branch_16x.png" />
+    <None Include="Resources\Icons\VS2017Images\CollapseAll_16x.png" />
+    <None Include="Resources\Icons\VS2017Images\ExpandAll_16x.png" />
+    <None Include="Resources\Icons\VS2017Images\Folder_grey_16x.png" />
+    <None Include="Resources\Icons\VS2017Images\Repository_16x.png" />
+    <None Include="Resources\Icons\VS2017Images\Tag_16x.png" />
     <Content Include="Resources\Icons\whitespace.png" />
     <Content Include="Resources\Icons\tag_error.png" />
     <Content Include="Resources\Icons\tag_ok.png" />
@@ -2008,15 +1945,6 @@
     <Content Include="Resources\Icons\tag_many.png" />
     <Content Include="Resources\Icons\tag_ok.png" />
     <Content Include="Resources\Icons\tag_warning.png" />
-    <Content Include="Resources\Icons\CollapseAll.png" />
-    <Content Include="Resources\Icons\ExpandAll.png" />
-    <Content Include="Resources\Icons\Branch.png" />
-    <Content Include="Resources\Icons\CheckOut.png" />
-    <Content Include="Resources\Icons\DeleteRed.png" />
-    <Content Include="Resources\Icons\BranchFrom.png" />
-    <Content Include="Resources\Icons\RemoteBranch.png" />
-    <Content Include="Resources\Icons\RemoteRepo.png" />
-    <Content Include="Resources\Icons\LocalRepo.png" />
     <Content Include="Translation\Czech.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -2159,27 +2087,6 @@
     <None Include="Properties\DataSources\GitCommands.GitHead.datasource" />
     <None Include="Properties\DataSources\GitCommands.GitStash.datasource" />
     <None Include="Properties\DataSources\PatchApply.PatchFile.datasource" />
-  </ItemGroup>
-  <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
-      <Visible>False</Visible>
-      <ProductName>Windows Installer 3.1</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <Analyzer Include="..\packages\StyleCop.Analyzers.1.1.0-beta006\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
-    <Analyzer Include="..\packages\StyleCop.Analyzers.1.1.0-beta006\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

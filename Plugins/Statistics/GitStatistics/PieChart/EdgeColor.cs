@@ -15,9 +15,12 @@ namespace GitStatistics.PieChart
         /// </summary>
         public static Color GetRenderingColor(EdgeColorType edgeColorType, Color color)
         {
-            Debug.Assert(color != Color.Empty);
+            Debug.Assert(color != Color.Empty, "color != Color.Empty");
             if (edgeColorType == EdgeColorType.Contrast || edgeColorType == EdgeColorType.EnhancedContrast)
+            {
                 edgeColorType = GetContrastColorType(color, edgeColorType);
+            }
+
             float correctionFactor = 0;
             switch (edgeColorType)
             {
@@ -42,12 +45,13 @@ namespace GitStatistics.PieChart
                 case EdgeColorType.NoEdge:
                     return Color.Transparent;
             }
+
             return ColorUtil.CreateColorWithCorrectedLightness(color, correctionFactor);
         }
 
         private static EdgeColorType GetContrastColorType(Color color, EdgeColorType colorType)
         {
-            Debug.Assert(colorType == EdgeColorType.Contrast || colorType == EdgeColorType.EnhancedContrast);
+            Debug.Assert(colorType == EdgeColorType.Contrast || colorType == EdgeColorType.EnhancedContrast, "colorType == EdgeColorType.Contrast || colorType == EdgeColorType.EnhancedContrast");
             if (color.GetBrightness() > BrightnessThreshold)
             {
                 return colorType ==
@@ -55,6 +59,7 @@ namespace GitStatistics.PieChart
                            ? EdgeColorType.DarkerThanSurface
                            : EdgeColorType.DarkerDarkerThanSurface;
             }
+
             return colorType ==
                    EdgeColorType.Contrast
                        ? EdgeColorType.LighterThanSurface

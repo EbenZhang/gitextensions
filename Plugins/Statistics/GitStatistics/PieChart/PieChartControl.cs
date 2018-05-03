@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace GitStatistics.PieChart
@@ -22,7 +23,7 @@ namespace GitStatistics.PieChart
         private float _initialAngle;
         private float _leftMargin;
         private PieChart3D _pieChart;
-        private float[] _relativeSliceDisplacements = new[] {0F};
+        private float[] _relativeSliceDisplacements = { 0F };
         private float _rightMargin;
         private ShadowStyle _shadowStyle = ShadowStyle.GradualShadow;
         private float _sliceRelativeHeight;
@@ -65,7 +66,7 @@ namespace GitStatistics.PieChart
         /// </summary>
         public void SetLeftMargin(float value)
         {
-            Debug.Assert(value >= 0);
+            Debug.Assert(value >= 0, "value >= 0");
             _leftMargin = value;
             Invalidate();
         }
@@ -75,7 +76,7 @@ namespace GitStatistics.PieChart
         /// </summary>
         public void SetRightMargin(float value)
         {
-            Debug.Assert(value >= 0);
+            Debug.Assert(value >= 0, "value >= 0");
             _rightMargin = value;
             Invalidate();
         }
@@ -85,7 +86,7 @@ namespace GitStatistics.PieChart
         /// </summary>
         public void SetTopMargin(float value)
         {
-            Debug.Assert(value >= 0);
+            Debug.Assert(value >= 0, "value >= 0");
             _topMargin = value;
             Invalidate();
         }
@@ -95,7 +96,7 @@ namespace GitStatistics.PieChart
         /// </summary>
         public void SetBottomMargin(float value)
         {
-            Debug.Assert(value >= 0);
+            Debug.Assert(value >= 0, "value >= 0");
             _bottomMargin = value;
             Invalidate();
         }
@@ -118,7 +119,6 @@ namespace GitStatistics.PieChart
             _values = value;
             Invalidate();
         }
-
 
         public void SetTags(object[] value)
         {
@@ -194,8 +194,6 @@ namespace GitStatistics.PieChart
         /// <summary>
         ///   Handles <c>OnResize</c> event.
         /// </summary>
-        /// <param name = "args">
-        /// </param>
         protected override void OnResize(EventArgs args)
         {
             Refresh();
@@ -210,7 +208,9 @@ namespace GitStatistics.PieChart
         protected void DoDraw(Graphics graphics)
         {
             if (_values == null || _values.Length <= 0 || !HasNonZeroValue())
+            {
                 return;
+            }
 
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
             var width = ClientSize.Width - _leftMargin - _rightMargin;
@@ -218,13 +218,21 @@ namespace GitStatistics.PieChart
 
             // if the width or height if <=0 an exception would be thrown -> exit method..
             if (width <= 0 || height <= 0)
+            {
                 return;
+            }
+
             _pieChart?.Dispose();
             if (_colors != null && _colors.Length > 0)
+            {
                 _pieChart = new PieChart3D(_leftMargin, _topMargin, width, height, _values, _colors,
                                            _sliceRelativeHeight);
+            }
             else
+            {
                 _pieChart = new PieChart3D(_leftMargin, _topMargin, width, height, _values, _sliceRelativeHeight);
+            }
+
             _pieChart.FitToBoundingRectangle = _fitChart;
             _pieChart.SetInitialAngle(_initialAngle);
             _pieChart.SetSliceRelativeDisplacements(_relativeSliceDisplacements);
@@ -237,19 +245,14 @@ namespace GitStatistics.PieChart
 
         private bool HasNonZeroValue()
         {
-            foreach (var value in _values)
-            {
-                if (value != 0)
-                    return true;
-            }
-            return false;
+            return _values.Any(value => value != 0);
         }
 
         protected override void OnMouseEnter(EventArgs e)
         {
             base.OnMouseEnter(e);
             _defaultToolTipAutoPopDelay = _toolTip.AutoPopDelay;
-            _toolTip.AutoPopDelay = Int16.MaxValue;
+            _toolTip.AutoPopDelay = short.MaxValue;
         }
 
         protected override void OnMouseLeave(EventArgs e)
@@ -265,20 +268,27 @@ namespace GitStatistics.PieChart
         {
             base.OnMouseMove(e);
             if (_pieChart == null)
+            {
                 return;
+            }
 
             var index = _pieChart.FindPieSliceUnderPoint(new PointF(e.X, e.Y));
             if (index != -1)
             {
                 if (ToolTips == null || ToolTips.Length <= index || ToolTips[index].Length == 0)
+                {
                     _toolTip.SetToolTip(this, _values[index].ToString());
+                }
                 else
+                {
                     _toolTip.SetToolTip(this, ToolTips[index]);
+                }
             }
             else
             {
                 _toolTip.RemoveAll();
             }
+
             _highlightedIndex = index;
             Refresh();
         }
@@ -291,9 +301,13 @@ namespace GitStatistics.PieChart
                 if (index != -1)
                 {
                     if (ToolTips == null || ToolTips.Length <= index || ToolTips[index].Length == 0)
+                    {
                         _toolTip.SetToolTip(this, _values[index].ToString());
+                    }
                     else
+                    {
                         _toolTip.SetToolTip(this, ToolTips[index]);
+                    }
 
                     SliceSelected?.Invoke(this,
                         new SliceSelectedArgs(_values[index], _toolTip.GetToolTip(this), _tags?[index]));
@@ -302,12 +316,14 @@ namespace GitStatistics.PieChart
                 {
                     _toolTip.RemoveAll();
                 }
+
                 _highlightedIndex = index;
                 Refresh();
             }
+
             base.OnMouseDown(e);
         }
 
-        public event SliceSelectedHandler SliceSelected;
+        public event EventHandler<SliceSelectedArgs> SliceSelected;
     }
 }

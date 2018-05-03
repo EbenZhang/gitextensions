@@ -10,15 +10,14 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _commitNotSigned = new TranslationString("Commit is not signed");
         private readonly TranslationString _tagNotSigned = new TranslationString("Tag is not signed");
 
-
         public RevisionGpgInfo()
         {
             InitializeComponent();
             Translate();
 
             DisplayGpgInfo(null);
+            this.AdjustForDpiScaling();
         }
-
 
         public void DisplayGpgInfo(GpgInfo info)
         {
@@ -40,6 +39,7 @@ namespace GitUI.CommandsDialogs
 
                 DisplayTagSignatureStatus(info.TagStatus);
                 message = EnvUtils.ReplaceLinuxNewLinesDependingOnPlatform(info.TagVerificationMessage);
+
                 // if there is a not signed tag - show 'not signed' text
                 // NoTag case is hidden by ApplyLayout
                 txtTagGpgInfo.Text = info.TagStatus != TagStatus.TagNotSigned ? message : _tagNotSigned.Text;
@@ -48,10 +48,9 @@ namespace GitUI.CommandsDialogs
             ApplyLayout();
         }
 
-
         private void ApplyLayout()
         {
-            var heightRowCommit = 0f;
+            float heightRowCommit;
             var heightRowTag = 0f;
 
             if (txtTagGpgInfo.Visible)
@@ -93,7 +92,6 @@ namespace GitUI.CommandsDialogs
                     commitSignPicture.Visible = false;
                     break;
             }
-
         }
 
         private void DisplayTagSignatureStatus(TagStatus tagStatus)

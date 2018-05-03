@@ -17,8 +17,8 @@ namespace GravatarTests
     [TestFixture]
     public class DirectoryImageCacheTests
     {
-        const string FileName = "aa.jpg";
-        private string _folderPath = @"C:\Users\user\AppData\Roaming\GitExtensions\GitExtensions\Images";
+        private const string FileName = "aa.jpg";
+        private readonly string _folderPath = @"C:\Users\user\AppData\Roaming\GitExtensions\GitExtensions\Images";
         private IFileSystem _fileSystem;
         private DirectoryBase _directory;
         private FileBase _file;
@@ -42,7 +42,6 @@ namespace GravatarTests
             _cache = new DirectoryImageCache(_folderPath, 2, _fileSystem);
         }
 
-
         [TestCase(null)]
         [TestCase("")]
         [TestCase("\t")]
@@ -51,7 +50,7 @@ namespace GravatarTests
             var image = await _cache.GetImageAsync(fileName, null);
 
             image.Should().BeNull();
-            var not_used = _fileInfo.DidNotReceive().LastWriteTime;
+            _ = _fileInfo.DidNotReceive().LastWriteTime;
         }
 
         [Test]
@@ -165,16 +164,13 @@ namespace GravatarTests
             _directory.Exists(Arg.Any<string>()).Returns(true);
             _directory.GetFiles(_folderPath).Returns(new[] { "c:\\file.txt", "boot.sys" });
             _file.When(x => x.Delete(Arg.Any<string>()))
-                .Do(x =>
-                {
-                    throw new DivideByZeroException();
-                });
+                .Do(x => throw new DivideByZeroException());
 
             Func<Task> act = async () =>
             {
                 await _cache.ClearAsync();
             };
-            act.ShouldNotThrow();
+            act.Should().NotThrow();
         }
 
         [TestCase(null)]
@@ -184,7 +180,7 @@ namespace GravatarTests
         {
             await _cache.DeleteImageAsync(fileName);
 
-            var not_used = _fileInfo.DidNotReceive().LastWriteTime;
+            _ = _fileInfo.DidNotReceive().LastWriteTime;
         }
 
         [Test]
@@ -225,16 +221,13 @@ namespace GravatarTests
         {
             _file.Exists(Arg.Any<string>()).Returns(true);
             _file.When(x => x.Delete(Arg.Any<string>()))
-                .Do(x =>
-                {
-                    throw new DivideByZeroException();
-                });
+                .Do(x => throw new DivideByZeroException());
 
             Func<Task> act = async () =>
             {
                 await _cache.DeleteImageAsync(FileName);
             };
-            act.ShouldNotThrow();
+            act.Should().NotThrow();
         }
 
         [Test]
@@ -243,7 +236,7 @@ namespace GravatarTests
             var image = await _cache.GetImageAsync(null, null);
 
             image.Should().BeNull();
-            var not_used = _fileInfo.DidNotReceive().LastWriteTime;
+            _ = _fileInfo.DidNotReceive().LastWriteTime;
         }
 
         [Test]
@@ -254,7 +247,7 @@ namespace GravatarTests
             var image = await _cache.GetImageAsync(FileName, null);
 
             image.Should().BeNull();
-            var not_used = _fileInfo.DidNotReceive().LastWriteTime;
+            _ = _fileInfo.DidNotReceive().LastWriteTime;
         }
 
         [Test]
@@ -266,23 +259,20 @@ namespace GravatarTests
             var image = await _cache.GetImageAsync(FileName, null);
 
             image.Should().BeNull();
-            var not_used = _fileInfo.Received(1).LastWriteTime;
+            _ = _fileInfo.Received(1).LastWriteTime;
         }
 
         [Test]
         public void GetImage_return_null_if_exception()
         {
             _fileInfo.Exists.Returns(true);
-            _fileInfo.LastWriteTime.Returns(x =>
-            {
-                throw new DivideByZeroException();
-            });
+            _fileInfo.LastWriteTime.Returns(x => throw new DivideByZeroException());
 
             Func<Task> act = async () =>
             {
                 await _cache.GetImageAsync(FileName, null);
             };
-            act.ShouldNotThrow();
+            act.Should().NotThrow();
         }
     }
 }

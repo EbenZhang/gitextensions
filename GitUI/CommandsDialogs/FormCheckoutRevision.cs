@@ -22,16 +22,11 @@ namespace GitUI.CommandsDialogs
         {
         }
 
-        public FormCheckoutRevision(GitUICommands aCommands)
-            : base(true, aCommands)
+        public FormCheckoutRevision(GitUICommands commands)
+            : base(true, commands)
         {
             InitializeComponent();
             Translate();
-        }
-
-        private void FormCheckoutLoad(object sender, EventArgs e)
-        {
-
         }
 
         public void SetRevision(string commitHash)

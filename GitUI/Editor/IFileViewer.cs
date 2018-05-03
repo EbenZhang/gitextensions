@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using JetBrains.Annotations;
 
 namespace GitUI.Editor
 {
@@ -11,7 +12,7 @@ namespace GitUI.Editor
             SelectedLine = selectedLine;
         }
 
-        public int SelectedLine { get; private set; }
+        public int SelectedLine { get; }
     }
 
     public interface IFileViewer
@@ -23,13 +24,14 @@ namespace GitUI.Editor
         event EventHandler ScrollPosChanged;
         event EventHandler<SelectedLineEventArgs> SelectedLineChanged;
         event KeyEventHandler KeyDown;
+        event KeyEventHandler KeyUp;
         event EventHandler DoubleClick;
 
         void EnableScrollBars(bool enable);
         void Find();
 
         string GetText();
-        void SetText(string text, bool isDiff = false);
+        void SetText([NotNull] string text, bool isDiff = false);
         void SetHighlighting(string syntax);
         void SetHighlightingForFile(string filename);
         void HighlightLine(int line, Color color);
@@ -54,7 +56,8 @@ namespace GitUI.Editor
         int LineAtCaret { get; }
         string GetLineText(int line);
         int TotalNumberOfLines { get; }
-        //lineNumber is 0 based
+
+        // lineNumber is 0 based
         void GoToLine(int lineNumber);
 
         /// <summary>
@@ -63,7 +66,6 @@ namespace GitUI.Editor
         /// </summary>
         bool IsGotoLineUIApplicable();
         Font Font { get; set; }
-        void FocusTextArea();
 
         void SetFileLoader(GetNextFileFnc fileLoader);
     }

@@ -1,17 +1,16 @@
-﻿using System.Windows.Forms;
-using System.Drawing;
+﻿using System.Drawing;
+using System.Windows.Forms;
 
 namespace GitUI.UserControls.RevisionGridClasses
 {
-    class MenuUtil
+    internal static class MenuUtil
     {
-        private static CaptionCustomMenuRenderer customMenuRenderer = new CaptionCustomMenuRenderer();
+        private static readonly CaptionCustomMenuRenderer customMenuRenderer = new CaptionCustomMenuRenderer();
         private static Font disabledFont;
 
         /// <summary>
         /// set the menu item disabled and remove mouse hover effect
         /// </summary>
-        /// <param name="menuItem"></param>
         public static void SetAsCaptionMenuItem(ToolStripMenuItem menuItem, ToolStrip menu)
         {
             menu.Renderer = customMenuRenderer;
@@ -21,6 +20,7 @@ namespace GitUI.UserControls.RevisionGridClasses
             {
                 disabledFont = new Font(menuItem.Font, FontStyle.Italic);
             }
+
             menuItem.Font = disabledFont;
         }
     }

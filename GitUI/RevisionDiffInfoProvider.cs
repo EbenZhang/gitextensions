@@ -3,7 +3,7 @@ using GitCommands;
 
 namespace GitUI
 {
-    public sealed class RevisionDiffInfoProvider
+    public static class RevisionDiffInfoProvider
     {
         /// <summary>
         /// One row selected:
@@ -14,12 +14,13 @@ namespace GitUI
         /// A - first selected row
         /// B - second selected row
         /// </summary>
-        public static string Get(IList<GitRevision> revisions, RevisionDiffKind diffKind,
+        public static string Get(IReadOnlyList<GitRevision> revisions, RevisionDiffKind diffKind,
             out string extraDiffArgs, out string firstRevision, out string secondRevision)
         {
-            //Note: Order in revisions is that first clicked is last in array
+            // Note: Order in revisions is that first clicked is last in array
             string error = "";
-            //Detect rename and copy
+
+            // Detect rename and copy
             extraDiffArgs = "-M -C";
 
             if (revisions == null)
@@ -34,7 +35,7 @@ namespace GitUI
                 firstRevision = null;
                 secondRevision = null;
             }
-            else if (revisions[0] == null || revisions.Count > 1 && revisions[1] == null)
+            else if (revisions[0] == null || (revisions.Count > 1 && revisions[1] == null))
             {
                 error = "Unexpected single null argument to difftool";
                 firstRevision = null;
@@ -50,11 +51,12 @@ namespace GitUI
                 {
                     firstRevision = revisions[1].Guid;
                 }
+
                 secondRevision = revisions[0].Guid;
             }
             else
             {
-                //Second revision is always local 
+                // Second revision is always local
                 secondRevision = null;
 
                 if (diffKind == RevisionDiffKind.DiffBLocal)
@@ -100,6 +102,7 @@ namespace GitUI
                     }
                 }
             }
+
             return error;
         }
     }

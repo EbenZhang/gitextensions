@@ -15,8 +15,7 @@ namespace ResourceManager
 
         private static Lazy<Strings> _instance = new Lazy<Strings>();
 
-        /// <summary>Lazy-initialized instance of the <see cref="Strings"/> class.</summary>
-        public static Strings Instance { get { return _instance.Value; } }
+        public static Strings Instance => _instance.Value;
 
         public static void Reinit()
         {
@@ -86,28 +85,27 @@ namespace ResourceManager
             return Instance._loadingData.Text;
         }
 
-        /// <summary>"branches" translation.</summary>
-        public static readonly TranslationString branches = new TranslationString("Branches");
-        /// <summary>"remotes" translation.</summary>
-        public static readonly TranslationString remotes = new TranslationString("Remotes");
-        /// <summary>"tags" translation.</summary>
-        public static readonly TranslationString tags = new TranslationString("Tags");
+        public static readonly TranslationString BranchesText = new TranslationString("Branches");
+        public static readonly TranslationString RemotesText = new TranslationString("Remotes");
+        public static readonly TranslationString TagsText = new TranslationString("Tags");
 
         public static string GetUninterestingDiffOmitted()
         {
             return Instance._uninterestingDiffOmitted.Text;
         }
 
-        private readonly TranslationString _dateText               = new TranslationString("Date");
-        private readonly TranslationString _authorText             = new TranslationString("Author");
-        private readonly TranslationString _authorDateText         = new TranslationString("Author date");
-        private readonly TranslationString _committerText          = new TranslationString("Committer");
-        private readonly TranslationString _commitDateText         = new TranslationString("Commit date");
-        private readonly TranslationString _commitHashText         = new TranslationString("Commit hash");
-        private readonly TranslationString _messageText            = new TranslationString("Message");
-        private readonly TranslationString _parentsText            = new TranslationString("Parent(s)");
+        #pragma warning disable SA1025 // Code should not contain multiple whitespace in a row
+
+        private readonly TranslationString _dateText       = new TranslationString("Date");
+        private readonly TranslationString _authorText     = new TranslationString("Author");
+        private readonly TranslationString _authorDateText = new TranslationString("Author date");
+        private readonly TranslationString _committerText  = new TranslationString("Committer");
+        private readonly TranslationString _commitDateText = new TranslationString("Commit date");
+        private readonly TranslationString _commitHashText = new TranslationString("Commit hash");
+        private readonly TranslationString _messageText    = new TranslationString("Message");
+        private readonly TranslationString _parentsText    = new TranslationString("Parent(s)");
         private readonly TranslationString _childrenText   = new TranslationString("Children");
-        private readonly TranslationString _currentUnstagedChanges = new TranslationString("Current unstaged changes");
+        private readonly TranslationString _currentUnstagedChanges = new TranslationString("Working directory");
         private readonly TranslationString _currentIndex   = new TranslationString("Commit index");
         private readonly TranslationString _loadingData    = new TranslationString("Loading data...");
         private readonly TranslationString _uninterestingDiffOmitted = new TranslationString("Uninteresting diff hunks are omitted.");
@@ -154,5 +152,7 @@ namespace ResourceManager
         private readonly TranslationString _weeksAgo   = new TranslationString("{0} {1:week|weeks} ago");
         private readonly TranslationString _monthsAgo  = new TranslationString("{0} {1:month|months} ago");
         private readonly TranslationString _yearsAgo   = new TranslationString("{0} {1:year|years} ago");
+
+        #pragma warning restore SA1025 // Code should not contain multiple whitespace in a row
     }
 }

@@ -7,63 +7,66 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GitCommands;
+using Microsoft.VisualStudio.Threading;
 
 namespace GitUI.AutoCompletion
 {
     public class CommitAutoCompleteProvider : IAutoCompleteProvider
     {
-        private static readonly Lazy<Dictionary<string, Regex>> s_regexes = new Lazy<Dictionary<string, Regex>>(ParseRegexes);
+        private static readonly Lazy<Dictionary<string, Regex>> _regexes = new Lazy<Dictionary<string, Regex>>(ParseRegexes);
         private readonly GitModule _module;
 
-        public CommitAutoCompleteProvider (GitModule module)
+        public CommitAutoCompleteProvider(GitModule module)
         {
             _module = module;
         }
 
-        public Task<IEnumerable<AutoCompleteWord>> GetAutoCompleteWords (CancellationTokenSource cts)
+        public async Task<IEnumerable<AutoCompleteWord>> GetAutoCompleteWordsAsync(CancellationToken cancellationToken)
         {
-            var cancellationToken = cts.Token;
+            await TaskScheduler.Default.SwitchTo(alwaysYield: true);
 
-            return Task.Factory.StartNew(
-                    () =>
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var autoCompleteWords = new HashSet<string>();
+
+            foreach (var file in _module.GetAllChangedFiles())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var regex = GetRegexForExtension(Path.GetExtension(file.Name));
+
+                if (regex != null)
+                {
+                    var text = GetChangedFileText(_module, file);
+                    var matches = regex.Matches(text);
+                    foreach (Match match in matches)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        var autoCompleteWords = new HashSet<string>();
-
-                        foreach (var file in _module.GetAllChangedFiles())
+                        // Skip first group since it always contains the entire matched string (regardless of capture groups)
+                        foreach (Group group in match.Groups.OfType<Group>().Skip(1))
                         {
-                            cancellationToken.ThrowIfCancellationRequested();
-
-                            var regex = GetRegexForExtension(Path.GetExtension(file.Name));
-
-                            if (regex != null)
+                            foreach (Capture capture in group.Captures)
                             {
-                                var text = GetChangedFileText(_module, file);
-                                var matches = regex.Matches(text);
-                                foreach (Match match in matches)
-                                        // Skip first group since it always contains the entire matched string (regardless of capture groups)
-                                    foreach (Group @group in match.Groups.OfType<Group>().Skip(1))
-                                        foreach (Capture capture in @group.Captures)
-                                            autoCompleteWords.Add(capture.Value);
-                            }
-
-                            autoCompleteWords.Add(Path.GetFileNameWithoutExtension(file.Name));
-                            autoCompleteWords.Add(Path.GetFileName(file.Name));
-                            if (!string.IsNullOrWhiteSpace(file.OldName))
-                            {
-                                autoCompleteWords.Add(Path.GetFileNameWithoutExtension(file.OldName));
-                                autoCompleteWords.Add(Path.GetFileName(file.OldName));
+                                autoCompleteWords.Add(capture.Value);
                             }
                         }
+                    }
+                }
 
-                        return autoCompleteWords.Select(w => new AutoCompleteWord(w));
-                    }, cancellationToken);
+                autoCompleteWords.Add(Path.GetFileNameWithoutExtension(file.Name));
+                autoCompleteWords.Add(Path.GetFileName(file.Name));
+                if (!string.IsNullOrWhiteSpace(file.OldName))
+                {
+                    autoCompleteWords.Add(Path.GetFileNameWithoutExtension(file.OldName));
+                    autoCompleteWords.Add(Path.GetFileName(file.OldName));
+                }
+            }
+
+            return autoCompleteWords.Select(w => new AutoCompleteWord(w));
         }
 
-        private static Regex GetRegexForExtension (string extension)
+        private static Regex GetRegexForExtension(string extension)
         {
-            return s_regexes.Value.ContainsKey(extension) ? s_regexes.Value[extension] : null;
+            return _regexes.Value.ContainsKey(extension) ? _regexes.Value[extension] : null;
         }
 
         private static IEnumerable<string> ReadOrInitializeAutoCompleteRegexes()
@@ -71,23 +74,26 @@ namespace GitUI.AutoCompletion
             var path = Path.Combine(AppSettings.ApplicationDataPath.Value, "AutoCompleteRegexes.txt");
 
             if (File.Exists(path))
+            {
                 return File.ReadLines(path);
+            }
 
             Stream s = Assembly.GetEntryAssembly().GetManifestResourceStream("GitExtensions.AutoCompleteRegexes.txt");
             if (s == null)
-                {
-                    throw new NotImplementedException("Please add AutoCompleteRegexes.txt file into .csproj");
-            }
-            using (var sr = new StreamReader (s))
             {
-                return sr.ReadToEnd ().Split (new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                throw new NotImplementedException("Please add AutoCompleteRegexes.txt file into .csproj");
+            }
+
+            using (var sr = new StreamReader(s))
+            {
+                return sr.ReadToEnd().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             }
         }
 
-        private static Dictionary<string, Regex> ParseRegexes ()
+        private static Dictionary<string, Regex> ParseRegexes()
         {
             var autoCompleteRegexes = ReadOrInitializeAutoCompleteRegexes();
-            
+
             var regexes = new Dictionary<string, Regex>();
 
             foreach (var line in autoCompleteRegexes)
@@ -100,23 +106,29 @@ namespace GitUI.AutoCompletion
                 var regex = new Regex(regexStr, RegexOptions.Compiled);
 
                 foreach (var extension in extensions)
+                {
                     regexes.Add(extension, regex);
+                }
             }
 
             return regexes;
         }
 
-        private static string GetChangedFileText (GitModule module, GitItemStatus file)
+        private static string GetChangedFileText(GitModule module, GitItemStatus file)
         {
             var changes = module.GetCurrentChanges(file.Name, file.OldName, file.IsStaged, "-U1000000", module.FilesEncoding);
 
             if (changes != null)
+            {
                 return changes.Text;
+            }
 
             var content = module.GetFileContents(file);
 
             if (content != null)
+            {
                 return content;
+            }
 
             // Try to read the contents of the file: if it cannot be read, skip the operation silently.
             try

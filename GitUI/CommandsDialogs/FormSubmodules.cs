@@ -16,21 +16,26 @@ namespace GitUI.CommandsDialogs
 
         private readonly TranslationString _removeSelectedSubmoduleCaption = new TranslationString("Remove");
 
-        private BindingList<IGitSubmoduleInfo> modules = new BindingList<IGitSubmoduleInfo>();
+        private readonly BindingList<IGitSubmoduleInfo> _modules = new BindingList<IGitSubmoduleInfo>();
         private GitSubmoduleInfo _oldSubmoduleInfo;
 
-        public FormSubmodules(GitUICommands aCommands)
-            : base(aCommands)
+        public FormSubmodules(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
-            gitSubmoduleBindingSource.DataSource = modules;
+            nameDataGridViewTextBoxColumn.DataPropertyName = nameof(GitSubmoduleInfo.Name);
+            Status.DataPropertyName = nameof(GitSubmoduleInfo.Status);
+            gitSubmoduleBindingSource.DataSource = _modules;
         }
 
         private void AddSubmoduleClick(object sender, EventArgs e)
         {
             using (var formAddSubmodule = new FormAddSubmodule(UICommands))
+            {
                 formAddSubmodule.ShowDialog(this);
+            }
+
             Initialize();
         }
 
@@ -41,7 +46,8 @@ namespace GitUI.CommandsDialogs
 
         private void bw_DoWork(object sender, DoWorkEventArgs e)
         {
-            BackgroundWorker bw = sender as BackgroundWorker;
+            var bw = (BackgroundWorker)sender;
+
             foreach (var oldSubmodule in Module.GetSubmodulesInfo())
             {
                 if (bw.CancellationPending)
@@ -49,16 +55,20 @@ namespace GitUI.CommandsDialogs
                     e.Cancel = true;
                     break;
                 }
+
                 bw.ReportProgress(0, oldSubmodule);
             }
         }
 
         private void bw_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            lock (modules)
+            lock (_modules)
             {
-                lock (modules)
-                    modules.Add(e.UserState as GitSubmoduleInfo);
+                lock (_modules)
+                {
+                    _modules.Add(e.UserState as GitSubmoduleInfo);
+                }
+
                 if (_oldSubmoduleInfo != null)
                 {
                     DataGridViewRow row = Submodules.Rows
@@ -66,7 +76,9 @@ namespace GitUI.CommandsDialogs
                         .FirstOrDefault(r => r.DataBoundItem as GitSubmoduleInfo == _oldSubmoduleInfo);
 
                     if (row != null)
+                    {
                         row.Selected = true;
+                    }
                 }
             }
         }
@@ -76,24 +88,30 @@ namespace GitUI.CommandsDialogs
             UseWaitCursor = false;
         }
 
-        private BackgroundWorker bw;
+        private BackgroundWorker _bw;
 
         private void Initialize()
         {
-            bw?.CancelAsync();
+            _bw?.CancelAsync();
             UseWaitCursor = true;
             _oldSubmoduleInfo = null;
             if (Submodules.SelectedRows.Count == 1)
+            {
                 _oldSubmoduleInfo = Submodules.SelectedRows[0].DataBoundItem as GitSubmoduleInfo;
-            lock (modules)
-                modules.Clear();
-            bw = new BackgroundWorker();
-            bw.DoWork += bw_DoWork;
-            bw.ProgressChanged += bw_ProgressChanged;
-            bw.RunWorkerCompleted += bw_RunWorkerCompleted;
-            bw.WorkerReportsProgress = true;
-            bw.WorkerSupportsCancellation = true;
-            bw.RunWorkerAsync();
+            }
+
+            lock (_modules)
+            {
+                _modules.Clear();
+            }
+
+            _bw = new BackgroundWorker();
+            _bw.DoWork += bw_DoWork;
+            _bw.ProgressChanged += bw_ProgressChanged;
+            _bw.RunWorkerCompleted += bw_RunWorkerCompleted;
+            _bw.WorkerReportsProgress = true;
+            _bw.WorkerSupportsCancellation = true;
+            _bw.RunWorkerAsync();
         }
 
         private void SynchronizeSubmoduleClick(object sender, EventArgs e)
@@ -118,7 +136,9 @@ namespace GitUI.CommandsDialogs
                 MessageBox.Show(this, _removeSelectedSubmodule.Text, _removeSelectedSubmoduleCaption.Text,
                                 MessageBoxButtons.YesNo) !=
                 DialogResult.Yes)
+            {
                 return;
+            }
 
             UseWaitCursor = true;
             Module.UnstageFile(SubModuleLocalPath.Text);
@@ -131,7 +151,9 @@ namespace GitUI.CommandsDialogs
                 Module.StageFile(".gitmodules");
             }
             else
+            {
                 Module.UnstageFile(".gitmodules");
+            }
 
             var configFile = Module.LocalConfigFile;
             configFile.RemoveConfigSection("submodule \"" + SubModuleName.Text + "\"");
@@ -145,7 +167,10 @@ namespace GitUI.CommandsDialogs
         {
             var submodule = Module.GetSubmodule(SubModuleLocalPath.Text);
             if (submodule == null)
+            {
                 return;
+            }
+
             GitUICommands uiCommands = new GitUICommands(submodule);
             uiCommands.StartPullDialog(this);
             UseWaitCursor = true;

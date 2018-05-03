@@ -17,14 +17,15 @@ namespace GitUI.CommandsDialogs
             new TranslationString("Error");
         #endregion
 
-        private bool isMerge;
+        private bool _isMerge;
 
         private FormCherryPick()
             : this(null, null)
-        { }
+        {
+        }
 
-        public FormCherryPick(GitUICommands aCommands, GitRevision revision)
-            : base(aCommands)
+        public FormCherryPick(GitUICommands commands, GitRevision revision)
+            : base(commands)
         {
             Revision = revision;
             InitializeComponent();
@@ -32,7 +33,7 @@ namespace GitUI.CommandsDialogs
             Translate();
         }
 
-        public GitRevision Revision { get; set; } 
+        public GitRevision Revision { get; set; }
 
         private void Form_Load(object sender, EventArgs e)
         {
@@ -44,7 +45,7 @@ namespace GitUI.CommandsDialogs
         {
             AutoCommit.Checked = AppSettings.CommitAutomaticallyAfterCherryPick;
             checkAddReference.Checked = AppSettings.AddCommitReferenceToCherryPick;
-        } 
+        }
 
         private void OnRevisionChanged()
         {
@@ -53,10 +54,13 @@ namespace GitUI.CommandsDialogs
             ParentsList.Items.Clear();
 
             if (Revision != null)
-                isMerge = Module.IsMerge(Revision.Guid);
-            panelParentsList.Visible = isMerge;
+            {
+                _isMerge = Module.IsMerge(Revision.Guid);
+            }
 
-            if (isMerge)
+            panelParentsList.Visible = _isMerge;
+
+            if (_isMerge)
             {
                 var parents = Module.GetParentsRevisions(Revision.Guid);
 
@@ -80,8 +84,8 @@ namespace GitUI.CommandsDialogs
         {
             List<string> argumentsList = new List<string>();
             bool canExecute = true;
-            
-            if (isMerge)
+
+            if (_isMerge)
             {
                 if (ParentsList.SelectedItems.Count == 0)
                 {
@@ -127,12 +131,12 @@ namespace GitUI.CommandsDialogs
             OnRevisionChanged();
         }
 
-        void Form_Closing(object sender, FormClosingEventArgs e)
+        private void Form_Closing(object sender, FormClosingEventArgs e)
         {
             SaveSettings();
         }
 
-        void SaveSettings()
+        private void SaveSettings()
         {
             AppSettings.CommitAutomaticallyAfterCherryPick = AutoCommit.Checked;
             AppSettings.AddCommitReferenceToCherryPick = checkAddReference.Checked;

@@ -4,17 +4,16 @@ using System.Diagnostics;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GitCommands.Utils;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
 using TfsInterop.Interface;
-using System.Text.RegularExpressions;
 
 namespace TfsIntegration
 {
-
     [MetadataAttribute]
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public class TfsIntegrationMetadata : BuildServerAdapterMetadataAttribute
@@ -29,7 +28,10 @@ namespace TfsIntegration
             get
             {
                 if (EnvUtils.IsNet4FullOrHigher())
+                {
                     return null;
+                }
+
                 return ".Net 4 full framework required";
             }
         }
@@ -42,21 +44,23 @@ namespace TfsIntegration
     {
         private IBuildServerWatcher _buildServerWatcher;
         private ITfsHelper _tfsHelper;
-        string _tfsServer;
-        string _tfsTeamCollectionName;
-        string _projectName;
-        Regex _tfsBuildDefinitionNameFilter;
+        private string _tfsServer;
+        private string _tfsTeamCollectionName;
+        private string _projectName;
+        private Regex _tfsBuildDefinitionNameFilter;
 
         public void Initialize(IBuildServerWatcher buildServerWatcher, ISettingsSource config, Func<string, bool> isCommitInRevisionGrid)
         {
             if (_buildServerWatcher != null)
+            {
                 throw new InvalidOperationException("Already initialized");
+            }
 
             _buildServerWatcher = buildServerWatcher;
 
             _tfsServer = config.GetString("TfsServer", null);
             _tfsTeamCollectionName = config.GetString("TfsTeamCollectionName", null);
-            _projectName = config.GetString("ProjectName", null);
+            _projectName = _buildServerWatcher.ReplaceVariables(config.GetString("ProjectName", null));
             var tfsBuildDefinitionNameFilterSetting = config.GetString("TfsBuildDefinitionName", "");
             if (!BuildServerSettingsHelper.IsRegexValid(tfsBuildDefinitionNameFilterSetting))
             {
@@ -100,6 +104,7 @@ namespace TfsIntegration
             {
                 Trace.WriteLine(ex.Message);
             }
+
             return null;
         }
 
@@ -121,10 +126,12 @@ namespace TfsIntegration
         public IObservable<BuildInfo> GetBuilds(IScheduler scheduler, DateTime? sinceDate = null, bool? running = null)
         {
             if (_tfsHelper == null)
+            {
                 return Observable.Empty<BuildInfo>();
+            }
 
             return Observable.Create<BuildInfo>((observer, cancellationToken) =>
-                Task<IDisposable>.Factory.StartNew(
+                Task.Run(
                     () => scheduler.Schedule(() => ObserveBuilds(sinceDate, running, observer, cancellationToken))));
         }
 

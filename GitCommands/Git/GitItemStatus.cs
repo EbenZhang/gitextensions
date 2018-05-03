@@ -1,48 +1,16 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Threading;
 
 namespace GitCommands
 {
     public class GitItemStatus : IComparable<GitItemStatus>
     {
-        public GitItemStatus()
-        {
-            IsTracked = false;
-            IsDeleted = false;
-            IsChanged = false;
-            IsRenamed = false;
-            IsCopied = false;
-            IsConflict = false;
-            IsAssumeUnchanged = false;
-            IsSkipWorktree = false;
-            IsNew = false;
-            IsIgnored = false;
-            IsStaged = true;
-            IsSubmodule = false;
-        }
+        private JoinableTask<GitSubmoduleStatus> _submoduleStatus;
 
         public string Name { get; set; }
         public string OldName { get; set; }
         public string TreeGuid { get; set; }
-
-        public string ChangeString
-        {
-            get
-            {
-                if (!IsIgnored) return "Ignored";
-                else if (!IsTracked) return "Untracked";
-                else if (IsDeleted) return "Deleted";
-                else if (IsChanged) return "Modified";
-                else if (IsNew) return "New";
-                else if (IsRenamed) return "Renamed";
-                else if (IsConflict) return "Conflict";
-                else if (IsCopied) return "Copied";
-                else if (IsAssumeUnchanged) return "Unchanged";
-                else if (IsSkipWorktree) return "SkipWorktree";
-                else return "";
-            }
-        }
-
         public bool IsTracked { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsChanged { get; set; }
@@ -53,38 +21,46 @@ namespace GitCommands
         public bool IsConflict { get; set; }
         public bool IsAssumeUnchanged { get; set; }
         public bool IsSkipWorktree { get; set; }
-        public bool IsStaged { get; set; }
+        public bool IsStaged { get; set; } = true;
         public bool IsSubmodule { get; set; }
         public string RenameCopyPercentage { get; set; }
 
-        public Task<GitSubmoduleStatus> SubmoduleStatus { get; set; }
+        public Task<GitSubmoduleStatus> GetSubmoduleStatusAsync()
+        {
+            return _submoduleStatus?.JoinAsync();
+        }
+
+        internal void SetSubmoduleStatus(JoinableTask<GitSubmoduleStatus> status)
+        {
+            _submoduleStatus = status;
+        }
 
         public int CompareTo(GitItemStatus other)
         {
             int value = (Name ?? "").CompareTo(other.Name ?? "");
             if (value == 0)
+            {
                 value = (OldName ?? "").CompareTo(other.OldName ?? "");
+            }
+
             return value;
         }
 
         public override string ToString()
         {
-            string toString = string.Empty;
+            string toString;
             if (IsRenamed)
             {
                 toString = string.Concat("Renamed\n   ", OldName, "\nto\n   ", Name, "");
             }
+            else if (IsCopied)
+            {
+                toString = string.Concat("Copied\n   ", OldName, "\nto\n   ", Name, "");
+            }
             else
-                if (IsCopied)
-                {
-                    toString = string.Concat("Copied\n   ", OldName, "\nto\n   ", Name, "");
-                }
-                else
-                {
-                    toString = Name;
-                }
-
-
+            {
+                toString = Name;
+            }
 
             if (IsConflict)
             {
@@ -92,7 +68,9 @@ namespace GitCommands
             }
 
             if (!string.IsNullOrEmpty(RenameCopyPercentage))
+            {
                 toString += string.Concat("\nSimilarity ", RenameCopyPercentage, "%");
+            }
 
             return toString;
         }

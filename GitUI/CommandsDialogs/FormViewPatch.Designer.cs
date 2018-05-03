@@ -101,30 +101,25 @@ namespace GitUI.CommandsDialogs
             // FileNameA
             // 
             this.FileNameA.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.FileNameA.DataPropertyName = "FileNameA";
             this.FileNameA.HeaderText = "Filename";
             this.FileNameA.Name = "FileNameA";
             this.FileNameA.ReadOnly = true;
             // 
             // typeDataGridViewTextBoxColumn
             // 
-            this.typeDataGridViewTextBoxColumn.DataPropertyName = "Type";
             this.typeDataGridViewTextBoxColumn.HeaderText = "Change";
             this.typeDataGridViewTextBoxColumn.Name = "typeDataGridViewTextBoxColumn";
             this.typeDataGridViewTextBoxColumn.ReadOnly = true;
-            this.typeDataGridViewTextBoxColumn.Width = 70;
             // 
             // File
             // 
-            this.File.DataPropertyName = "File";
             this.File.HeaderText = "Type";
             this.File.Name = "File";
             this.File.ReadOnly = true;
-            this.File.Width = 50;
             // 
             // patchBindingSource
             // 
-            this.patchBindingSource.DataSource = typeof(PatchApply.Patch);
+            this.patchBindingSource.DataSource = typeof(GitCommands.Patches.Patch);
             // 
             // ChangesList
             // 
@@ -155,7 +150,6 @@ namespace GitUI.CommandsDialogs
             this.PatchFileNameEdit.Name = "PatchFileNameEdit";
             this.PatchFileNameEdit.Size = new System.Drawing.Size(528, 23);
             this.PatchFileNameEdit.TabIndex = 3;
-            this.PatchFileNameEdit.TextChanged += new System.EventHandler(this.PatchFileNameEdit_TextChanged);
             // 
             // labelPatch
             // 
@@ -209,7 +203,6 @@ namespace GitUI.CommandsDialogs
             this.Name = "FormViewPatch";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "View patch file";
-            this.Load += new System.EventHandler(this.ViewPatch_Load);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
 

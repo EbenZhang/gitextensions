@@ -17,7 +17,7 @@ namespace TeamCityIntegration.Settings
         private readonly TeamCityAdapter _teamCityAdapter = new TeamCityAdapter();
         private readonly TranslationString _failToLoadProjectMessage = new TranslationString("Failed to load the projects and build list." + Environment.NewLine + "Please verify the server url.");
         private readonly TranslationString _failToLoadProjectCaption = new TranslationString("Error when loading the projects and build list");
-        private readonly TranslationString _failToExtractDataFromClipboardMessage = new TranslationString( "The clipboard doesn't contain a valid build url." + Environment.NewLine + Environment.NewLine +
+        private readonly TranslationString _failToExtractDataFromClipboardMessage = new TranslationString("The clipboard doesn't contain a valid build url." + Environment.NewLine + Environment.NewLine +
                 "Please copy in the clipboard the url of the build before retrying." + Environment.NewLine +
                 "(Should contain at least the \"buildTypeId\" parameter)");
         private readonly TranslationString _failToExtractDataFromClipboardCaption = new TranslationString("Build url not valid");
@@ -92,7 +92,7 @@ namespace TeamCityIntegration.Settings
             buttonProjectChooser.Enabled = !string.IsNullOrWhiteSpace(TeamCityServerUrl.Text);
         }
 
-        readonly Regex _teamcityBuildUrlParameters = new Regex(@"(\?|\&)([^=]+)\=([^&]+)");
+        private readonly Regex _teamcityBuildUrlParameters = new Regex(@"(\?|\&)([^=]+)\=([^&]+)");
         private void lnkExtractDataFromBuildUrlCopiedInTheClipboard_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             if (Clipboard.ContainsText() && Clipboard.GetText().Contains("buildTypeId="))
@@ -120,7 +120,6 @@ namespace TeamCityIntegration.Settings
 
             MessageBox.Show(this, _failToExtractDataFromClipboardMessage.Text, _failToExtractDataFromClipboardCaption.Text,
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
         }
     }
 }

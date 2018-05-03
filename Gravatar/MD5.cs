@@ -3,12 +3,11 @@ using System.Text;
 
 namespace Gravatar
 {
-    public class MD5
+    public static class MD5
     {
         /// <summary>
         ///   Small MD5 Function
         /// </summary>
-        /// <param name = "email"></param>
         /// <returns>Hash of the email address passed.</returns>
         public static string CalcMD5(string email)
         {

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace GitUI.UserControls.RevisionGridClasses
 {
-    class ParentChildNavigationHistory
+    internal class ParentChildNavigationHistory
     {
-        enum NavigationDirection
+        private enum NavigationDirection
         {
             Parent,
             Child
@@ -16,7 +16,7 @@ namespace GitUI.UserControls.RevisionGridClasses
         private readonly Stack<string> _childHistory = new Stack<string>();
         private readonly Stack<string> _parentHistory = new Stack<string>();
 
-        public ParentChildNavigationHistory (Action<string> setSelectedRevision)
+        public ParentChildNavigationHistory(Action<string> setSelectedRevision)
         {
             _setSelectedRevision = setSelectedRevision;
         }
@@ -25,49 +25,56 @@ namespace GitUI.UserControls.RevisionGridClasses
 
         public bool HasPreviousParent => _parentHistory.Count > 0;
 
-        public void NavigateToPreviousParent (string current)
+        public void NavigateToPreviousParent(string current)
         {
             var parent = _parentHistory.Pop();
             Navigate(current, parent, NavigationDirection.Parent);
         }
 
-        public void NavigateToPreviousChild (string current)
+        public void NavigateToPreviousChild(string current)
         {
             var child = _childHistory.Pop();
             Navigate(current, child, NavigationDirection.Child);
         }
 
-        public void NavigateToChild (string current, string child)
+        public void NavigateToChild(string current, string child)
         {
             Navigate(current, child, NavigationDirection.Child);
         }
 
-        public void NavigateToParent (string current, string parent)
+        public void NavigateToParent(string current, string parent)
         {
             Navigate(current, parent, NavigationDirection.Parent);
         }
 
-        private void Navigate (string current, string to, NavigationDirection direction)
+        private void Navigate(string current, string to, NavigationDirection direction)
         {
             _direction = direction;
             if (direction == NavigationDirection.Child)
+            {
                 _parentHistory.Push(current);
+            }
             else
+            {
                 _childHistory.Push(current);
+            }
+
             _setSelectedRevision(to);
             _direction = null;
         }
 
-        public void Clear ()
+        public void Clear()
         {
             _childHistory.Clear();
             _parentHistory.Clear();
         }
 
-        public void RevisionsSelectionChanged ()
+        public void RevisionsSelectionChanged()
         {
             if (_direction == null)
+            {
                 Clear();
+            }
         }
     }
 }

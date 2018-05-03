@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
-using ResourceManager;
-using GitUIPluginInterfaces;
-using System.IO;
+using GitCommands.Git;
 using GitUI.Script;
+using GitUIPluginInterfaces;
+using ResourceManager;
 
 namespace GitUI.CommandsDialogs
 {
@@ -20,12 +21,13 @@ namespace GitUI.CommandsDialogs
         private readonly string _defaultRemoteBranch;
         private readonly HashSet<string> _mergedBranches = new HashSet<string>();
 
-        public FormDeleteRemoteBranch(GitUICommands aCommands, string defaultRemoteBranch)
-            : base(aCommands)
+        public FormDeleteRemoteBranch(GitUICommands commands, string defaultRemoteBranch)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
             _defaultRemoteBranch = defaultRemoteBranch;
+            this.AdjustForDpiScaling();
         }
 
         private void FormDeleteRemoteBranchLoad(object sender, EventArgs e)
@@ -63,13 +65,11 @@ namespace GitUI.CommandsDialogs
                     }
                 }
 
-                foreach (var remoteGroup in selectedBranches.GroupBy(b => b.Remote))
+                foreach (var (remote, branches) in selectedBranches.GroupBy(b => b.Remote))
                 {
-                    string remote = remoteGroup.Key;
-
                     EnsurePageant(remote);
 
-                    var cmd = new GitDeleteRemoteBranchesCmd(remote, remoteGroup);
+                    var cmd = new GitDeleteRemoteBranchesCmd(remote, branches.Select(x => x.LocalName));
 
                     ScriptManager.RunEventScripts(this, ScriptEvent.BeforePush);
 
@@ -93,6 +93,7 @@ namespace GitUI.CommandsDialogs
             {
                 Trace.WriteLine(ex.Message);
             }
+
             Close();
         }
 

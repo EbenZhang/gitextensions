@@ -1,24 +1,35 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Text;
 using System.Windows.Forms;
 using GitCommands;
 using GitUI.CommitInfo;
 using GitUI.Editor;
 using GitUI.HelperDialogs;
+using JetBrains.Annotations;
 
 namespace GitUI.Blame
 {
     public sealed partial class BlameControl : GitModuleControl
     {
+        public event EventHandler<CommandEventArgs> CommandClick;
+
+        private readonly AsyncLoader _blameLoader = new AsyncLoader();
+
+        [CanBeNull] private GitBlameLine _lastBlameLine;
+        [CanBeNull] private GitBlameLine _clickedBlameLine;
+        private GitBlameCommit _highlightedCommit;
         private GitBlame _blame;
-        private GitBlameLine _lastBlameLine = new GitBlameLine();
-        private GitBlameLine _clickedBlameLine = new GitBlameLine();
         private RevisionGrid _revGrid;
         private string _blameHash;
         private string _fileName;
         private Encoding _encoding;
+        private int _lastTooltipX = -100;
+        private int _lastTooltipY = -100;
+        private GitBlameCommit _tooltipCommit;
+        private bool _changingScrollPosition;
 
         public BlameControl()
         {
@@ -43,122 +54,173 @@ namespace GitUI.Blame
             CommitInfo.CommandClick += commitInfo_CommandClick;
         }
 
+        public void LoadBlame(GitRevision revision, IReadOnlyList<string> children, string fileName, RevisionGrid revGrid, Control controlToMask, Encoding encoding, int? initialLine = null, bool force = false)
+        {
+            string guid = revision.Guid;
+
+            // refresh only when something changed
+            if (!force && guid == _blameHash && fileName == _fileName && revGrid == _revGrid && encoding == _encoding)
+            {
+                return;
+            }
+
+            controlToMask?.Mask();
+
+            var scrollpos = BlameFile.ScrollPos;
+
+            var line = _clickedBlameLine != null && _clickedBlameLine.Commit.ObjectId == guid
+                ? _clickedBlameLine.OriginLineNumber
+                : initialLine ?? 0;
+
+            _revGrid = revGrid;
+            _fileName = fileName;
+            _encoding = encoding;
+
+            _blameLoader.LoadAsync(() => _blame = Module.Blame(fileName, guid, encoding),
+                () => ProcessBlame(revision, children, controlToMask, line, scrollpos));
+        }
+
         private void commitInfo_CommandClick(object sender, CommandEventArgs e)
         {
             CommandClick?.Invoke(sender, e);
         }
 
-        public event EventHandler<CommandEventArgs> CommandClick;
-
-        void BlameCommitter_MouseLeave(object sender, EventArgs e)
+        private void BlameCommitter_MouseLeave(object sender, EventArgs e)
         {
             blameTooltip.Hide(this);
         }
 
-        int lastTooltipX = -100;
-        int lastTooltipY = -100;
-        string lastTooltip = "";
-        void BlameCommitter_MouseMove(object sender, MouseEventArgs e)
+        private void BlameCommitter_MouseMove(object sender, MouseEventArgs e)
         {
             if (!BlameFile.Focused)
+            {
                 BlameFile.Focus();
+            }
 
             if (_blame == null)
+            {
                 return;
+            }
 
-            int line = BlameCommitter.GetLineFromVisualPosY(e.Y);
+            var lineIndex = BlameCommitter.GetLineFromVisualPosY(e.Y);
 
-            if (line >= _blame.Lines.Count)
+            var blameCommit = lineIndex < _blame.Lines.Count
+                ? _blame.Lines[lineIndex].Commit
+                : null;
+
+            HighlightLinesForCommit(blameCommit);
+
+            if (blameCommit == null)
+            {
                 return;
-
-            GitBlameHeader blameHeader = _blame.FindHeaderForCommitGuid(_blame.Lines[line].CommitGuid);
-
-            string tooltipText = blameHeader.ToString();
+            }
 
             int newTooltipX = splitContainer2.SplitterDistance + 60;
             int newTooltipY = e.Y + splitContainer1.SplitterDistance + 20;
 
-            if (lastTooltip != tooltipText || Math.Abs(lastTooltipX - newTooltipX) > 5 || Math.Abs(lastTooltipY - newTooltipY) > 5)
+            if (_tooltipCommit != blameCommit || Math.Abs(_lastTooltipX - newTooltipX) > 5 || Math.Abs(_lastTooltipY - newTooltipY) > 5)
             {
-                lastTooltip = tooltipText;
-                lastTooltipX = newTooltipX;
-                lastTooltipY = newTooltipY;
-                blameTooltip.Show(tooltipText, this, newTooltipX, newTooltipY);
+                _tooltipCommit = blameCommit;
+                _lastTooltipX = newTooltipX;
+                _lastTooltipY = newTooltipY;
+                blameTooltip.Show(blameCommit.ToString(), this, newTooltipX, newTooltipY);
             }
         }
 
-        GitBlameHeader _lastBlameHeader;
-
-        void BlameFile_MouseMove(object sender, MouseEventArgs e)
+        private void BlameFile_MouseMove(object sender, MouseEventArgs e)
         {
             if (_blame == null)
-                return;
-
-            int line = BlameFile.GetLineFromVisualPosY(e.Y);
-
-            if (line >= _blame.Lines.Count)
-                return;
-
-            GitBlameHeader blameHeader = _blame.FindHeaderForCommitGuid(_blame.Lines[line].CommitGuid);
-
-            if (blameHeader != _lastBlameHeader)
             {
-                BlameCommitter.ClearHighlighting();
-                BlameFile.ClearHighlighting();
-                int startLine = -1;
-                int prevLine = -1;
-                for (int i = 0; i < _blame.Lines.Count; i++)
-                {
-                    if (_blame.Lines[i].CommitGuid == blameHeader.CommitGuid)
-                    {
-                        if (prevLine != i - 1 && startLine != -1)
-                        {
-                            BlameCommitter.HighlightLines(startLine, prevLine, Color.FromArgb(225, 225, 225));
-                            BlameFile.HighlightLines(startLine, prevLine, Color.FromArgb(225, 225, 225));
-                            startLine = -1;
-                        }
+                return;
+            }
 
-                        prevLine = i;
-                        if (startLine == -1)
-                            startLine = i;
+            var lineIndex = BlameFile.GetLineFromVisualPosY(e.Y);
+
+            var blameCommit = lineIndex < _blame.Lines.Count
+                ? _blame.Lines[lineIndex].Commit
+                : null;
+
+            HighlightLinesForCommit(blameCommit);
+        }
+
+        private void HighlightLinesForCommit([CanBeNull] GitBlameCommit commit)
+        {
+            if (commit == _highlightedCommit)
+            {
+                return;
+            }
+
+            _highlightedCommit = commit;
+
+            BlameCommitter.ClearHighlighting();
+            BlameFile.ClearHighlighting();
+
+            if (commit == null)
+            {
+                return;
+            }
+
+            int startLine = -1;
+            int prevLine = -1;
+            for (int i = 0; i < _blame.Lines.Count; i++)
+            {
+                if (ReferenceEquals(_blame.Lines[i].Commit, commit))
+                {
+                    if (prevLine != i - 1 && startLine != -1)
+                    {
+                        BlameCommitter.HighlightLines(startLine, prevLine, SystemColors.ControlLight);
+                        BlameFile.HighlightLines(startLine, prevLine, SystemColors.ControlLight);
+                        startLine = -1;
+                    }
+
+                    prevLine = i;
+                    if (startLine == -1)
+                    {
+                        startLine = i;
                     }
                 }
-                if (startLine != -1)
-                {
-                    BlameCommitter.HighlightLines(startLine, prevLine, Color.FromArgb(225, 225, 225));
-                    BlameFile.HighlightLines(startLine, prevLine, Color.FromArgb(225, 225, 225));
-                }
-                BlameCommitter.Refresh();
-                BlameFile.Refresh();
-                _lastBlameHeader = blameHeader;
             }
+
+            if (startLine != -1)
+            {
+                BlameCommitter.HighlightLines(startLine, prevLine, SystemColors.ControlLight);
+                BlameFile.HighlightLines(startLine, prevLine, SystemColors.ControlLight);
+            }
+
+            BlameCommitter.Refresh();
+            BlameFile.Refresh();
         }
 
-        void SelectedLineChanged(object sender, SelectedLineEventArgs e)
+        private void SelectedLineChanged(object sender, SelectedLineEventArgs e)
         {
             int selectedLine = e.SelectedLine;
-            if (_blame == null || selectedLine >= _blame.Lines.Count)
-                return;
 
-            //TODO: Request GitRevision from RevisionGrid that contain all commits
-            var newBlameLine = _blame.Lines[selectedLine];
-            if (_lastBlameLine.CommitGuid == newBlameLine.CommitGuid)
+            if (_blame == null || selectedLine >= _blame.Lines.Count)
+            {
                 return;
+            }
+
+            // TODO: Request GitRevision from RevisionGrid that contain all commits
+            var newBlameLine = _blame.Lines[selectedLine];
+
+            if (ReferenceEquals(_lastBlameLine?.Commit, newBlameLine.Commit))
+            {
+                return;
+            }
 
             _lastBlameLine = newBlameLine;
-            CommitInfo.Revision = Module.GetRevision(_lastBlameLine.CommitGuid);
+            CommitInfo.Revision = Module.GetRevision(_lastBlameLine.Commit.ObjectId);
         }
 
-        bool _bChangeScrollPosition;
-
-        void BlameCommitter_ScrollPosChanged(object sender, EventArgs e)
+        private void BlameCommitter_ScrollPosChanged(object sender, EventArgs e)
         {
-            if (!_bChangeScrollPosition)
+            if (!_changingScrollPosition)
             {
-                _bChangeScrollPosition = true;
-                SyncBlameFileView();
-                _bChangeScrollPosition = false;
+                _changingScrollPosition = true;
+                BlameFile.ScrollPos = BlameCommitter.ScrollPos;
+                _changingScrollPosition = false;
             }
+
             Rectangle rect = BlameCommitter.ClientRectangle;
             rect = BlameCommitter.RectangleToScreen(rect);
             if (rect.Contains(MousePosition))
@@ -169,81 +231,64 @@ namespace GitUI.Blame
             }
         }
 
-        private void SyncBlameFileView()
+        private void BlameFile_ScrollPosChanged(object sender, EventArgs e)
         {
-            BlameFile.ScrollPos = BlameCommitter.ScrollPos;
-        }
-
-        void BlameFile_ScrollPosChanged(object sender, EventArgs e)
-        {
-            if (_bChangeScrollPosition)
-                return;
-            _bChangeScrollPosition = true;
-            SyncBlameCommitterView();
-            _bChangeScrollPosition = false;
-        }
-
-        private void SyncBlameCommitterView()
-        {
-            BlameCommitter.ScrollPos = BlameFile.ScrollPos;
-        }
-
-        private AsyncLoader blameLoader = new AsyncLoader();
-
-        public void LoadBlame(GitRevision revision, List<string> children, string fileName, RevisionGrid revGrid, Control controlToMask, Encoding encoding, int? initialLine = null, bool force = false)
-        {
-            //refresh only when something changed
-            string guid = revision.Guid;
-            if (!force && guid.Equals(_blameHash) && fileName == _fileName && revGrid == _revGrid && encoding == _encoding)
-                return;
-
-            controlToMask?.Mask();
-
-            var scrollpos = BlameFile.ScrollPos;
-
-            int line = initialLine.GetValueOrDefault( 0 );
-            if (_clickedBlameLine.CommitGuid == guid)
-                line = _clickedBlameLine.OriginLineNumber;
-            _revGrid = revGrid;
-            _fileName = fileName;
-            _encoding = encoding;
-
-            blameLoader.Load(() => _blame = Module.Blame(fileName, guid, encoding),
-                () => ProcessBlame(revision, children, controlToMask, line, scrollpos));
-        }
-
-        private void ProcessBlame(GitRevision revision, List<string> children, Control controlToMask, int line, int scrollpos)
-        {
-            var blameCommitter = new StringBuilder();
-            var blameFile = new StringBuilder();
-            for (int i = 0; i < _blame.Lines.Count; i++)
+            if (_changingScrollPosition)
             {
-                GitBlameLine blameLine = _blame.Lines[i];
-                GitBlameHeader blameHeader = _blame.FindHeaderForCommitGuid(blameLine.CommitGuid);
-                if (i > 0 && _blame.Lines[i - 1].CommitGuid == blameLine.CommitGuid)
-                {
-                    blameCommitter.AppendLine(new string(' ', 200));
-                }
-                else
-                {
-                    blameCommitter.AppendLine(
-                        (blameHeader.Author + " - " + blameHeader.AuthorTime + " - " + blameHeader.FileName +
-                         new string(' ', 100)).Trim(new[] {'\r', '\n'}));
-                }
-                if (blameLine.LineText == null)
-                    blameFile.AppendLine("");
-                else
-                    blameFile.AppendLine(blameLine.LineText.Trim(new[] {'\r', '\n'}));
+                return;
             }
 
-            BlameCommitter.ViewText("committer.txt", blameCommitter.ToString());
-            BlameFile.ViewText(_fileName, blameFile.ToString());
-            if (line > 0)
-                BlameFile.GoToLine(line - 1);
-            else
-                BlameFile.ScrollPos = scrollpos;
+            _changingScrollPosition = true;
+            BlameCommitter.ScrollPos = BlameFile.ScrollPos;
+            _changingScrollPosition = false;
+        }
 
-            _clickedBlameLine = new GitBlameLine();
+        private void ProcessBlame(GitRevision revision, IReadOnlyList<string> children, Control controlToMask, int lineNumber, int scrollpos)
+        {
+            var gutter = new StringBuilder(capacity: 4096);
+            var body = new StringBuilder(capacity: 4096);
+
+            GitBlameCommit lastCommit = null;
+
+            // NOTE EOL white-space supports highlight on mouse-over.
+            // Highlighting is done via text background colour.
+            // If it could be done with a solid rectangle around the text,
+            // the extra spaces added here could be omitted.
+
+            foreach (var line in _blame.Lines)
+            {
+                if (line.Commit == lastCommit)
+                {
+                    gutter.Append(' ', 200).AppendLine();
+                }
+                else
+                {
+                    gutter.Append(line.Commit.Author);
+                    gutter.Append(" - ");
+                    gutter.Append(line.Commit.AuthorTime.ToString(CultureInfo.CurrentUICulture));
+                    gutter.Append(" - ");
+                    gutter.Append(line.Commit.FileName);
+                    gutter.Append(' ', 100).AppendLine();
+                }
+
+                body.AppendLine(line.Text);
+
+                lastCommit = line.Commit;
+            }
+
+            BlameCommitter.ViewTextAsync("committer.txt", gutter.ToString());
+            BlameFile.ViewTextAsync(_fileName, body.ToString());
+
+            if (lineNumber > 0)
+            {
+                BlameFile.GoToLine(lineNumber - 1);
+            }
+            else
+            {
+                BlameFile.ScrollPos = scrollpos;
+            }
+
+            _clickedBlameLine = null;
 
             _blameHash = revision.Guid;
             CommitInfo.SetRevisionWithChildren(revision, children);
@@ -253,31 +298,40 @@ namespace GitUI.Blame
 
         private void ActiveTextAreaControlDoubleClick(object sender, EventArgs e)
         {
-            if (_lastBlameLine.CommitGuid == null)
+            if (_lastBlameLine == null)
+            {
                 return;
+            }
+
             if (_revGrid != null)
             {
                 _clickedBlameLine = _lastBlameLine;
-                _revGrid.SetSelectedRevision(_lastBlameLine.CommitGuid);
+                _revGrid.SetSelectedRevision(_lastBlameLine.Commit.ObjectId);
             }
             else
             {
-                using (var frm = new FormCommitDiff(UICommands, _lastBlameLine.CommitGuid))
+                using (var frm = new FormCommitDiff(UICommands, _lastBlameLine.Commit.ObjectId))
+                {
                     frm.ShowDialog(this);
+                }
             }
         }
 
         private int GetBlameLine()
         {
             if (_blame == null)
+            {
                 return -1;
+            }
 
             Point position = BlameCommitter.PointToClient(MousePosition);
 
             int line = BlameCommitter.GetLineFromVisualPosY(position.Y);
 
             if (line >= _blame.Lines.Count)
+            {
                 return -1;
+            }
 
             return line;
         }
@@ -287,36 +341,45 @@ namespace GitUI.Blame
             contextMenu.Tag = GetBlameLine();
         }
 
-        private string GetBlameCommit()
+        [CanBeNull]
+        private GitBlameCommit GetBlameCommit()
         {
             int line = (int?)contextMenu.Tag ?? -1;
 
             if (line < 0)
+            {
                 return null;
+            }
 
-            return _blame.Lines[line].CommitGuid;
+            return _blame.Lines[line].Commit;
         }
 
         private void copyLogMessageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string commit = GetBlameCommit();
+            var commit = GetBlameCommit();
+
             if (commit == null)
+            {
                 return;
-            GitBlameHeader blameHeader = _blame.FindHeaderForCommitGuid(commit);
-            Clipboard.SetText(blameHeader.Summary);
+            }
+
+            Clipboard.SetText(commit.Summary);
         }
 
         private void blamePreviousRevisionToolStripMenuItem_Click(object sender, EventArgs e)
         {
             int line = (int?)contextMenu.Tag ?? -1;
             if (line < 0)
+            {
                 return;
-            string commit = _blame.Lines[line].CommitGuid;
+            }
+
+            string commit = _blame.Lines[line].Commit.ObjectId;
             int originalLine = _blame.Lines[line].OriginLineNumber;
-            GitBlame blame = Module.Blame(_fileName, commit + "^", originalLine + ",+1", _encoding);
+            GitBlame blame = Module.Blame(_fileName, commit + "^", _encoding, originalLine + ",+1");
             if (blame.Lines.Count > 0)
             {
-                var revision = blame.Lines[0].CommitGuid;
+                var revision = blame.Lines[0].Commit.ObjectId;
                 if (_revGrid != null)
                 {
                     _clickedBlameLine = blame.Lines[0];
@@ -325,32 +388,40 @@ namespace GitUI.Blame
                 else
                 {
                     using (var frm = new FormCommitDiff(UICommands, revision))
+                    {
                         frm.ShowDialog(this);
+                    }
                 }
             }
         }
 
         private void showChangesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string commit = GetBlameCommit();
+            var commit = GetBlameCommit();
+
             if (commit == null)
+            {
                 return;
-            using (var frm = new FormCommitDiff(UICommands, commit))
+            }
+
+            using (var frm = new FormCommitDiff(UICommands, commit.ObjectId))
+            {
                 frm.ShowDialog(this);
+            }
         }
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 if (components != null)
+                {
                     components.Dispose();
-                blameLoader.Dispose();
+                }
+
+                _blameLoader.Dispose();
             }
+
             base.Dispose(disposing);
         }
     }

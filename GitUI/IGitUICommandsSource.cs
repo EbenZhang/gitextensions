@@ -9,7 +9,7 @@ namespace GitUI
             OldCommands = oldCommands;
         }
 
-        public GitUICommands OldCommands { get; private set; }
+        public GitUICommands OldCommands { get; }
     }
 
     public class GitUICommandsSourceEventArgs : EventArgs
@@ -19,7 +19,7 @@ namespace GitUI
             GitUICommandsSource = gitUiCommandsSource;
         }
 
-        public IGitUICommandsSource GitUICommandsSource { get; private set; }
+        public IGitUICommandsSource GitUICommandsSource { get; }
     }
 
     /// <summary>Provides <see cref="GitUICommands"/> and a change notification.</summary>
@@ -27,6 +27,7 @@ namespace GitUI
     {
         /// <summary>Raised after <see cref="UICommands"/> changes.</summary>
         event EventHandler<GitUICommandsChangedEventArgs> GitUICommandsChanged;
+
         /// <summary>Gets the <see cref="GitUICommands"/> value.</summary>
         GitUICommands UICommands { get; }
     }

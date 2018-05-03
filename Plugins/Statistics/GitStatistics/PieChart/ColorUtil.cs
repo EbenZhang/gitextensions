@@ -34,9 +34,12 @@ namespace GitStatistics.PieChart
         /// </returns>
         public static Color CreateColorWithCorrectedLightness(Color color, float correctionFactor)
         {
-            Debug.Assert(correctionFactor <= 1 && correctionFactor >= -1);
+            Debug.Assert(correctionFactor <= 1 && correctionFactor >= -1, "correctionFactor <= 1 && correctionFactor >= -1");
             if (correctionFactor == 0)
+            {
                 return color;
+            }
+
             float red = color.R;
             float green = color.G;
             float blue = color.B;
@@ -49,11 +52,12 @@ namespace GitStatistics.PieChart
             }
             else
             {
-                red = (255 - red)*correctionFactor + red;
-                green = (255 - green)*correctionFactor + green;
-                blue = (255 - blue)*correctionFactor + blue;
+                red = ((255 - red) * correctionFactor) + red;
+                green = ((255 - green) * correctionFactor) + green;
+                blue = ((255 - blue) * correctionFactor) + blue;
             }
-            return Color.FromArgb((int) red, (int) green, (int) blue);
+
+            return Color.FromArgb((int)red, (int)green, (int)blue);
         }
     }
 }

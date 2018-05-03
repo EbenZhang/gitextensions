@@ -17,7 +17,6 @@ namespace GitUI.CommandsDialogs
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            _asyncLoader.Cancel();
             _asyncLoader.Dispose();
             if (disposing && (components != null))
             {
@@ -339,11 +338,13 @@ namespace GitUI.CommandsDialogs
             this.View.Name = "View";
             this.View.Size = new System.Drawing.Size(423, 520);
             this.View.TabIndex = 0;
+            this.View.KeyUp += new System.Windows.Forms.KeyEventHandler(this.View_KeyUp);
             // 
             // FormStash
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            this.CancelButton = null;
             this.ClientSize = new System.Drawing.Size(708, 520);
             this.Controls.Add(this.splitContainer1);
             this.MinimumSize = new System.Drawing.Size(640, 478);

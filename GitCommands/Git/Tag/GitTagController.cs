@@ -1,8 +1,8 @@
-﻿using GitUIPluginInterfaces;
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Abstractions;
 using System.Windows.Forms;
+using GitUIPluginInterfaces;
 
 namespace GitCommands.Git.Tag
 {
@@ -29,8 +29,9 @@ namespace GitCommands.Git.Tag
         }
 
         public GitTagController(IGitUICommands uiCommands)
-            : this(uiCommands, new FileSystem() )
-        { }
+            : this(uiCommands, new FileSystem())
+        {
+        }
 
         /// <summary>
         /// Create the Tag depending on input parameter.
@@ -40,7 +41,7 @@ namespace GitCommands.Git.Tag
         /// <returns>the true if the tag is created.</returns>
         public bool CreateTag(GitCreateTagArgs args, IWin32Window parentWindow)
         {
-            if(parentWindow == null)
+            if (parentWindow == null)
             {
                 throw new ArgumentNullException(nameof(parentWindow));
             }
@@ -55,11 +56,11 @@ namespace GitCommands.Git.Tag
             var createTagCmd = new GitCreateTagCmd(args, tagMessageFileName);
             try
             {
-                return _uiCommands.StartCommandLineProcessDialog(createTagCmd, parentWindow);
+                return _uiCommands.StartCommandLineProcessDialog(parentWindow, createTagCmd);
             }
             finally
             {
-                if(tagMessageFileName != null && _fileSystem.File.Exists(tagMessageFileName))
+                if (tagMessageFileName != null && _fileSystem.File.Exists(tagMessageFileName))
                 {
                     _fileSystem.File.Delete(tagMessageFileName);
                 }

@@ -6,7 +6,6 @@ using GitCommands.Utils;
 using GitUI.CommandsDialogs.SettingsDialog;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
 using GitUI.CommandsDialogs.SettingsDialog.Plugins;
-using GitUI.Plugin;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
@@ -34,20 +33,23 @@ namespace GitUI.CommandsDialogs
 
         private FormSettings()
             : this(null)
-        { }
+        {
+        }
 
-        public FormSettings(GitUICommands aCommands, SettingsPageReference initalPage = null)
-            : base(aCommands)
+        public FormSettings(GitUICommands commands, SettingsPageReference initalPage = null)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
-            _translatedTitle = this.Text;
+            _translatedTitle = Text;
 
             settingsTreeView.SuspendLayout();
 
-            //if form is created for translation purpose
-            if (aCommands == null)
+            // if form is created for translation purpose
+            if (commands == null)
+            {
                 return;
+            }
 
 #if DEBUG
             buttonDiscard.Visible = true;
@@ -59,7 +61,7 @@ namespace GitUI.CommandsDialogs
             _commonLogic = new CommonLogic(Module);
             CheckSettingsLogic = new CheckSettingsLogic(_commonLogic);
 
-            var checklistSettingsPage = SettingsPageBase.Create <ChecklistSettingsPage>(this);
+            var checklistSettingsPage = SettingsPageBase.Create<ChecklistSettingsPage>(this);
             settingsTreeView.AddSettingsPage(checklistSettingsPage, gitExtPageRef, true); // as root
 
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<GitSettingsPage>(this), gitExtPageRef);
@@ -71,10 +73,7 @@ namespace GitUI.CommandsDialogs
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<AppearanceSettingsPage>(this), gitExtPageRef);
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<RevisionLinksSettingsPage>(this), gitExtPageRef);
 
-
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<ColorsSettingsPage>(this), gitExtPageRef);
-
-            settingsTreeView.AddSettingsPage(SettingsPageBase.Create<StartPageSettingsPage>(this), gitExtPageRef);
 
             var gitConfigSettingsSettingsPage = SettingsPageBase.Create<GitConfigSettingsPage>(this);
             settingsTreeView.AddSettingsPage(gitConfigSettingsSettingsPage, gitExtPageRef);
@@ -85,16 +84,18 @@ namespace GitUI.CommandsDialogs
             var buildServerIntegrationSettingsPage = SettingsPageBase.Create<BuildServerIntegrationSettingsPage>(this);
             settingsTreeView.AddSettingsPage(buildServerIntegrationSettingsPage, gitExtPageRef);
 
-            var _sshSettingsPage = SettingsPageBase.Create<SshSettingsPage>(this);
-            settingsTreeView.AddSettingsPage(_sshSettingsPage, gitExtPageRef);
-            checklistSettingsPage.SshSettingsPage = _sshSettingsPage;
+            var sshSettingsPage = SettingsPageBase.Create<SshSettingsPage>(this);
+            settingsTreeView.AddSettingsPage(sshSettingsPage, gitExtPageRef);
+            checklistSettingsPage.SshSettingsPage = sshSettingsPage;
 
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<ScriptsSettingsPage>(this), gitExtPageRef);
 
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<HotkeysSettingsPage>(this), gitExtPageRef);
 
             if (EnvUtils.RunningOnWindows())
+            {
                 settingsTreeView.AddSettingsPage(SettingsPageBase.Create<ShellExtensionSettingsPage>(this), gitExtPageRef);
+            }
 
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<AdvancedSettingsPage>(this), gitExtPageRef);
             SettingsPageReference advancedPageRef = AdvancedSettingsPage.GetPageReference();
@@ -110,7 +111,7 @@ namespace GitUI.CommandsDialogs
             settingsTreeView.AddSettingsPage(new PluginsSettingsGroup(), null);
             SettingsPageReference pluginsPageRef = PluginsSettingsGroup.GetPageReference();
             settingsTreeView.AddSettingsPage(SettingsPageBase.Create<PluginRootIntroductionPage>(this), pluginsPageRef, true); // as root
-            foreach (var gitPlugin in LoadedPlugins.Plugins)
+            foreach (var gitPlugin in PluginRegistry.Plugins)
             {
                 var settingsPage = PluginSettingsPage.CreateSettingsPageFromPlugin(this, gitPlugin);
                 settingsTreeView.AddSettingsPage(settingsPage, pluginsPageRef);
@@ -118,6 +119,8 @@ namespace GitUI.CommandsDialogs
 
             settingsTreeView.GotoPage(initalPage);
             settingsTreeView.ResumeLayout();
+
+            this.AdjustForDpiScaling();
         }
 
         public static DialogResult ShowSettingsDialog(GitUICommands uiCommands, IWin32Window owner, SettingsPageReference initalPage = null)
@@ -126,12 +129,10 @@ namespace GitUI.CommandsDialogs
 
             using (var form = new FormSettings(uiCommands, initalPage))
             {
-
                 AppSettings.UsingContainer(form._commonLogic.RepoDistSettingsSet.GlobalSettings, () =>
                 {
-                     result = form.ShowDialog(owner);
+                    result = form.ShowDialog(owner);
                 });
-
             }
 
             return result;
@@ -140,16 +141,19 @@ namespace GitUI.CommandsDialogs
         private void FormSettings_Load(object sender, EventArgs e)
         {
             if (DesignMode)
+            {
                 return;
+            }
 
             WindowState = FormWindowState.Normal;
         }
 
         private void FormSettings_Shown(object sender, EventArgs e)
         {
-            Cursor.Current = Cursors.WaitCursor;
-            LoadSettings();
-            Cursor.Current = Cursors.Default;
+            using (WaitCursorScope.Enter())
+            {
+                LoadSettings();
+            }
         }
 
         private void settingsTreeViewUserControl1_SettingsPageSelected(object sender, SettingsPageSelectedEventArgs e)
@@ -158,7 +162,7 @@ namespace GitUI.CommandsDialogs
 
             var settingsPage = e.SettingsPage;
 
-            if (settingsPage != null && settingsPage.GuiControl != null)
+            if (settingsPage?.GuiControl != null)
             {
                 panelCurrentSettingsPage.Controls.Add(settingsPage.GuiControl);
                 e.SettingsPage.GuiControl.Dock = DockStyle.Fill;
@@ -169,12 +173,13 @@ namespace GitUI.CommandsDialogs
                     title = "Plugin: " + title;
                 }
 
-                this.Text = _translatedTitle + " - " + title;
+                Text = _translatedTitle + " - " + title;
                 Application.DoEvents();
 
-                Cursor.Current = Cursors.WaitCursor;
-                settingsPage.OnPageShown();
-                Cursor.Current = Cursors.Default;
+                using (WaitCursorScope.Enter())
+                {
+                    settingsPage.OnPageShown();
+                }
 
                 bool isInstantSavePage = settingsPage.IsInstantSavePage;
                 labelInstantSaveNotice.Visible = isInstantSavePage;
@@ -188,7 +193,7 @@ namespace GitUI.CommandsDialogs
             }
             else
             {
-                this.Text = _translatedTitle;
+                Text = _translatedTitle;
             }
         }
 
@@ -204,6 +209,7 @@ namespace GitUI.CommandsDialogs
             catch (Exception e)
             {
                 ExceptionUtils.ShowException(e);
+
                 // Bail out before the user saves the incompletely loaded settings
                 // and has their day ruined.
                 DialogResult = DialogResult.Abort;
@@ -214,12 +220,13 @@ namespace GitUI.CommandsDialogs
 
         private void Ok_Click(object sender, EventArgs e)
         {
-            Cursor.Current = Cursors.WaitCursor;
-            if (Save())
+            using (WaitCursorScope.Enter())
             {
-                Close();
+                if (Save())
+                {
+                    Close();
+                }
             }
-            Cursor.Current = Cursors.Default;
         }
 
         private bool Save()
@@ -242,10 +249,9 @@ namespace GitUI.CommandsDialogs
             _commonLogic.RepoDistSettingsSet.EffectiveSettings.Save();
 
             if (EnvUtils.RunningOnWindows())
+            {
                 FormFixHome.CheckHomePath();
-
-            // TODO: to which settings page does this belong?
-            GitCommandHelpers.SetEnvironmentVariable(true);
+            }
 
             // TODO: this method has a generic sounding name but only saves some specific settings
             AppSettings.SaveSettings();
@@ -264,16 +270,7 @@ namespace GitUI.CommandsDialogs
             ////Cursor.Current = Cursors.Default;
         }
 
-        #region Hotkey commands
-
         public static readonly string HotkeySettingsName = "Scripts";
-
-        internal enum Commands
-        {
-            NothingYet
-        }
-
-        #endregion
 
         private void buttonCancel_Click(object sender, EventArgs e)
         {
@@ -282,16 +279,18 @@ namespace GitUI.CommandsDialogs
 
         private void buttonDiscard_Click(object sender, EventArgs e)
         {
-            Cursor.Current = Cursors.WaitCursor;
-            LoadSettings();
-            Cursor.Current = Cursors.Default;
+            using (WaitCursorScope.Enter())
+            {
+                LoadSettings();
+            }
         }
 
         private void buttonApply_Click(object sender, EventArgs e)
         {
-            Cursor.Current = Cursors.WaitCursor;
-            Save();
-            Cursor.Current = Cursors.Default;
+            using (WaitCursorScope.Enter())
+            {
+                Save();
+            }
         }
 
         public void GotoPage(SettingsPageReference settingsPageReference)

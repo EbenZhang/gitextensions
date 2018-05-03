@@ -13,7 +13,7 @@
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            backgroundLoader.Cancel();
+            _backgroundLoader.Cancel();
 
             if (disposing && (components != null))
             {
@@ -38,8 +38,7 @@
             // 
             // listBoxSearchResult
             // 
-            this.listBoxSearchResult.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.listBoxSearchResult.Anchor = ((System.Windows.Forms.AnchorStyles) (((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left))));
             this.listBoxSearchResult.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.listBoxSearchResult.FormattingEnabled = true;
             this.listBoxSearchResult.Location = new System.Drawing.Point(0, 20);

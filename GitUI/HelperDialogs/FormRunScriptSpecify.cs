@@ -10,12 +10,13 @@ namespace GitUI.HelperDialogs
         public FormRunScriptSpecify(IEnumerable<IGitRef> options, string label)
         {
             InitializeComponent();
-            specifyLabel.Text = "Specify '" + label+"':";
+            specifyLabel.Text = "Specify '" + label + "':";
             foreach (var head in options)
             {
                 branchesListView.Items.Add(head.Name);
             }
         }
+
         public FormRunScriptSpecify(IEnumerable<string> options, string label)
         {
             InitializeComponent();
@@ -25,13 +26,14 @@ namespace GitUI.HelperDialogs
                 branchesListView.Items.Add(head);
             }
         }
-        public string ret { get; private set; }
+
+        public string Ret { get; private set; }
 
         private void button1_Click(object sender, EventArgs e)
         {
             if (branchesListView.SelectedItems.Count > 0)
             {
-                ret = branchesListView.SelectedItems[0].Text;
+                Ret = branchesListView.SelectedItems[0].Text;
                 Close();
             }
         }

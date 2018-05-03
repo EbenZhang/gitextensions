@@ -1,8 +1,10 @@
-﻿using GitUIPluginInterfaces;
+﻿using System.ComponentModel.Composition;
+using GitUIPluginInterfaces;
 using ResourceManager;
 
 namespace Bitbucket
 {
+    [Export(typeof(IGitPlugin))]
     public class BitbucketPlugin : GitPluginBase
     {
         public readonly StringSetting BitbucketUsername = new StringSetting("Bitbucket Username", string.Empty);
@@ -16,10 +18,13 @@ namespace Bitbucket
             Translate();
         }
 
-        public override bool Execute(GitUIBaseEventArgs gitUiCommands)
+        public override bool Execute(GitUIEventArgs args)
         {
-            using (var frm = new BitbucketPullRequestForm(this, base.Settings, gitUiCommands))
-                frm.ShowDialog(gitUiCommands.OwnerForm);
+            using (var frm = new BitbucketPullRequestForm(this, Settings, args))
+            {
+                frm.ShowDialog(args.OwnerForm);
+            }
+
             return true;
         }
 

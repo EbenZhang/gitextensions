@@ -7,9 +7,9 @@ using ICSharpCode.TextEditor;
 
 namespace GitUI.Editor.Diff
 {
-    class DiffViewerLineNumberCtrl : AbstractMargin
+    internal class DiffViewerLineNumberCtrl : AbstractMargin
     {
-        const int TextHorizontalMargin = 4;
+        private const int TextHorizontalMargin = 4;
 
         private int _maxValueOfLineNum;
         private bool _visible = true;
@@ -27,11 +27,11 @@ namespace GitUI.Editor.Diff
                 if (!_visible)
                 {
                     _lastSize = new Size(0, 0);
-                } 
+                }
                 else if (DiffLines.Any())
                 {
                     var size = Graphics.FromHwnd(textArea.Handle).MeasureString(_maxValueOfLineNum.ToString(), textArea.Font);
-                    _lastSize = new Size((int)size.Width * 2 + TextHorizontalMargin, 0);
+                    _lastSize = new Size(((int)size.Width * 2) + TextHorizontalMargin, 0);
                 }
 
                 return _lastSize;
@@ -41,7 +41,7 @@ namespace GitUI.Editor.Diff
         public override void Paint(Graphics g, Rectangle rect)
         {
             var totalWidth = Size.Width;
-            var leftWidth = (int)(totalWidth/2.0);
+            var leftWidth = (int)(totalWidth / 2.0);
             var rightWidth = rect.Width - leftWidth;
 
             var fontHeight = textArea.TextView.FontHeight;
@@ -49,14 +49,15 @@ namespace GitUI.Editor.Diff
             var fillBrush = textArea.Enabled ? BrushRegistry.GetBrush(lineNumberPainterColor.BackgroundColor) : SystemBrushes.InactiveBorder;
             var drawBrush = BrushRegistry.GetBrush(lineNumberPainterColor.Color);
 
-            for (var y = 0; y < (DrawingPosition.Height + textArea.TextView.VisibleLineDrawingRemainder) / fontHeight + 1; ++y)
+            for (var y = 0; y < ((DrawingPosition.Height + textArea.TextView.VisibleLineDrawingRemainder) / fontHeight) + 1; ++y)
             {
-                var ypos = drawingPosition.Y + fontHeight * y - textArea.TextView.VisibleLineDrawingRemainder;
+                var ypos = drawingPosition.Y + (fontHeight * y) - textArea.TextView.VisibleLineDrawingRemainder;
                 var backgroundRectangle = new Rectangle(drawingPosition.X, ypos, drawingPosition.Width, fontHeight);
                 if (!rect.IntersectsWith(backgroundRectangle))
                 {
                     continue;
                 }
+
                 g.FillRectangle(fillBrush, backgroundRectangle);
                 var curLine = textArea.Document.GetFirstLogicalLine(textArea.Document.GetVisibleLine(textArea.TextView.FirstVisibleLine) + y);
 
@@ -64,10 +65,12 @@ namespace GitUI.Editor.Diff
                 {
                     continue;
                 }
+
                 if (!DiffLines.ContainsKey(curLine + 1))
                 {
                     continue;
                 }
+
                 var diffLine = DiffLines[curLine + 1];
                 if (diffLine.Style != DiffLineNum.DiffLineStyle.Context)
                 {
@@ -90,6 +93,7 @@ namespace GitUI.Editor.Diff
 
                     g.FillRectangle(brush, new Rectangle(leftWidth, backgroundRectangle.Top, rightWidth, backgroundRectangle.Height));
                 }
+
                 if (diffLine.LeftLineNum != DiffLineNum.NotApplicableLineNum)
                 {
                     g.DrawString(diffLine.LeftLineNum.ToString(),
@@ -103,7 +107,7 @@ namespace GitUI.Editor.Diff
                     g.DrawString(diffLine.RightLineNum.ToString(),
                         lineNumberPainterColor.GetFont(TextEditorProperties.FontContainer),
                         drawBrush,
-                        new Point(TextHorizontalMargin + totalWidth / 2, backgroundRectangle.Top));
+                        new Point(TextHorizontalMargin + (totalWidth / 2), backgroundRectangle.Top));
                 }
             }
         }
@@ -123,23 +127,8 @@ namespace GitUI.Editor.Diff
             {
                 _lastSize = new Size(0, 0);
             }
+
             DiffLines.Clear();
-        }
-
-        public string GetLineDesc(int lineNumInDiffFile)
-        {
-            if (!DiffLines.TryGetValue(lineNumInDiffFile, out var line))
-                return null;
-
-            if (line.LeftLineNum != DiffLineNum.NotApplicableLineNum)
-            {
-                return "L" + line.LeftLineNum;
-            }
-            if (line.RightLineNum != DiffLineNum.NotApplicableLineNum)
-            {
-                return "R" + line.RightLineNum;
-            }
-            return null;
         }
 
         public void SetVisibility(bool visible)

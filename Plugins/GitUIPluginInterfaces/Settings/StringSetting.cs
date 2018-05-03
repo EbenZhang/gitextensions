@@ -3,22 +3,22 @@ using System.Windows.Forms;
 
 namespace GitUIPluginInterfaces
 {
-    public class StringSetting: ISetting
+    public class StringSetting : ISetting
     {
-        public StringSetting(string aName, string aDefaultValue)
-            : this(aName, aName, aDefaultValue)
+        public StringSetting(string name, string defaultValue)
+            : this(name, name, defaultValue)
         {
         }
 
-        public StringSetting(string aName, string aCaption, string aDefaultValue)
+        public StringSetting(string name, string caption, string defaultValue)
         {
-            Name = aName;
-            Caption = aCaption;
-            DefaultValue = aDefaultValue;
+            Name = name;
+            Caption = caption;
+            DefaultValue = defaultValue;
         }
 
-        public string Name { get; private set; }
-        public string Caption { get; private set; }
+        public string Name { get; }
+        public string Caption { get; }
         public string DefaultValue { get; set; }
         public TextBox CustomControl { get; set; }
 
@@ -29,9 +29,10 @@ namespace GitUIPluginInterfaces
 
         private class TextBoxBinding : SettingControlBinding<StringSetting, TextBox>
         {
-            public TextBoxBinding(StringSetting aSetting, TextBox aCustomControl)
-                : base(aSetting, aCustomControl)
-            { }
+            public TextBoxBinding(StringSetting setting, TextBox customControl)
+                : base(setting, customControl)
+            {
+            }
 
             public override TextBox CreateControl()
             {
@@ -40,24 +41,13 @@ namespace GitUIPluginInterfaces
 
             public override void LoadSetting(ISettingsSource settings, bool areSettingsEffective, TextBox control)
             {
-                string settingVal;
-                if (areSettingsEffective)
-                {
-                    settingVal = Setting.ValueOrDefault(settings);
-                }
-                else
-                {
-                    settingVal = Setting[settings];
-                }
+                string settingVal = areSettingsEffective
+                    ? Setting.ValueOrDefault(settings)
+                    : Setting[settings];
 
-                if (!control.Multiline)
-                {
-                    control.Text = settingVal;
-                }
-                else
-                {
-                    control.Text = settingVal.Replace("\n", Environment.NewLine);
-                }
+                control.Text = control.Multiline
+                    ? settingVal.Replace("\n", Environment.NewLine)
+                    : settingVal;
             }
 
             public override void SaveSetting(ISettingsSource settings, bool areSettingsEffective, TextBox control)
@@ -86,6 +76,5 @@ namespace GitUIPluginInterfaces
         {
             return this[settings] ?? DefaultValue;
         }
-
     }
 }

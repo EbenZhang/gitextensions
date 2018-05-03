@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -9,26 +7,26 @@ namespace GitCommands
 {
     public class SynchronizedProcessReader
     {
-        public Process Process { get; private set; }
+        public Process Process { get; }
         public byte[] Output { get; private set; }
         public byte[] Error { get; private set; }
 
-        private readonly Thread stdOutputLoaderThread;
-        private readonly Thread stdErrLoaderThread;
+        private readonly Thread _stdOutputLoaderThread;
+        private readonly Thread _stdErrLoaderThread;
 
-        public SynchronizedProcessReader(Process aProcess)
+        public SynchronizedProcessReader(Process process)
         {
-            Process = aProcess;
-            stdOutputLoaderThread = new Thread(_ => Output = ReadByte(Process.StandardOutput.BaseStream));
-            stdOutputLoaderThread.Start();
-            stdErrLoaderThread = new Thread(_ => Error = ReadByte(Process.StandardError.BaseStream));
-            stdErrLoaderThread.Start();
+            Process = process;
+            _stdOutputLoaderThread = new Thread(_ => Output = ReadByte(Process.StandardOutput.BaseStream));
+            _stdOutputLoaderThread.Start();
+            _stdErrLoaderThread = new Thread(_ => Error = ReadByte(Process.StandardError.BaseStream));
+            _stdErrLoaderThread.Start();
         }
 
         public void WaitForExit()
         {
-            stdOutputLoaderThread.Join();
-            stdErrLoaderThread.Join();
+            _stdOutputLoaderThread.Join();
+            _stdErrLoaderThread.Join();
             Process.WaitForExit();
         }
 
@@ -68,8 +66,8 @@ namespace GitCommands
         {
             byte[] stdOutputLoader = null;
 
-            //We cannot use the async functions because these functions will read the output to a string, this
-            //can cause problems because the correct encoding is not used.
+            // We cannot use the async functions because these functions will read the output to a string, this
+            // can cause problems because the correct encoding is not used.
             Thread stdOutputLoaderThread = new Thread(_ => stdOutputLoader = ReadByte(process.StandardOutput.BaseStream));
             stdOutputLoaderThread.Start();
 

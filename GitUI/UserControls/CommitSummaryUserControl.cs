@@ -2,8 +2,8 @@
 using System.Drawing;
 using System.Linq;
 using GitCommands;
-using ResourceManager;
 using GitUI.Editor;
+using ResourceManager;
 
 namespace GitUI.UserControls
 {
@@ -58,7 +58,7 @@ namespace GitUI.UserControls
                     labelAuthor.Text = string.Format("{0}", Revision.Author);
                     labelDate.Text = string.Format(Strings.GetCommitDateText() + ": {0}", Revision.CommitDate);
                     labelMessage.Text = string.Format("{0}", Revision.Subject);
-                    
+
                     var tagList = Revision.Refs.Where(r => r.IsTag).ToList();
                     string tagListStr = string.Join(", ", tagList.Select(h => h.LocalName).ToArray());
                     labelTags.Text = string.Format("{0}", tagListStr.IsNullOrEmpty() ? _notAvailable.Text : tagListStr);
@@ -71,7 +71,7 @@ namespace GitUI.UserControls
                     {
                         labelTags.Font = new Font(labelTags.Font, FontStyle.Regular);
                     }
-                    
+
                     var branchesList = Revision.Refs.Where(r => r.IsHead).ToList();
                     string branchesListStr = string.Join(", ", branchesList.Select(h => h.LocalName).ToArray());
                     labelBranches.Text = string.Format("{0}", branchesListStr.IsNullOrEmpty() ? _notAvailable.Text : branchesListStr);
@@ -103,7 +103,7 @@ namespace GitUI.UserControls
         {
             labelMessage.Location = new Point(
                 labelMessage.Location.X,
-                (int)(_messageY + _messageHeight / 2.0 - labelMessage.Height / 2.0));
+                (int)(_messageY + (_messageHeight / 2.0) - (labelMessage.Height / 2.0)));
         }
 
         private void groupBox1_Resize(object sender, EventArgs e)

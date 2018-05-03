@@ -13,19 +13,14 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _strategyTooltipText = new TranslationString("resolve " + Environment.NewLine + "This can only resolve two heads (i.e. the current branch and another branch you pulled from) using a 3-way merge algorithm." + Environment.NewLine + "It tries to carefully detect criss-cross merge ambiguities and is considered generally safe and fast. " + Environment.NewLine + "" + Environment.NewLine + "recursive " + Environment.NewLine + "This can only resolve two heads using a 3-way merge algorithm. When there is more than one common ancestor that can be " + Environment.NewLine + "used for 3-way merge, it creates a merged tree of the common ancestors and uses that as the reference tree for the 3-way" + Environment.NewLine + "merge. Additionally this can detect and handle merges involving renames. This is the default merge strategy when pulling or " + Environment.NewLine + "merging one branch. " + Environment.NewLine + "" + Environment.NewLine + "octopus " + Environment.NewLine + "This resolves cases with more than two heads, but refuses to do a complex merge that needs manual resolution. It is " + Environment.NewLine + "primarily meant to be used for bundling topic branch heads together. This is the default merge strategy when pulling or " + Environment.NewLine + "merging more than one branch. " + Environment.NewLine + "" + Environment.NewLine + "ours " + Environment.NewLine + "This resolves any number of heads, but the resulting tree of the merge is always that of the current branch head, effectively " + Environment.NewLine + "ignoring all changes from all other branches. It is meant to be used to supersede old development history of side branches." + Environment.NewLine + "" + Environment.NewLine + "subtree " + Environment.NewLine + "This is a modified recursive strategy. When merging trees A and B, if B corresponds to a subtree of A, B is first adjusted to " + Environment.NewLine + "match the tree structure of A, instead of reading the trees at the same level. This adjustment is also done to the common " + Environment.NewLine + "ancestor tree.");
         private readonly TranslationString _formMergeBranchHoverShowImageLabelText = new TranslationString("Hover to see scenario when fast forward is possible.");
         private readonly string _defaultBranch;
-        private readonly int _rowBranchComboHeight;
-        private readonly int _groupBoxWidth;
 
         /// <summary>Initializes <see cref="FormMergeBranch"/>.</summary>
         /// <param name="defaultBranch">Branch to merge into the current branch.</param>
-        public FormMergeBranch(GitUICommands aCommands, string defaultBranch)
-            : base(aCommands)
+        public FormMergeBranch(GitUICommands commands, string defaultBranch)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
-
-            _rowBranchComboHeight = Branches.Height;
-            _groupBoxWidth = groupBox1.Width;
 
             currentBranchLabel.Font = new Font(currentBranchLabel.Font, FontStyle.Bold);
             noCommit.Checked = AppSettings.DontCommitMerge;
@@ -34,7 +29,7 @@ namespace GitUI.CommandsDialogs
             helpImageDisplayUserControl1.Visible = !AppSettings.DontShowHelpImages;
             _defaultBranch = defaultBranch;
 
-            if (aCommands != null)
+            if (commands != null)
             {
                 noFastForward.Checked = Module.EffectiveSettings.NoFastForwardMerge;
                 addLogMessages.Checked = Module.EffectiveSettings.Detailed.AddMergeLogMessages.ValueOrDefault;
@@ -43,8 +38,9 @@ namespace GitUI.CommandsDialogs
 
             advanced.Checked = AppSettings.AlwaysShowAdvOpt;
             advanced_CheckedChanged(null, null);
-        }
 
+            Branches.Select();
+        }
 
         private void FormMergeBranchLoad(object sender, EventArgs e)
         {
@@ -54,12 +50,16 @@ namespace GitUI.CommandsDialogs
             Branches.BranchesToSelect = Module.GetRefs(true, true);
 
             if (_defaultBranch != null)
+            {
                 Branches.SetSelectedText(_defaultBranch);
+            }
             else
             {
                 string merge = Module.GetRemoteBranch(selectedHead);
-                if (!String.IsNullOrEmpty(merge))
+                if (!string.IsNullOrEmpty(merge))
+                {
                     Branches.SetSelectedText(merge);
+                }
             }
 
             if (!GitCommandHelpers.VersionInUse.SupportMergeUnrelatedHistory)
@@ -67,6 +67,7 @@ namespace GitUI.CommandsDialogs
                 allowUnrelatedHistories.Visible = false;
                 allowUnrelatedHistories.Checked = false;
             }
+
             Branches.Select();
         }
 
@@ -101,7 +102,9 @@ namespace GitUI.CommandsDialogs
             strategyHelp.Visible = NonDefaultMergeStrategy.Checked;
 
             if (!advanced.Checked)
+            {
                 _NO_TRANSLATE_mergeStrategy.Text = "";
+            }
         }
 
         private void strategyHelp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)

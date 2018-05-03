@@ -15,7 +15,7 @@ namespace GitCommandsTests.Git
     public class IndexLockManagerTests
     {
         private const string IndexLock = "index.lock";
-        private string _workingDir = @"c:\dev\repo";
+        private readonly string _workingDir = @"c:\dev\repo";
         private string _gitWorkingDir;
         private string _indexLockFile;
         private string _gitFile;
@@ -47,7 +47,6 @@ namespace GitCommandsTests.Git
 
             _manager = new IndexLockManager(_module, _gitDirectoryResolver, _fileSystem);
         }
-
 
         [TestCase(false)]
         [TestCase(true)]

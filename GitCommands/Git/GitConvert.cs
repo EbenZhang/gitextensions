@@ -2,26 +2,36 @@
 
 namespace GitCommands
 {
-    public class GitConvert
+    public static class GitConvert
     {
         public static byte[] ConvertCrLfToWorktree(byte[] buf)
         {
             if (buf == null)
+            {
                 return buf;
+            }
 
             BufStatistic bufStatistic = GetBufStatistic(buf);
 
             if (bufStatistic.cntLf == 0)
+            {
                 return buf;
+            }
 
             if (bufStatistic.cntLf == bufStatistic.cntCrlf)
+            {
                 return buf;
+            }
 
             if (bufStatistic.cntCr != bufStatistic.cntCrlf)
+            {
                 return buf;
+            }
 
             if (IsBinary(buf))
+            {
                 return buf;
+            }
 
             List<byte> byteList = new List<byte>();
 
@@ -38,7 +48,7 @@ namespace GitCommands
                 }
             }
 
-            for (long index = 1;  index < buf.LongLength; index++)
+            for (long index = 1; index < buf.LongLength; index++)
             {
                 if (buf[index] == 0x0A)
                 {
@@ -88,7 +98,9 @@ namespace GitCommands
             bufStatistic.ResetBufStatistic();
 
             if (buf == null)
+            {
                 return bufStatistic;
+            }
 
             for (long i = 0; i < buf.Length; i++)
             {
@@ -102,6 +114,7 @@ namespace GitCommands
                             bufStatistic.cntCrlf++;
                         }
                     }
+
                     continue;
                 }
 
@@ -157,14 +170,16 @@ namespace GitCommands
         {
             BufStatistic bufStatistic = GetBufStatistic(buf);
             if (bufStatistic.cntNul > 0)
+            {
                 return true;
+            }
 
             if ((bufStatistic.cntPrintable / 128) < bufStatistic.cntNonPrintable)
+            {
                 return true;
+            }
 
             return false;
         }
-
-
     }
 }

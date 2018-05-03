@@ -1,9 +1,10 @@
-﻿using GitUI.Properties;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using GitExtUtils.GitUI;
+using GitUI.Properties;
 
 namespace GitUI.CommandsDialogs.WorktreeDialog
 {
@@ -11,12 +12,25 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
     {
         private List<WorkTree> _worktrees;
 
-        public FormManageWorktree(GitUICommands aCommands)
-            : base(aCommands)
+        public FormManageWorktree(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
+            Path.Width = DpiUtil.Scale(35);
+            Type.Width = DpiUtil.Scale(37);
+            Branch.Width = DpiUtil.Scale(46);
+            Sha1.Width = DpiUtil.Scale(37);
+            IsDeleted.Width = DpiUtil.Scale(50);
+            Open.Width = DpiUtil.Scale(39);
+            Delete.Width = DpiUtil.Scale(44);
             Worktrees.AutoGenerateColumns = false;
             Translate();
+
+            Path.DataPropertyName = nameof(WorkTree.Path);
+            Type.DataPropertyName = nameof(WorkTree.Type);
+            Branch.DataPropertyName = nameof(WorkTree.Branch);
+            Sha1.DataPropertyName = nameof(WorkTree.Sha1);
+            IsDeleted.DataPropertyName = nameof(WorkTree.IsDeleted);
         }
 
         private void FormManageWorktree_Load(object sender, EventArgs e)
@@ -32,7 +46,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
 
         private void Initialize()
         {
-            var listWorktree = UICommands.CommandLineCommand("git", "worktree list --porcelain");
+            var listWorktree = ThreadHelper.JoinableTaskFactory.Run(() => UICommands.CommandLineCommandAsync("git", "worktree list --porcelain"));
             var worktreesLines = listWorktree.Split('\n').GetEnumerator();
             _worktrees = new List<WorkTree>();
             WorkTree currentWorktree = null;
@@ -40,7 +54,9 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             {
                 var current = (string)worktreesLines.Current;
                 if (string.IsNullOrWhiteSpace(current))
+                {
                     continue;
+                }
 
                 var strings = current.Split(' ');
                 if (strings[0] == "worktree")
@@ -70,15 +86,17 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
                     }
                 }
             }
+
             Worktrees.DataSource = _worktrees;
             for (var i = 0; i < Worktrees.Rows.Count; i++)
             {
                 if (i == 0)
                 {
                     Worktrees.Rows[i].Cells["Delete"].Value = Resources.IconBlank;
-                    if(IsCurrentlyOpenedWorktree(_worktrees[0]))
+                    if (IsCurrentlyOpenedWorktree(_worktrees[0]))
+                    {
                         Worktrees.Rows[i].Cells["Open"].Value = Resources.IconBlank;
-
+                    }
                 }
                 else if (!CanDeleteWorkspace(_worktrees[i]))
                 {
@@ -86,17 +104,27 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
                     Worktrees.Rows[i].Cells["Delete"].Value = Resources.IconBlank;
                 }
             }
+
             buttonPruneWorktrees.Enabled = _worktrees.Skip(1).Any(w => w.IsDeleted);
         }
 
         private bool CanDeleteWorkspace(WorkTree workTree)
         {
             if (workTree.IsDeleted)
+            {
                 return false;
+            }
+
             if (_worktrees.Count == 1)
+            {
                 return false;
+            }
+
             if (IsCurrentlyOpenedWorktree(workTree))
+            {
                 return false;
+            }
+
             return true;
         }
 
@@ -105,25 +133,24 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             return new DirectoryInfo(UICommands.GitModule.WorkingDir).FullName.TrimEnd('\\') == new DirectoryInfo(workTree.Path).FullName.TrimEnd('\\');
         }
 
-
         /// <summary>
         /// Here are the 3 types of lines return by the `worktree list --porcelain` that should be handled:
-        /// 
+        ///
         /// 1:
         /// worktree /path/to/bare-source
         /// bare
-        /// 
+        ///
         /// 2:
         /// /worktree /path/to/linked-worktree
         /// /HEAD abcd1234abcd1234abcd1234abcd1234abcd1234
         /// /branch refs/heads/master
-        /// 
+        ///
         /// 3:
         /// worktree /path/to/other-linked-worktree
         /// HEAD 1234abc1234abc1234abc1234abc1234abc1234a
         /// detached
         /// </summary>
-        class WorkTree
+        private class WorkTree
         {
             public string Path { get; set; }
             public HeadType Type { get; set; }
@@ -132,7 +159,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             public bool IsDeleted { get; set; }
         }
 
-        enum HeadType
+        private enum HeadType
         {
             Bare,
             Branch,
@@ -151,17 +178,22 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
 
         private void PruneWorktrees()
         {
-            UICommands.StartCommandLineProcessDialog("git", "worktree prune");
+            UICommands.StartCommandLineProcessDialog(this, "git", "worktree prune");
             Initialize();
         }
 
         private void Worktrees_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.ColumnIndex < 5)
+            {
                 return;
+            }
+
             var workTree = _worktrees[e.RowIndex];
             if (!CanDeleteWorkspace(workTree))
+            {
                 return;
+            }
 
             if (e.ColumnIndex == 5)
             {
@@ -170,17 +202,21 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
                 {
                     if (Directory.Exists(workTree.Path))
                     {
-                        ((FormBrowse) Owner).SetWorkingDir(System.IO.Path.GetFullPath(workTree.Path));
+                        ((FormBrowse)Owner).SetWorkingDir(System.IO.Path.GetFullPath(workTree.Path));
                         Close();
                     }
                 }
+
                 return;
             }
 
             if (e.ColumnIndex == 6)
             {
-                if(e.RowIndex == 0)
+                if (e.RowIndex == 0)
+                {
                     return;
+                }
+
                 if (MessageBox.Show(this, "Are you sure you want to delete this worktree?", "Delete a worktree",
                         MessageBoxButtons.YesNo) == DialogResult.Yes)
                 {
@@ -188,6 +224,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
                     {
                         Directory.Delete(workTree.Path, true);
                     }
+
                     PruneWorktrees();
                 }
             }

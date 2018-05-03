@@ -1,30 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using GitUIPluginInterfaces;
 
-namespace GitCommands
+namespace GitCommands.Git
 {
     public sealed class GitDeleteRemoteBranchesCmd : GitCommand
     {
-        private readonly string remote;
-        private readonly List<IGitRef> branches;
+        private readonly string _remote;
+        private readonly List<string> _branches;
 
-        public GitDeleteRemoteBranchesCmd(string remote, IEnumerable<IGitRef> branches)
+        public GitDeleteRemoteBranchesCmd(string remote, IEnumerable<string> branchLocalNames)
         {
             if (string.IsNullOrEmpty(remote))
-                throw new ArgumentNullException(nameof(remote));
-
-            if (branches == null)
-                throw new ArgumentNullException(nameof(branches));
-
-            this.remote = remote;
-            this.branches = branches.ToList();
-
-            if (this.branches.Any(b => b.Remote != this.remote))
             {
-                throw new ArgumentException($"Branch remote mismatch. Branch {this.branches.First(b => b.Remote != this.remote).CompleteName} does not belong to remote {remote}");
+                throw new ArgumentNullException(nameof(remote));
             }
+
+            if (branchLocalNames == null)
+            {
+                throw new ArgumentNullException(nameof(branchLocalNames));
+            }
+
+            _remote = remote;
+            _branches = branchLocalNames.ToList();
         }
 
         public override string GitComandName()
@@ -34,11 +32,11 @@ namespace GitCommands
 
         protected override IEnumerable<string> CollectArguments()
         {
-            yield return remote;
+            yield return _remote;
 
-            foreach (var branch in branches)
+            foreach (var branch in _branches)
             {
-                yield return " :\"" + branch.LocalName + "\"";
+                yield return " :\"" + branch + "\"";
             }
         }
 

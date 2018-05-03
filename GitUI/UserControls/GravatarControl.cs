@@ -2,8 +2,10 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitExtUtils.GitUI;
 using GitUI.Properties;
 using Gravatar;
 using ResourceManager;
@@ -33,7 +35,6 @@ namespace GitUI
         [Browsable(false)]
         public string Email { get; private set; }
 
-
         public void LoadImage(string email)
         {
             if (string.IsNullOrEmpty(email))
@@ -43,9 +44,8 @@ namespace GitUI
             }
 
             Email = email;
-            UpdateGravatar();
+            ThreadHelper.JoinableTaskFactory.RunAsync(() => UpdateGravatarAsync()).FileAndForget();
         }
-
 
         private void RefreshImage(Image image)
         {
@@ -53,10 +53,15 @@ namespace GitUI
             _gravatarImg.Refresh();
         }
 
-        private async void UpdateGravatar()
+        private async Task UpdateGravatarAsync()
         {
+            await this.SwitchToMainThreadAsync();
+
             // resize our control (I'm not using AutoSize for a reason)
             var size = new Size(AppSettings.AuthorImageSize, AppSettings.AuthorImageSize);
+
+            DpiUtil.Scale(ref size);
+
             Size = _gravatarImg.Size = size;
 
             if (!AppSettings.ShowAuthorGravatar || string.IsNullOrEmpty(Email))
@@ -65,15 +70,21 @@ namespace GitUI
                 return;
             }
 
-            var image = await _gravatarService.GetAvatarAsync(Email, AppSettings.AuthorImageSize, AppSettings.GravatarDefaultImageType);
+            var image = await _gravatarService.GetAvatarAsync(Email, Math.Max(size.Width, size.Height), AppSettings.GravatarDefaultImageType);
+
             RefreshImage(image);
         }
 
-
-        private async void RefreshToolStripMenuItemClick(object sender, EventArgs e)
+        private void RefreshToolStripMenuItemClick(object sender, EventArgs e)
         {
-            await _gravatarService.DeleteAvatarAsync(Email);
-            UpdateGravatar();
+            ThreadHelper.JoinableTaskFactory
+                .RunAsync(
+                    async () =>
+                    {
+                        await _gravatarService.DeleteAvatarAsync(Email).ConfigureAwait(true);
+                        await UpdateGravatarAsync().ConfigureAwait(false);
+                    })
+                .FileAndForget();
         }
 
         private void RegisterAtGravatarcomToolStripMenuItemClick(object sender, EventArgs e)
@@ -88,22 +99,36 @@ namespace GitUI
             }
         }
 
-        private async void ClearImagecacheToolStripMenuItemClick(object sender, EventArgs e)
+        private void ClearImagecacheToolStripMenuItemClick(object sender, EventArgs e)
         {
-            await _avatarCache.ClearAsync();
-            UpdateGravatar();
+            ThreadHelper.JoinableTaskFactory
+                .RunAsync(
+                    async () =>
+                    {
+                        await _avatarCache.ClearAsync().ConfigureAwait(true);
+                        await UpdateGravatarAsync().ConfigureAwait(false);
+                    })
+                .FileAndForget();
         }
 
-        private async void noImageService_Click(object sender, EventArgs e)
+        private void noImageService_Click(object sender, EventArgs e)
         {
             var tag = (sender as ToolStripMenuItem)?.Tag;
             if (!(tag is DefaultImageType))
             {
                 return;
             }
+
             AppSettings.GravatarDefaultImageType = ((DefaultImageType)tag).ToString();
-            await _avatarCache.ClearAsync();
-            UpdateGravatar();
+
+            ThreadHelper.JoinableTaskFactory
+                .RunAsync(
+                    async () =>
+                    {
+                        await _avatarCache.ClearAsync().ConfigureAwait(true);
+                        await UpdateGravatarAsync().ConfigureAwait(false);
+                    })
+                .FileAndForget();
         }
 
         private void noImageGeneratorToolStripMenuItem_DropDownOpening(object sender, EventArgs e)
@@ -124,6 +149,7 @@ namespace GitUI
                 AppSettings.GravatarDefaultImageType = DefaultImageType.None.ToString();
                 selectedItem = noneToolStripMenuItem;
             }
+
             selectedItem.Checked = true;
         }
     }

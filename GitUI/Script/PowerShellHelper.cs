@@ -1,16 +1,16 @@
-﻿using GitCommands;
-using System;
+﻿using System;
 using System.Diagnostics;
+using GitCommands;
 
 namespace GitUI.Script
 {
     public static class PowerShellHelper
     {
-        internal static void RunPowerShell(string command, string argument,string workingDir, bool runInBackground)
+        internal static void RunPowerShell(string command, string argument, string workingDir, bool runInBackground)
         {
-            var filename = "powershell.exe";
-            var psarguments = (runInBackground ? "" : "-NoExit") + " -ExecutionPolicy Unrestricted -Command \""+command+" "+argument+"\"";
-            GitCommandHelpers.SetEnvironmentVariable();
+            const string filename = "powershell.exe";
+            var psarguments = (runInBackground ? "" : "-NoExit") + " -ExecutionPolicy Unrestricted -Command \"" + command + " " + argument + "\"";
+            EnvironmentConfiguration.SetEnvironmentVariables();
 
             var executionStartTimestamp = DateTime.Now;
 
@@ -18,9 +18,9 @@ namespace GitUI.Script
             {
                 FileName = filename,
                 Arguments = psarguments,
-                WorkingDirectory = workingDir
+                WorkingDirectory = workingDir,
+                UseShellExecute = false
             };
-            startInfo.UseShellExecute = false;
 
             var startProcess = Process.Start(startInfo);
 
@@ -29,7 +29,6 @@ namespace GitUI.Script
                 var executionEndTimestamp = DateTime.Now;
                 AppSettings.GitLog.Log(filename + " " + psarguments, executionStartTimestamp, executionEndTimestamp);
             };
-
         }
     }
 }

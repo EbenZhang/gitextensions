@@ -2,9 +2,9 @@
 using System.Drawing;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Git.Tag;
 using GitUI.Script;
 using ResourceManager;
-using GitCommands.Git.Tag;
 
 namespace GitUI.CommandsDialogs
 {
@@ -27,21 +27,25 @@ namespace GitUI.CommandsDialogs
         private static readonly string[] DropwdownTagOperation = { _trsLigthweight.Text, _trsAnnotated.Text, _trsSignDefault.Text, _trsSignSpecificKey.Text };
         private readonly IGitTagController _gitTagController;
 
-
-        public FormCreateTag(GitUICommands aCommands, GitRevision revision)
-            : base(aCommands)
+        public FormCreateTag(GitUICommands commands, GitRevision revision)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
 
+            annotate.Items.AddRange(DropwdownTagOperation);
+            annotate.SelectedIndex = 0;
+
             tagMessage.MistakeFont = new Font(SystemFonts.MessageBoxFont, FontStyle.Underline);
             commitPickerSmallControl1.UICommandsSource = this;
             if (IsUICommandsInitialized)
-                commitPickerSmallControl1.SetSelectedCommitHash(revision == null ? Module.GetCurrentCheckout() : revision.Guid);
-
-            if (aCommands != null)
             {
-                _gitTagController = new GitTagController(aCommands);
+                commitPickerSmallControl1.SetSelectedCommitHash(revision == null ? Module.GetCurrentCheckout() : revision.Guid);
+            }
+
+            if (commands != null)
+            {
+                _gitTagController = new GitTagController(commands);
             }
         }
 
@@ -49,8 +53,11 @@ namespace GitUI.CommandsDialogs
         {
             textBoxTagName.Select();
             _currentRemote = Module.GetCurrentRemote();
-            if (String.IsNullOrEmpty(_currentRemote))
+            if (string.IsNullOrEmpty(_currentRemote))
+            {
                 _currentRemote = "origin";
+            }
+
             pushTag.Text = string.Format(_pushToCaption.Text, _currentRemote);
         }
 
@@ -61,7 +68,9 @@ namespace GitUI.CommandsDialogs
                 var tagName = CreateTag();
 
                 if (pushTag.Checked && !string.IsNullOrEmpty(tagName))
+                {
                     PushTag(tagName);
+                }
             }
             catch (Exception ex)
             {
@@ -105,7 +114,6 @@ namespace GitUI.CommandsDialogs
                 Text = string.Format(_pushToCaption.Text, _currentRemote),
             })
             {
-
                 form.ShowDialog();
 
                 if (!Module.InTheMiddleOfAction() && !form.ErrorOccurred())
@@ -123,27 +131,21 @@ namespace GitUI.CommandsDialogs
             tagMessage.Enabled = tagOperation.CanProvideMessage();
         }
 
-        private TagOperation GetSelectedOperation(int dropdownSelection)
+        private static TagOperation GetSelectedOperation(int dropdownSelection)
         {
-            TagOperation returnValue = TagOperation.Lightweight;
             switch (dropdownSelection)
             {
                 case 0:
-                    returnValue = TagOperation.Lightweight;
-                    break;
+                    return TagOperation.Lightweight;
                 case 1:
-                    returnValue = TagOperation.Annotate;
-                    break;
+                    return TagOperation.Annotate;
                 case 2:
-                    returnValue = TagOperation.SignWithDefaultKey;
-                    break;
+                    return TagOperation.SignWithDefaultKey;
                 case 3:
-                    returnValue = TagOperation.SignWithSpecificKey;
-                    break;
+                    return TagOperation.SignWithSpecificKey;
                 default:
                     throw new NotSupportedException("Invalid dropdownSelection");
             }
-            return returnValue;
         }
     }
 }

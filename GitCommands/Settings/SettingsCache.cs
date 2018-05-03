@@ -1,16 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 
-
 namespace GitCommands
 {
     public abstract class SettingsCache : IDisposable
     {
-        private readonly Dictionary<String, object> ByNameMap = new Dictionary<String, object>();
-
-        public SettingsCache()
-        {
-        }
+        private readonly Dictionary<string, object> _byNameMap = new Dictionary<string, object>();
 
         public void Dispose()
         {
@@ -31,9 +26,9 @@ namespace GitCommands
             });
         }
 
-        public T LockedAction<T>(Func<T> action)
+        protected T LockedAction<T>(Func<T> action)
         {
-            lock (ByNameMap)
+            lock (_byNameMap)
             {
                 return action();
             }
@@ -41,7 +36,7 @@ namespace GitCommands
 
         protected abstract void SaveImpl();
         protected abstract void LoadImpl();
-        protected abstract void SetValueImpl(string key, string value);        
+        protected abstract void SetValueImpl(string key, string value);
         protected abstract string GetValueImpl(string key);
         protected abstract bool NeedRefresh();
         protected abstract void ClearImpl();
@@ -51,7 +46,7 @@ namespace GitCommands
             LockedAction(() =>
             {
                 ClearImpl();
-                ByNameMap.Clear();
+                _byNameMap.Clear();
             });
         }
 
@@ -60,7 +55,7 @@ namespace GitCommands
             LockedAction(SaveImpl);
         }
 
-        public void Load()
+        private void Load()
         {
             LockedAction(() =>
                 {
@@ -69,19 +64,20 @@ namespace GitCommands
                 });
         }
 
-        public void Import(IEnumerable<Tuple<string, string>> keyValuePairs)
+        public void Import(IEnumerable<(string name, string value)> keyValuePairs)
         {
-                LockedAction(() =>
+            LockedAction(() =>
                 {
-                    foreach(var pair in keyValuePairs)
+                    foreach (var (key, value) in keyValuePairs)
                     {
-                        if (pair.Item2 != null)
-                            SetValueImpl(pair.Item1, pair.Item2);
+                        if (value != null)
+                        {
+                            SetValueImpl(key, value);
+                        }
                     }
 
                     Save();
                 });
-
         }
 
         protected void EnsureSettingsAreUpToDate()
@@ -93,18 +89,20 @@ namespace GitCommands
         }
 
         protected virtual void SettingsChanged()
-        { 
+        {
         }
 
         private void SetValue(string name, string value)
         {
             LockedAction(() =>
             {
-                //will refresh EncodedNameMap if needed
+                // will refresh EncodedNameMap if needed
                 string inMemValue = GetValue(name);
 
                 if (string.Equals(inMemValue, value))
+                {
                     return;
+                }
 
                 SetValueImpl(name, value);
 
@@ -114,7 +112,7 @@ namespace GitCommands
 
         private string GetValue(string name)
         {
-            return LockedAction<string>(() =>
+            return LockedAction(() =>
             {
                 EnsureSettingsAreUpToDate();
                 return GetValueImpl(name);
@@ -128,14 +126,11 @@ namespace GitCommands
 
         public bool HasADifferentValue<T>(string name, T value, Func<T, string> encode)
         {
-            string s;
+            var s = value != null
+                ? encode(value)
+                : null;
 
-            if (value == null)
-                s = null;
-            else
-                s = encode(value);
-
-            return LockedAction<bool>(() =>
+            return LockedAction(() =>
             {
                 string inMemValue = GetValue(name);
                 return inMemValue != null && !string.Equals(inMemValue, s);
@@ -144,70 +139,56 @@ namespace GitCommands
 
         public void SetValue<T>(string name, T value, Func<T, string> encode)
         {
-            string s;
-
-            if (value == null)
-                s = null;
-            else
-                s = encode(value);
+            var s = value != null
+                ? encode(value)
+                : null;
 
             LockedAction(() =>
             {
                 SetValue(name, s);
-                if (s == null)
-                {
-                    ByNameMap[name] = null;
-                }
-                else
-                {
-                    ByNameMap[name] = value;
-                }
+
+                _byNameMap[name] = s == null ? (object)null : value;
             });
         }
 
         public bool TryGetValue<T>(string name, T defaultValue, Func<string, T> decode, out T value)
         {
-            object o;
             T val = defaultValue;
 
-            bool result = LockedAction<bool>(() =>
+            bool result = LockedAction(() =>
             {
                 EnsureSettingsAreUpToDate();
 
-                if (ByNameMap.TryGetValue(name, out o))
+                if (_byNameMap.TryGetValue(name, out object o))
                 {
-                    if (o == null)
+                    switch (o)
                     {
-                        val = defaultValue;
-                        return false;
-                    }
-                    else if (o is T)
-                    {
-                        val = (T)o;
-                        return true;
-                    }
-                    else
-                    {
-                        throw new Exception("Incompatible class for settings: " + name + ". Expected: " + typeof(T).FullName + ", found: " + o.GetType().FullName);
+                        case null:
+                            return false;
+                        case T t:
+                            val = t;
+                            return true;
+                        default:
+                            throw new Exception("Incompatible class for settings: " + name + ". Expected: " + typeof(T).FullName + ", found: " + o.GetType().FullName);
                     }
                 }
-                else
+
+                if (decode == null)
                 {
-                    if (decode == null)
-                        throw new ArgumentNullException(nameof(decode), string.Format("The decode parameter for setting {0} is null.", name));
-
-                    string s = GetValue(name);
-
-                    if (s == null)
-                    {
-                        val = defaultValue;
-                        return false;
-                    }
-
-                    val = decode(s);
-                    ByNameMap[name] = val;
-                    return true;
+                    throw new ArgumentNullException(nameof(decode), string.Format("The decode parameter for setting {0} is null.", name));
                 }
+
+                string s = GetValue(name);
+
+                if (s == null)
+                {
+                    val = defaultValue;
+                    return false;
+                }
+
+                val = decode(s);
+                _byNameMap[name] = val;
+                return true;
             });
             value = val;
             return result;

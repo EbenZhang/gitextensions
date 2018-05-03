@@ -6,12 +6,12 @@ namespace GitUI.Editor.Diff
 {
     public class CombinedDiffHighlightService : DiffHighlightService
     {
-        public new static CombinedDiffHighlightService Instance = new CombinedDiffHighlightService();
+        public static new CombinedDiffHighlightService Instance { get; } = new CombinedDiffHighlightService();
 
         protected CombinedDiffHighlightService()
         {
-            
         }
+
         protected override int GetDiffContentOffset()
         {
             return 2;
@@ -30,12 +30,12 @@ namespace GitUI.Editor.Diff
 
         protected override List<ISegment> GetAddedLines(IDocument document, ref int line, ref bool found)
         {
-            return LinePrefixHelper.GetLinesStartingWith(document, ref line, new string[] { "+", " +" }, ref found);
+            return LinePrefixHelper.GetLinesStartingWith(document, ref line, new[] { "+", " +" }, ref found);
         }
 
         protected override List<ISegment> GetRemovedLines(IDocument document, ref int line, ref bool found)
         {
-            return LinePrefixHelper.GetLinesStartingWith(document, ref line, new string[] { "-", " -" }, ref found);
+            return LinePrefixHelper.GetLinesStartingWith(document, ref line, new[] { "-", " -" }, ref found);
         }
     }
 }

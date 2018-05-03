@@ -13,12 +13,10 @@ namespace GitUI.CommandsDialogs
     {
         private readonly IGitGpgController _gitGpgController;
 
-
         public FormBrowseController(IGitGpgController gitGpgController)
         {
             _gitGpgController = gitGpgController;
         }
-
 
         public async Task<GpgInfo> LoadGpgInfoAsync(GitRevision revision)
         {
@@ -41,7 +39,7 @@ namespace GitUI.CommandsDialogs
             }
 
             return new GpgInfo(commitStatus,
-                               _gitGpgController.GetCommitVerificationMessage(revision), 
+                               _gitGpgController.GetCommitVerificationMessage(revision),
                                tagStatus,
                                _gitGpgController.GetTagVerifyMessage(revision));
         }

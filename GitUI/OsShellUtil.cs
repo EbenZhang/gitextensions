@@ -1,9 +1,8 @@
-﻿namespace GitUI
+﻿using System.Diagnostics;
+using System.Windows.Forms;
+using Microsoft.WindowsAPICodePack.Dialogs;
+namespace GitUI
 {
-    using System.Diagnostics;
-    using System.Windows.Forms;
-    using Microsoft.WindowsAPICodePack.Dialogs;
-
     public static class OsShellUtil
     {
         public static void OpenAs(string file)
@@ -54,12 +53,16 @@
                     dialog.IsFolderPicker = true;
 
                     if (selectedPath != null)
+                    {
                         dialog.InitialDirectory = selectedPath;
+                    }
 
                     var result = dialog.ShowDialog(ownerWindow.Handle);
 
                     if (result == CommonFileDialogResult.Ok)
+                    {
                         return dialog.FileName;
+                    }
                 }
             }
             else
@@ -68,12 +71,16 @@
                 using (var dialog = new FolderBrowserDialog())
                 {
                     if (selectedPath != null)
+                    {
                         dialog.SelectedPath = selectedPath;
+                    }
 
                     var result = dialog.ShowDialog(ownerWindow);
 
                     if (result == DialogResult.OK)
+                    {
                         return dialog.SelectedPath;
+                    }
                 }
             }
 

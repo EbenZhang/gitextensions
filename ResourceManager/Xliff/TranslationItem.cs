@@ -9,7 +9,6 @@ namespace ResourceManager.Xliff
     {
         public TranslationItem()
         {
-
         }
 
         public TranslationItem(string name, string property, string source)
@@ -39,7 +38,7 @@ namespace ResourceManager.Xliff
             get => Name + "." + Property;
             set
             {
-                var vals = value.Split(new[] {'.'}, 2);
+                var vals = value.Split(new[] { '.' }, 2);
                 Name = vals[0];
                 Property = vals.Length > 1 ? vals[1] : "";
             }
@@ -53,8 +52,12 @@ namespace ResourceManager.Xliff
 
         public int CompareTo(TranslationItem other)
         {
-            int val = String.Compare(Name, other.Name, StringComparison.Ordinal);
-            if (val == 0) val = String.Compare(Property, other.Property, StringComparison.Ordinal);
+            int val = string.Compare(Name, other.Name, StringComparison.Ordinal);
+            if (val == 0)
+            {
+                val = string.Compare(Property, other.Property, StringComparison.Ordinal);
+            }
+
             return val;
         }
 

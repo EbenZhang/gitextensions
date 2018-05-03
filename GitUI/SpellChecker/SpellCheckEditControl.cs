@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -15,8 +14,8 @@ namespace GitUI.SpellChecker
         public bool IsImeStartingComposition { get; private set; }
 
         private readonly RichTextBox _richTextBox;
-        public List<TextPos> IllFormedLines = new List<TextPos>();
-        public List<TextPos> Lines = new List<TextPos>();
+        public List<TextPos> IllFormedLines { get; } = new List<TextPos>();
+        public List<TextPos> Lines { get; } = new List<TextPos>();
         private Bitmap _bitmap;
         private Graphics _bufferGraphics;
         private int _lineHeight;
@@ -25,6 +24,7 @@ namespace GitUI.SpellChecker
         public SpellCheckEditControl(RichTextBox richTextBox)
         {
             _richTextBox = richTextBox;
+
             // Start receiving messages
             AssignHandle(richTextBox.Handle);
         }
@@ -39,8 +39,10 @@ namespace GitUI.SpellChecker
                 case 15: // this is the WM_PAINT message
                     // invalidate the TextBox so that it gets refreshed properly
                     _richTextBox.Invalidate();
+
                     // call the default win32 Paint method for the TextBox first
                     base.WndProc(ref m);
+
                     // now use our code to draw extra stuff over the TextBox
                     CustomPaint();
 
@@ -79,20 +81,24 @@ namespace GitUI.SpellChecker
 
             // * Here’s where the magic happens
 
-            //Mark ill formed parts of commit message
+            // Mark ill formed parts of commit message
             DrawLines(IllFormedLines, DrawType.Mark);
 
-            //Mark first line if it is blank
+            // Mark first line if it is blank
             var lh = LineHeight();
             var ypos = _richTextBox.GetPositionFromCharIndex(0).Y;
             if (_richTextBox.Text.Length > 1 &&
-                //check for textBox.Text.Length>1 instead of textBox.Text.Length!=0 because there might be only a \n
+
+                // check for textBox.Text.Length>1 instead of textBox.Text.Length!=0 because there might be only a \n
                 _richTextBox.Lines.Length > 0 && _richTextBox.Lines[0].Length == 0
                 && ypos >= -lh && AppSettings.MarkIllFormedLinesInCommitMsg)
+            {
                 DrawMark(new Point(0, lh + ypos), new Point(_richTextBox.Width - 3, lh + ypos));
+            }
 
-            //Mark misspelled words
+            // Mark misspelled words
             DrawLines(Lines, DrawType.Wave);
+
             // Now we just draw our internal buffer on top of the TextBox.
             // Everything should be at the right place.
             _textBoxGraphics.DrawImageUnscaled(_bitmap, 0, 0);
@@ -113,7 +119,9 @@ namespace GitUI.SpellChecker
                 end.Y += TextBoxHelper.GetBaselineOffsetAtCharIndex(_richTextBox, textPos.End);
 
                 if (start.X == -1 || end.X == -1)
+                {
                     continue;
+                }
 
                 // Draw the wavy underline/mark
                 if (start.Y < end.Y)
@@ -131,6 +139,7 @@ namespace GitUI.SpellChecker
                     }
                 }
                 else
+                {
                     switch (type)
                     {
                         case DrawType.Wave:
@@ -140,6 +149,7 @@ namespace GitUI.SpellChecker
                             DrawMark(start, end);
                             break;
                     }
+                }
             }
         }
 
@@ -148,13 +158,14 @@ namespace GitUI.SpellChecker
             var pen = Pens.Red;
             if ((end.X - start.X) > 4)
             {
-                var pl = new ArrayList();
+                var pl = new List<Point>();
                 for (var i = start.X; i <= (end.X - 2); i += 4)
                 {
                     pl.Add(new Point(i, start.Y));
                     pl.Add(new Point(i + 2, start.Y + 2));
                 }
-                var p = (Point[]) pl.ToArray(typeof (Point));
+
+                var p = pl.ToArray();
                 _bufferGraphics.DrawLines(pen, p);
             }
             else
@@ -169,8 +180,8 @@ namespace GitUI.SpellChecker
             var linHeight = LineHeight();
             using (var pen = new Pen(col, linHeight))
             {
-                start.Offset(0, -linHeight/2);
-                end.Offset(0, -linHeight/2);
+                start.Offset(0, -linHeight / 2);
+                end.Offset(0, -linHeight / 2);
                 _bufferGraphics.DrawLine(pen, start, end);
             }
         }
@@ -178,11 +189,15 @@ namespace GitUI.SpellChecker
         private int LineHeight()
         {
             if (!EnvUtils.RunningOnWindows())
+            {
                 return 12;
+            }
 
-            if (_lineHeight == 0 && !EnvUtils.RunningOnWindows ()) {
-                if (_richTextBox.Lines.Any (line => line.Length != 0)) {
-                    _lineHeight = TextBoxHelper.GetBaselineOffsetAtCharIndex (_richTextBox, 0);
+            if (_lineHeight == 0 && !EnvUtils.RunningOnWindows())
+            {
+                if (_richTextBox.Lines.Any(line => line.Length != 0))
+                {
+                    _lineHeight = TextBoxHelper.GetBaselineOffsetAtCharIndex(_richTextBox, 0);
                 }
             }
 
@@ -195,7 +210,7 @@ namespace GitUI.SpellChecker
         {
             Wave,
             Mark
-        };
+        }
 
         #endregion
 
@@ -208,14 +223,25 @@ namespace GitUI.SpellChecker
         protected virtual void Dispose(bool disposing)
         {
             if (!disposing)
+            {
                 return;
+            }
+
             ReleaseHandle();
             if (_bitmap != null)
+            {
                 _bitmap.Dispose();
+            }
+
             if (_bufferGraphics != null)
+            {
                 _bufferGraphics.Dispose();
+            }
+
             if (_textBoxGraphics != null)
+            {
                 _textBoxGraphics.Dispose();
+            }
         }
     }
 }

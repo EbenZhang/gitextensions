@@ -18,6 +18,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             {
                 chlMenuEntries.SetItemChecked(i, AppSettings.CascadeShellMenuItems[i] == '1');
             }
+
             cbAlwaysShowAllCommands.Checked = AppSettings.AlwaysShowAllCommands;
 
             UpdatePreview();
@@ -25,7 +26,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         protected override void PageToSettings()
         {
-            String l_CascadeShellMenuItems = "";
+            string l_CascadeShellMenuItems = "";
 
             for (int i = 0; i < chlMenuEntries.Items.Count; i++)
             {
@@ -57,11 +58,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             {
                 if (chlMenuEntries.GetItemChecked(i))
                 {
-                    cascaded += "       " + chlMenuEntries.Items[i].ToString() + "\r\n";
+                    cascaded += "       " + chlMenuEntries.Items[i] + "\r\n";
                 }
                 else
                 {
-                    topLevel += "GitExt " + chlMenuEntries.Items[i].ToString() + "\r\n";
+                    topLevel += "GitExt " + chlMenuEntries.Items[i] + "\r\n";
                 }
             }
 

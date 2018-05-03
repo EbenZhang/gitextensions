@@ -2,30 +2,32 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using GitCommands;
-using PatchApply;
+using GitCommands.Patches;
+using JetBrains.Annotations;
 
 namespace GitUI.Editor.Diff
 {
     public class DiffLineNumAnalyzer
     {
-        private static Regex regex = new Regex(
+        private static readonly Regex regex = new Regex(
             @"\-(?<leftStart>\d{1,})\,{0,}(?<leftCount>\d{0,})\s\+(?<rightStart>\d{1,})\,{0,}(?<rightCount>\d{0,})",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public class Result
         {
-            public Dictionary<int, DiffLineNum> LineNumbers = new Dictionary<int, DiffLineNum>();
-            public int MaxLineNumber = 0;
+            public Dictionary<int, DiffLineNum> LineNumbers { get; } = new Dictionary<int, DiffLineNum>();
+            public int MaxLineNumber;
         }
 
-        private void AddToResult(Result result, DiffLineNum diffLine)
+        private static void AddToResult(Result result, DiffLineNum diffLine)
         {
             result.LineNumbers.Add(diffLine.LineNumInDiff, diffLine);
             result.MaxLineNumber = Math.Max(result.MaxLineNumber,
                 Math.Max(diffLine.LeftLineNum, diffLine.RightLineNum));
         }
 
-        public Result Analyze(string diffContent)
+        [NotNull]
+        public Result Analyze([NotNull] string diffContent)
         {
             var ret = new Result();
             var isCombinedDiff = PatchProcessor.IsCombinedDiff(diffContent);
@@ -41,6 +43,7 @@ namespace GitUI.Editor.Diff
                 {
                     break;
                 }
+
                 lineNumInDiff++;
                 if (line.StartsWith("@"))
                 {
@@ -87,7 +90,6 @@ namespace GitUI.Editor.Diff
 
                     AddToResult(ret, meta);
                 }
-
                 else if (isHeaderLineLocated && IsMinusLine(line))
                 {
                     var meta = new DiffLineNum
@@ -139,6 +141,7 @@ namespace GitUI.Editor.Diff
                     rightLineNum++;
                 }
             }
+
             return ret;
         }
 

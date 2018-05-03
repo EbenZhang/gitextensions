@@ -1,38 +1,37 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
-using System.Security.Cryptography.X509Certificates;
-using System.Net.Security;
-using System.Windows.Forms;
 using RestSharp.Authenticators;
 
 namespace Bitbucket
 {
-    class BitbucketResponse<T>
+    internal class BitbucketResponse<T>
     {
         public bool Success { get; set; }
         public IEnumerable<string> Messages { get; set; }
         public T Result { get; set; }
     }
 
-    abstract class BitbucketRequestBase<T>
+    internal abstract class BitbucketRequestBase<T>
     {
-        protected Settings Settings { get; private set; }
+        protected Settings Settings { get; }
 
         protected BitbucketRequestBase(Settings settings)
         {
             Settings = settings;
         }
 
-        public BitbucketResponse<T> Send()
+        public async Task<BitbucketResponse<T>> SendAsync()
         {
             if (Settings.DisableSSL)
             {
-                System.Net.ServicePointManager.ServerCertificateValidationCallback
-                    = delegate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) { return true; };
+                System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
             }
+
             var client = new RestClient
             {
                 BaseUrl = new System.Uri(Settings.BitbucketUrl),
@@ -43,20 +42,27 @@ namespace Bitbucket
             if (RequestBody != null)
             {
                 if (RequestBody is string)
+                {
                     request.AddParameter("application/json", RequestBody, ParameterType.RequestBody);
+                }
                 else
+                {
                     request.AddBody(RequestBody);
+                }
             }
-            //XSRF check fails when approving/creating
+
+            // XSRF check fails when approving/creating
             request.AddHeader("X-Atlassian-Token", "no-check");
 
-            var response = client.Execute(request);
+            var response = await client.ExecuteTaskAsync(request).ConfigureAwait(false);
             if (response.ResponseStatus != ResponseStatus.Completed)
+            {
                 return new BitbucketResponse<T>
-                    {
-                        Success = false,
-                        Messages = new[] {response.ErrorMessage}
-                    };
+                {
+                    Success = false,
+                    Messages = new[] { response.ErrorMessage }
+                };
+            }
 
             if ((int)response.StatusCode >= 300)
             {
@@ -64,10 +70,10 @@ namespace Bitbucket
             }
 
             return new BitbucketResponse<T>
-                {
-                    Success = true,
-                    Result = ParseResponse(JObject.Parse(response.Content))
-                };
+            {
+                Success = true,
+                Result = ParseResponse(JObject.Parse(response.Content))
+            };
         }
 
         protected abstract object RequestBody { get; }
@@ -77,7 +83,7 @@ namespace Bitbucket
 
         private static BitbucketResponse<T> ParseErrorResponse(string jsonString)
         {
-            var json = new JObject();
+            JObject json;
             try
             {
                 System.Console.WriteLine(jsonString);
@@ -89,10 +95,11 @@ namespace Bitbucket
                 var errorResponse = new BitbucketResponse<T> { Success = false };
                 return errorResponse;
             }
+
             if (json["errors"] != null)
             {
                 var messages = new List<string>();
-                var errorResponse = new BitbucketResponse<T> {Success = false};
+                var errorResponse = new BitbucketResponse<T> { Success = false };
                 foreach (var error in json["errors"])
                 {
                     var sb = new StringBuilder();
@@ -105,18 +112,20 @@ namespace Bitbucket
                             sb.Append(reviewerError["message"]).AppendLine();
                         }
                     }
+
                     messages.Add(sb.ToString());
                 }
 
                 errorResponse.Messages = messages;
                 return errorResponse;
             }
+
             if (json["message"] != null)
             {
-                return new BitbucketResponse<T> {Success = false, Messages = new[] {json["message"].ToString()}};
+                return new BitbucketResponse<T> { Success = false, Messages = new[] { json["message"].ToString() } };
             }
-            return new BitbucketResponse<T> {Success = false, Messages = new[] {"Unknown error."}};
-        }
 
+            return new BitbucketResponse<T> { Success = false, Messages = new[] { "Unknown error." } };
+        }
     }
 }

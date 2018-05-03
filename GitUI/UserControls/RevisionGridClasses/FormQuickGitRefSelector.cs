@@ -15,19 +15,18 @@ namespace GitUI.UserControls.RevisionGridClasses
         private const short MaxVisibleItemsWithoutScroll = 8;
         private const short MaxRefLength = 100;
 
-
         public FormQuickGitRefSelector()
         {
             InitializeComponent();
             Translate();
-        }
 
+            lbxRefs.DisplayMember = nameof(DisplyGitRef.Label);
+        }
 
         /// <summary>
         /// Gets the ref selected by the user.
         /// </summary>
         public IGitRef SelectedRef => (lbxRefs.SelectedItem as DisplyGitRef)?.Item;
-
 
         public void Init(Action action, IGitRef[] refs)
         {
@@ -37,11 +36,13 @@ namespace GitUI.UserControls.RevisionGridClasses
                     {
                         btnAction.Text = _actionDelete.Text;
                     }
+
                     break;
                 case Action.Rename:
                     {
                         btnAction.Text = _actionRename.Text;
                     }
+
                     break;
             }
 
@@ -97,7 +98,6 @@ namespace GitUI.UserControls.RevisionGridClasses
                 // resize the form to look nice
                 Size = new Size(lbxRefs.Width + Padding.Left + Padding.Right,
                                 lbxRefs.Height + Padding.Top + flowLayoutPanel1.Height);
-
             }
         }
 
@@ -109,15 +109,14 @@ namespace GitUI.UserControls.RevisionGridClasses
                 Close();
                 return true;
             }
+
             return base.ProcessCmdKey(ref msg, keyData);
         }
-
 
         private void lbxRefs_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             AcceptButton.PerformClick();
         }
-
 
         public enum Action
         {

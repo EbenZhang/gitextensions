@@ -28,7 +28,8 @@
             this.SaveObjects = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.ShowOnlyCommits = new System.Windows.Forms.CheckBox();
+            this.ShowOtherObjects = new System.Windows.Forms.CheckBox();
+            this.ShowCommitsAndTags = new System.Windows.Forms.CheckBox();
             this.NoReflogs = new System.Windows.Forms.CheckBox();
             this.FullCheck = new System.Windows.Forms.CheckBox();
             this.Unreachable = new System.Windows.Forms.CheckBox();
@@ -36,13 +37,17 @@
             this.mnuLostObjectView = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuLostObjectsCreateTag = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuLostObjectsCreateBranch = new System.Windows.Forms.ToolStripMenuItem();
+            this.copyHashToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.Warnings = new System.Windows.Forms.DataGridView();
+            this.copyParentHashToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.columnIsLostObjectSelected = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.columnDate = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.columnType = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.columnSubject = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.columnAuthor = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.columnHash = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.columnParent = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             panel1 = new System.Windows.Forms.Panel();
             panel2 = new System.Windows.Forms.Panel();
             flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
@@ -126,14 +131,15 @@
             // 
             panel2.AutoSize = true;
             panel2.Controls.Add(flowLayoutPanel1);
-            panel2.Controls.Add(this.ShowOnlyCommits);
+            panel2.Controls.Add(this.ShowOtherObjects);
+            panel2.Controls.Add(this.ShowCommitsAndTags);
             panel2.Controls.Add(this.NoReflogs);
             panel2.Controls.Add(this.FullCheck);
             panel2.Controls.Add(this.Unreachable);
             panel2.Dock = System.Windows.Forms.DockStyle.Top;
             panel2.Location = new System.Drawing.Point(0, 0);
             panel2.Name = "panel2";
-            panel2.Size = new System.Drawing.Size(859, 138);
+            panel2.Size = new System.Drawing.Size(859, 134);
             panel2.TabIndex = 4;
             // 
             // flowLayoutPanel1
@@ -145,7 +151,7 @@
             flowLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
             flowLayoutPanel1.Padding = new System.Windows.Forms.Padding(5);
-            flowLayoutPanel1.Size = new System.Drawing.Size(351, 138);
+            flowLayoutPanel1.Size = new System.Drawing.Size(322, 134);
             flowLayoutPanel1.TabIndex = 13;
             // 
             // label2
@@ -153,32 +159,43 @@
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(8, 5);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(335, 105);
+            this.label2.Size = new System.Drawing.Size(306, 91);
             this.label2.TabIndex = 15;
             this.label2.Text = resources.GetString("label2.Text");
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(8, 115);
+            this.label1.Location = new System.Drawing.Point(8, 101);
             this.label1.Margin = new System.Windows.Forms.Padding(3, 5, 3, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(200, 15);
+            this.label1.Size = new System.Drawing.Size(177, 13);
             this.label1.TabIndex = 16;
             this.label1.Text = "Double-click on a row for quick view";
             // 
-            // ShowOnlyCommits
+            // ShowOtherObjects
             // 
-            this.ShowOnlyCommits.AutoSize = true;
-            this.ShowOnlyCommits.Checked = true;
-            this.ShowOnlyCommits.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.ShowOnlyCommits.Location = new System.Drawing.Point(430, 9);
-            this.ShowOnlyCommits.Name = "ShowOnlyCommits";
-            this.ShowOnlyCommits.Size = new System.Drawing.Size(131, 19);
-            this.ShowOnlyCommits.TabIndex = 0;
-            this.ShowOnlyCommits.Text = "Show only commits";
-            this.ShowOnlyCommits.UseVisualStyleBackColor = true;
-            this.ShowOnlyCommits.CheckedChanged += new System.EventHandler(this.ShowOnlyCommitsCheckedChanged);
+            this.ShowOtherObjects.AutoSize = true;
+            this.ShowOtherObjects.Location = new System.Drawing.Point(588, 9);
+            this.ShowOtherObjects.Name = "ShowOtherObjects";
+            this.ShowOtherObjects.Size = new System.Drawing.Size(119, 17);
+            this.ShowOtherObjects.TabIndex = 0;
+            this.ShowOtherObjects.Text = "Show other objects";
+            this.ShowOtherObjects.UseVisualStyleBackColor = true;
+            this.ShowOtherObjects.CheckedChanged += new System.EventHandler(this.ShowOtherObjects_CheckedChanged);
+            // 
+            // ShowCommitsAndTags
+            // 
+            this.ShowCommitsAndTags.AutoSize = true;
+            this.ShowCommitsAndTags.Checked = true;
+            this.ShowCommitsAndTags.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.ShowCommitsAndTags.Location = new System.Drawing.Point(430, 9);
+            this.ShowCommitsAndTags.Name = "ShowCommitsAndTags";
+            this.ShowCommitsAndTags.Size = new System.Drawing.Size(138, 17);
+            this.ShowCommitsAndTags.TabIndex = 0;
+            this.ShowCommitsAndTags.Text = "Show commits and tags";
+            this.ShowCommitsAndTags.UseVisualStyleBackColor = true;
+            this.ShowCommitsAndTags.CheckedChanged += new System.EventHandler(this.ShowCommitsCheckedChanged);
             // 
             // NoReflogs
             // 
@@ -187,7 +204,7 @@
             this.NoReflogs.CheckState = System.Windows.Forms.CheckState.Checked;
             this.NoReflogs.Location = new System.Drawing.Point(430, 35);
             this.NoReflogs.Name = "NoReflogs";
-            this.NoReflogs.Size = new System.Drawing.Size(375, 34);
+            this.NoReflogs.Size = new System.Drawing.Size(345, 30);
             this.NoReflogs.TabIndex = 1;
             this.NoReflogs.Text = "Do not consider commits that are referenced only by an entry in a \r\nreflog to be " +
     "reachable.";
@@ -199,7 +216,7 @@
             this.FullCheck.AutoSize = true;
             this.FullCheck.Location = new System.Drawing.Point(430, 101);
             this.FullCheck.Name = "FullCheck";
-            this.FullCheck.Size = new System.Drawing.Size(397, 34);
+            this.FullCheck.Size = new System.Drawing.Size(376, 30);
             this.FullCheck.TabIndex = 3;
             this.FullCheck.Text = "Check not just objects in GIT_OBJECT_DIRECTORY ($GIT_DIR/objects), \r\nbut also the" +
     " ones found in alternate object pools.\r\n";
@@ -211,7 +228,7 @@
             this.Unreachable.AutoSize = true;
             this.Unreachable.Location = new System.Drawing.Point(430, 68);
             this.Unreachable.Name = "Unreachable";
-            this.Unreachable.Size = new System.Drawing.Size(429, 34);
+            this.Unreachable.Size = new System.Drawing.Size(403, 30);
             this.Unreachable.TabIndex = 2;
             this.Unreachable.Text = "Print out objects that exist but that aren\'t readable from any of the reference \r" +
     "\nnodes.\r\n";
@@ -223,12 +240,17 @@
             this.mnuLostObjects.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.mnuLostObjectView,
             this.mnuLostObjectsCreateTag,
-            this.mnuLostObjectsCreateBranch});
+            this.mnuLostObjectsCreateBranch,
+            this.copyHashToolStripMenuItem,
+            this.copyParentHashToolStripMenuItem,
+            this.saveAsToolStripMenuItem});
             this.mnuLostObjects.Name = "mnuLostObjects";
-            this.mnuLostObjects.Size = new System.Drawing.Size(190, 70);
+            this.mnuLostObjects.Size = new System.Drawing.Size(190, 114);
+            this.mnuLostObjects.Opening += new System.ComponentModel.CancelEventHandler(this.mnuLostObjects_Opening);
             // 
             // mnuLostObjectView
             // 
+            this.mnuLostObjectView.Image = global::GitUI.Properties.Resources.IconViewFile;
             this.mnuLostObjectView.Name = "mnuLostObjectView";
             this.mnuLostObjectView.Size = new System.Drawing.Size(189, 22);
             this.mnuLostObjectView.Text = "View";
@@ -236,6 +258,7 @@
             // 
             // mnuLostObjectsCreateTag
             // 
+            this.mnuLostObjectsCreateTag.Image = global::GitUI.Properties.Resources.IconTagCreate;
             this.mnuLostObjectsCreateTag.Name = "mnuLostObjectsCreateTag";
             this.mnuLostObjectsCreateTag.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.T)));
             this.mnuLostObjectsCreateTag.Size = new System.Drawing.Size(189, 22);
@@ -244,11 +267,20 @@
             // 
             // mnuLostObjectsCreateBranch
             // 
+            this.mnuLostObjectsCreateBranch.Image = global::GitUI.Properties.Resources.IconBranchCreate;
             this.mnuLostObjectsCreateBranch.Name = "mnuLostObjectsCreateBranch";
             this.mnuLostObjectsCreateBranch.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.B)));
             this.mnuLostObjectsCreateBranch.Size = new System.Drawing.Size(189, 22);
             this.mnuLostObjectsCreateBranch.Text = "Create branch";
             this.mnuLostObjectsCreateBranch.Click += new System.EventHandler(this.mnuLostObjectsCreateBranch_Click);
+            // 
+            // copyHashToolStripMenuItem
+            // 
+            this.copyHashToolStripMenuItem.Image = global::GitUI.Properties.Resources.IconCopyToClipboard;
+            this.copyHashToolStripMenuItem.Name = "copyHashToolStripMenuItem";
+            this.copyHashToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.copyHashToolStripMenuItem.Text = "Copy object hash";
+            this.copyHashToolStripMenuItem.Click += new System.EventHandler(this.copyHashToolStripMenuItem_Click);
             // 
             // Warnings
             // 
@@ -264,25 +296,34 @@
             this.columnType,
             this.columnSubject,
             this.columnAuthor,
-            this.columnHash});
+            this.columnHash,
+            this.columnParent});
             this.Warnings.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Warnings.EditMode = System.Windows.Forms.DataGridViewEditMode.EditOnEnter;
-            this.Warnings.Location = new System.Drawing.Point(0, 138);
+            this.Warnings.Location = new System.Drawing.Point(0, 134);
             this.Warnings.MultiSelect = false;
             this.Warnings.Name = "Warnings";
             this.Warnings.RowHeadersVisible = false;
             this.Warnings.RowTemplate.ContextMenuStrip = this.mnuLostObjects;
             this.Warnings.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.Warnings.ShowEditingIcon = false;
-            this.Warnings.Size = new System.Drawing.Size(859, 376);
+            this.Warnings.Size = new System.Drawing.Size(859, 380);
             this.Warnings.TabIndex = 4;
             this.Warnings.CellMouseDoubleClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.Warnings_CellMouseDoubleClick);
             this.Warnings.CellMouseDown += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.Warnings_CellMouseDown);
+            this.Warnings.KeyDown += new System.Windows.Forms.KeyEventHandler(this.Warnings_KeyDown);
+            // 
+            // copyParentHashToolStripMenuItem
+            // 
+            this.copyParentHashToolStripMenuItem.Image = global::GitUI.Properties.Resources.IconCopyToClipboard;
+            this.copyParentHashToolStripMenuItem.Name = "copyParentHashToolStripMenuItem";
+            this.copyParentHashToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.copyParentHashToolStripMenuItem.Text = "Copy parent hash";
+            this.copyParentHashToolStripMenuItem.Click += new System.EventHandler(this.copyParentHashToolStripMenuItem_Click);
             // 
             // columnIsLostObjectSelected
             // 
             this.columnIsLostObjectSelected.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.AllCells;
-            this.columnIsLostObjectSelected.DataPropertyName = "IsSelected";
             this.columnIsLostObjectSelected.HeaderText = "";
             this.columnIsLostObjectSelected.MinimumWidth = 20;
             this.columnIsLostObjectSelected.Name = "columnIsLostObjectSelected";
@@ -291,25 +332,22 @@
             // columnDate
             // 
             this.columnDate.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.AllCells;
-            this.columnDate.DataPropertyName = "Date";
             this.columnDate.HeaderText = "Date";
             this.columnDate.Name = "columnDate";
             this.columnDate.ReadOnly = true;
-            this.columnDate.Width = 56;
+            this.columnDate.Width = 55;
             // 
             // columnType
             // 
             this.columnType.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.AllCells;
-            this.columnType.DataPropertyName = "RawType";
             this.columnType.HeaderText = "Type";
             this.columnType.Name = "columnType";
             this.columnType.ReadOnly = true;
-            this.columnType.Width = 58;
+            this.columnType.Width = 56;
             // 
             // columnSubject
             // 
             this.columnSubject.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.columnSubject.DataPropertyName = "Subject";
             dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
             this.columnSubject.DefaultCellStyle = dataGridViewCellStyle1;
@@ -319,19 +357,29 @@
             // 
             // columnAuthor
             // 
-            this.columnAuthor.DataPropertyName = "Author";
             this.columnAuthor.HeaderText = "Author";
             this.columnAuthor.Name = "columnAuthor";
             this.columnAuthor.ReadOnly = true;
-            this.columnAuthor.Width = 150;
             // 
             // columnHash
             // 
-            this.columnHash.DataPropertyName = "Hash";
             this.columnHash.HeaderText = "Hash";
             this.columnHash.Name = "columnHash";
             this.columnHash.ReadOnly = true;
-            this.columnHash.Width = 80;
+            // 
+            // columnParent
+            // 
+            this.columnParent.HeaderText = "Parent(s) hashs";
+            this.columnParent.Name = "columnParent";
+            this.columnParent.ReadOnly = true;
+            // 
+            // saveAsToolStripMenuItem
+            // 
+            this.saveAsToolStripMenuItem.Image = global::GitUI.Properties.Resources.IconSaveAs;
+            this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
+            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.saveAsToolStripMenuItem.Text = "Save as...";
+            this.saveAsToolStripMenuItem.Click += new System.EventHandler(this.saveAsToolStripMenuItem_Click);
             // 
             // FormVerify
             // 
@@ -371,17 +419,22 @@
         private System.Windows.Forms.Button Remove;
         private System.Windows.Forms.Button SaveObjects;
         private System.Windows.Forms.DataGridView Warnings;
+        private System.Windows.Forms.CheckBox ShowCommitsAndTags;
+        private System.Windows.Forms.CheckBox NoReflogs;
+        private System.Windows.Forms.CheckBox FullCheck;
+        private System.Windows.Forms.CheckBox Unreachable;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.ToolStripMenuItem copyHashToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem copyParentHashToolStripMenuItem;
         private System.Windows.Forms.DataGridViewCheckBoxColumn columnIsLostObjectSelected;
         private System.Windows.Forms.DataGridViewTextBoxColumn columnDate;
         private System.Windows.Forms.DataGridViewTextBoxColumn columnType;
         private System.Windows.Forms.DataGridViewTextBoxColumn columnSubject;
         private System.Windows.Forms.DataGridViewTextBoxColumn columnAuthor;
         private System.Windows.Forms.DataGridViewTextBoxColumn columnHash;
-        private System.Windows.Forms.CheckBox ShowOnlyCommits;
-        private System.Windows.Forms.CheckBox NoReflogs;
-        private System.Windows.Forms.CheckBox FullCheck;
-        private System.Windows.Forms.CheckBox Unreachable;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.DataGridViewTextBoxColumn columnParent;
+        private System.Windows.Forms.CheckBox ShowOtherObjects;
+        private System.Windows.Forms.ToolStripMenuItem saveAsToolStripMenuItem;
     }
 }

@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Git.Tag;
+using GitExtUtils.GitUI;
 using GitUI.HelperDialogs;
 using ResourceManager;
-using GitCommands.Git.Tag;
 
 namespace GitUI.CommandsDialogs
 {
@@ -22,8 +23,8 @@ namespace GitUI.CommandsDialogs
             new TranslationString("{0} Tags created." + Environment.NewLine + Environment.NewLine +
                                   "Do not forget to delete these tags when finished.");
 
-        private readonly TranslationString selectLostObjectsToRestoreMessage = new TranslationString("Select objects to restore.");
-        private readonly TranslationString selectLostObjectsToRestoreCaption = new TranslationString("Restore lost objects");
+        private readonly TranslationString _selectLostObjectsToRestoreMessage = new TranslationString("Select objects to restore.");
+        private readonly TranslationString _selectLostObjectsToRestoreCaption = new TranslationString("Restore lost objects");
 
         private readonly List<LostObject> _lostObjects = new List<LostObject>();
         private readonly SortableLostObjectsList _filteredLostObjects = new SortableLostObjectsList();
@@ -35,18 +36,36 @@ namespace GitUI.CommandsDialogs
         {
         }
 
-        public FormVerify(GitUICommands aCommands)
-            : base(aCommands)
+        public FormVerify(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
+
+            columnIsLostObjectSelected.Width = DpiUtil.Scale(20);
+            columnDate.Width = DpiUtil.Scale(56);
+            columnType.Width = DpiUtil.Scale(58);
+            columnAuthor.Width = DpiUtil.Scale(150);
+            columnHash.Width = DpiUtil.Scale(280);
+            columnHash.MinimumWidth = DpiUtil.Scale(75);
+            columnParent.Width = DpiUtil.Scale(280);
+            columnParent.MinimumWidth = DpiUtil.Scale(75);
+
             _selectedItemsHeader.AttachTo(columnIsLostObjectSelected);
 
             Translate();
             Warnings.AutoGenerateColumns = false;
 
-            if (aCommands != null)
+            columnIsLostObjectSelected.DataPropertyName = "IsSelected"; // TODO this property is not on the bound type
+            columnDate.DataPropertyName = nameof(LostObject.Date);
+            columnType.DataPropertyName = nameof(LostObject.RawType);
+            columnSubject.DataPropertyName = nameof(LostObject.Subject);
+            columnAuthor.DataPropertyName = nameof(LostObject.Author);
+            columnHash.DataPropertyName = nameof(LostObject.Hash);
+            columnParent.DataPropertyName = nameof(LostObject.Parent);
+
+            if (commands != null)
             {
-                _gitTagController = new GitTagController(aCommands);
+                _gitTagController = new GitTagController(commands);
             }
         }
 
@@ -74,7 +93,9 @@ namespace GitUI.CommandsDialogs
                 _removeDanglingObjectsQuestion.Text,
                 _removeDanglingObjectsCaption.Text,
                 MessageBoxButtons.YesNo) != DialogResult.Yes)
+            {
                 return;
+            }
 
             FormProcess.ShowDialog(this, "prune");
             UpdateLostObjects();
@@ -91,7 +112,9 @@ namespace GitUI.CommandsDialogs
             {
                 var dialogResult = frm.ShowDialog(this);
                 if (dialogResult == DialogResult.OK)
+                {
                     UpdateLostObjects();
+                }
             }
         }
 
@@ -101,7 +124,9 @@ namespace GitUI.CommandsDialogs
             {
                 var dialogResult = frm.ShowDialog(this);
                 if (dialogResult == DialogResult.OK)
+                {
                     UpdateLostObjects();
+                }
             }
         }
 
@@ -117,11 +142,13 @@ namespace GitUI.CommandsDialogs
             var restoredObjectsCount = CreateLostFoundTags();
 
             if (restoredObjectsCount == 0)
+            {
                 return;
+            }
 
             MessageBox.Show(this, string.Format(_xTagsCreated.Text, restoredObjectsCount), "Tags created", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            // if user restored all items, nothing else to do in this form. 
+            // if user restored all items, nothing else to do in this form.
             // User wants to see restored commits, so close this dialog and return to the main window.
             if (restoredObjectsCount == Warnings.Rows.Count)
             {
@@ -147,8 +174,23 @@ namespace GitUI.CommandsDialogs
             UpdateLostObjects();
         }
 
-        private void ShowOnlyCommitsCheckedChanged(object sender, EventArgs e)
+        private void ShowCommitsCheckedChanged(object sender, EventArgs e)
         {
+            if (!ShowCommitsAndTags.Checked && !ShowOtherObjects.Checked)
+            {
+                ShowOtherObjects.Checked = true;
+            }
+
+            UpdateFilteredLostObjects();
+        }
+
+        private void ShowOtherObjects_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!ShowCommitsAndTags.Checked && !ShowOtherObjects.Checked)
+            {
+                ShowCommitsAndTags.Checked = true;
+            }
+
             UpdateFilteredLostObjects();
         }
 
@@ -165,10 +207,15 @@ namespace GitUI.CommandsDialogs
         {
             // ignore double click by header, user just wants to change sorting order
             if (e.RowIndex == -1)
+            {
                 return;
+            }
+
             // ignore double click by checkbox, user probably wanted to change checked state
             if (e.ColumnIndex == 0)
+            {
                 return;
+            }
 
             ViewCurrentItem();
         }
@@ -177,25 +224,27 @@ namespace GitUI.CommandsDialogs
 
         private void UpdateLostObjects()
         {
-            Cursor.Current = Cursors.WaitCursor;
-
-            var dialogResult = FormProcess.ReadDialog(this, "fsck-objects" + GetOptions());
-
-            if (FormProcess.IsOperationAborted(dialogResult))
+            using (WaitCursorScope.Enter())
             {
-                DialogResult = DialogResult.Abort;
-                return;
+                var dialogResult = FormProcess.ReadDialog(this, "fsck-objects" + GetOptions());
+
+                if (FormProcess.IsOperationAborted(dialogResult))
+                {
+                    DialogResult = DialogResult.Abort;
+                    return;
+                }
+
+                _lostObjects.Clear();
+                _lostObjects.AddRange(
+                    dialogResult
+                        .Split('\r', '\n')
+                        .Where(s => !string.IsNullOrEmpty(s))
+                        .Select((s) => LostObject.TryParse(Module, s))
+                        .Where(parsedLostObject => parsedLostObject != null)
+                        .OrderByDescending(l => l.Date));
+
+                UpdateFilteredLostObjects();
             }
-
-            _lostObjects.Clear();
-            _lostObjects.AddRange(dialogResult
-                .Split('\r', '\n')
-                .Where(s => !string.IsNullOrEmpty(s))
-                .Select<string, LostObject>((s) => LostObject.TryParse(Module, s))
-                .Where(parsedLostObject => parsedLostObject != null));
-
-            UpdateFilteredLostObjects();
-            Cursor.Current = Cursors.Default;
         }
 
         private void UpdateFilteredLostObjects()
@@ -203,16 +252,19 @@ namespace GitUI.CommandsDialogs
             SuspendLayout();
             _filteredLostObjects.Clear();
             _filteredLostObjects.AddRange(_lostObjects.Where(IsMatchToFilter));
-            //Warnings.DataSource = filteredLostObjects;
+
+            columnAuthor.Visible = ShowCommitsAndTags.Checked;
+            columnSubject.Visible = ShowCommitsAndTags.Checked;
+            columnParent.Visible = ShowCommitsAndTags.Checked;
+            ////Warnings.DataSource = filteredLostObjects;
             ResumeLayout();
         }
 
         // TODO: add textbox for simple fulltext search/filtering (useful for large repos)
         private bool IsMatchToFilter(LostObject lostObject)
         {
-            if (ShowOnlyCommits.Checked)
-                return lostObject.ObjectType == LostObjectType.Commit;
-            return true;
+            return (ShowCommitsAndTags.Checked && (lostObject.ObjectType == LostObjectType.Commit || lostObject.ObjectType == LostObjectType.Tag))
+                || (ShowOtherObjects.Checked && (lostObject.ObjectType != LostObjectType.Commit && lostObject.ObjectType != LostObjectType.Tag));
         }
 
         private string GetOptions()
@@ -220,13 +272,20 @@ namespace GitUI.CommandsDialogs
             var options = string.Empty;
 
             if (Unreachable.Checked)
+            {
                 options += " --unreachable";
+            }
 
             if (FullCheck.Checked)
+            {
                 options += " --full";
+            }
 
             if (NoReflogs.Checked)
+            {
                 options += " --no-reflogs";
+            }
+
             return options;
         }
 
@@ -234,8 +293,15 @@ namespace GitUI.CommandsDialogs
         {
             var currenItem = CurrentItem;
             if (currenItem == null)
+            {
                 return;
-            using (var frm = new FormEdit(Module.ShowSha1(currenItem.Hash))) frm.ShowDialog(this);
+            }
+
+            using (var frm = new FormEdit(Module.ShowSha1(currenItem.Hash)))
+            {
+                frm.IsReadOnly = true;
+                frm.ShowDialog(this);
+            }
         }
 
         private int CreateLostFoundTags()
@@ -249,15 +315,17 @@ namespace GitUI.CommandsDialogs
 
             if (selectedLostObjects.Count == 0)
             {
-                MessageBox.Show(this, selectLostObjectsToRestoreMessage.Text, selectLostObjectsToRestoreCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, _selectLostObjectsToRestoreMessage.Text, _selectLostObjectsToRestoreCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return 0;
             }
+
             var currentTag = 0;
             foreach (var lostObject in selectedLostObjects)
             {
                 currentTag++;
-                var createTagArgs = new GitCreateTagArgs($"{RestoredObjectsTagPrefix}{currentTag}", lostObject.Hash);
-                var success = _gitTagController.CreateTag(createTagArgs, this);
+                var tagName = lostObject.ObjectType == LostObjectType.Tag ? lostObject.TagName : currentTag.ToString();
+                var createTagArgs = new GitCreateTagArgs($"{RestoredObjectsTagPrefix}{tagName}", lostObject.Hash);
+                _gitTagController.CreateTag(createTagArgs, this);
             }
 
             return currentTag;
@@ -268,7 +336,9 @@ namespace GitUI.CommandsDialogs
             foreach (var head in Module.GetRefs(true, false))
             {
                 if (head.Name.StartsWith(RestoredObjectsTagPrefix))
+                {
                     Module.DeleteTag(head.Name);
+                }
             }
         }
 
@@ -276,7 +346,9 @@ namespace GitUI.CommandsDialogs
         {
             var currentItem = CurrentItem;
             if (currentItem == null)
+            {
                 throw new InvalidOperationException("There are no current selected item.");
+            }
 
             return new GitRevision(currentItem.Hash);
         }
@@ -294,7 +366,79 @@ namespace GitUI.CommandsDialogs
 
                 components?.Dispose();
             }
+
             base.Dispose(disposing);
+        }
+
+        private void mnuLostObjects_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (Warnings != null && Warnings.SelectedRows.Count != 0 && Warnings.SelectedRows[0].DataBoundItem != null)
+            {
+                var lostObject = (LostObject)Warnings.SelectedRows[0].DataBoundItem;
+                var isCommit = lostObject != null && lostObject.ObjectType == LostObjectType.Commit;
+                var isBlob = lostObject != null && lostObject.ObjectType == LostObjectType.Blob;
+                var contextMenu = Warnings.SelectedRows[0].ContextMenuStrip;
+                contextMenu.Items[1].Enabled = isCommit;
+                contextMenu.Items[2].Enabled = isCommit;
+                contextMenu.Items[4].Enabled = isCommit;
+                contextMenu.Items[5].Enabled = isBlob;
+            }
+        }
+
+        private void Warnings_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyValue == 13)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                ViewCurrentItem();
+            }
+        }
+
+        private void copyHashToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (Warnings != null && Warnings.SelectedRows.Count != 0 && Warnings.SelectedRows[0].DataBoundItem != null)
+            {
+                var lostObject = (LostObject)Warnings.SelectedRows[0].DataBoundItem;
+                Clipboard.SetText(lostObject.Hash);
+            }
+        }
+
+        private void copyParentHashToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (Warnings != null && Warnings.SelectedRows.Count != 0 && Warnings.SelectedRows[0].DataBoundItem != null)
+            {
+                var lostObject = (LostObject)Warnings.SelectedRows[0].DataBoundItem;
+                Clipboard.SetText(lostObject.Parent);
+            }
+        }
+
+        private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (Warnings == null || Warnings.SelectedRows.Count == 0 || Warnings.SelectedRows[0].DataBoundItem == null)
+            {
+                return;
+            }
+
+            var lostObject = (LostObject)Warnings.SelectedRows[0].DataBoundItem;
+            if (lostObject.ObjectType == LostObjectType.Blob)
+            {
+                using (var fileDialog =
+                    new SaveFileDialog
+                    {
+                        InitialDirectory = Module.WorkingDir,
+                        FileName = "LOST_FOUND.txt",
+                        DefaultExt = "txt",
+                        AddExtension = true
+                    })
+                {
+                    fileDialog.Filter = "(*.*)|*.*";
+                    if (fileDialog.ShowDialog(this) == DialogResult.OK)
+                    {
+                        Module.SaveBlobAs(fileDialog.FileName, lostObject.Hash);
+                    }
+                }
+            }
         }
     }
 }

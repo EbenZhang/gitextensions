@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace GitUITests.UserControls
 {
     [TestFixture]
-    class AuthorEmailBasedRevisionHighlightingFixture
+    internal class AuthorEmailBasedRevisionHighlightingFixture
     {
         private const string ExpectedAuthorEmail1 = "doe1@example.org";
         private const string ExpectedAuthorEmail2 = "doe2@example.org";
@@ -134,7 +134,7 @@ namespace GitUITests.UserControls
             currentModule.SetSetting(SettingKeyString.UserEmail, ExpectedAuthorEmail2);
             sut.ProcessRevisionSelectionChange(currentModule, new[] { NewRevisionWithAuthorEmail(ExpectedAuthorEmail1) });
 
-            var action = sut.ProcessRevisionSelectionChange(currentModule, new GitRevision[0]);
+            var action = sut.ProcessRevisionSelectionChange(currentModule, Array.Empty<GitRevision>());
 
             action.Should().Be(AuthorEmailBasedRevisionHighlighting.SelectionChangeAction.RefreshUserInterface);
         }
@@ -147,7 +147,7 @@ namespace GitUITests.UserControls
             currentModule.SetSetting(SettingKeyString.UserEmail, ExpectedAuthorEmail2);
             sut.ProcessRevisionSelectionChange(currentModule, new[] { NewRevisionWithAuthorEmail(ExpectedAuthorEmail1) });
 
-            sut.ProcessRevisionSelectionChange(currentModule, new GitRevision[0]);
+            sut.ProcessRevisionSelectionChange(currentModule, Array.Empty<GitRevision>());
 
             sut.AuthorEmailToHighlight.Should().Be(ExpectedAuthorEmail2);
         }

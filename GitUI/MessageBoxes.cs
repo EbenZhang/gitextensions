@@ -8,8 +8,6 @@ namespace GitUI
     {
         private readonly TranslationString _error = new TranslationString("Error");
         private readonly TranslationString _notValidGitDirectory = new TranslationString("The current directory is not a valid git repository.");
-        private readonly TranslationString _notValidGitSVNDirectory = new TranslationString("The current directory is not a valid git-svn repository.");
-        private readonly TranslationString _unableGetSVNInformation = new TranslationString("Unable to determine upstream SVN information.");
 
         private readonly TranslationString _unresolvedMergeConflictsCaption = new TranslationString("Merge conflicts");
         private readonly TranslationString _unresolvedMergeConflicts = new TranslationString("There are unresolved merge conflicts, solve conflicts now?");
@@ -48,6 +46,7 @@ namespace GitUI
                 {
                     instance = new MessageBoxes();
                 }
+
                 return instance;
             }
         }
@@ -55,16 +54,6 @@ namespace GitUI
         public static void NotValidGitDirectory(IWin32Window owner)
         {
             MessageBox.Show(owner, Instance._notValidGitDirectory.Text, Instance._error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-
-        public static void NotValidGitSVNDirectory(IWin32Window owner)
-        {
-            MessageBox.Show(owner, Instance._notValidGitSVNDirectory.Text, Instance._error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-
-        public static void UnableGetSVNInformation(IWin32Window owner)
-        {
-            MessageBox.Show(owner, Instance._unableGetSVNInformation.Text, Instance._error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         public static bool UnresolvedMergeConflicts(IWin32Window owner)
@@ -89,7 +78,7 @@ namespace GitUI
 
         public static bool CacheHostkey(IWin32Window owner)
         {
-            return MessageBox.Show(owner, Instance._serverHostkeyNotCachedText.Text, "SSH", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == System.Windows.Forms.DialogResult.Yes;
+            return MessageBox.Show(owner, Instance._serverHostkeyNotCachedText.Text, "SSH", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
         }
 
         public static bool ConfirmUpdateSubmodules(IWin32Window win)
@@ -109,7 +98,9 @@ namespace GitUI
                 FooterIcon: PSTaskDialog.eSysIcons.Information) == DialogResult.Yes;
 
             if (PSTaskDialog.cTaskDialog.VerificationChecked)
+            {
                 AppSettings.UpdateSubmodulesOnCheckout = result;
+            }
 
             return result;
         }

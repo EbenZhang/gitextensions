@@ -1,15 +1,15 @@
-﻿using GitUIPluginInterfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
+using GitUIPluginInterfaces;
 
 namespace Gource
 {
     public partial class GourceStart : ResourceManager.GitExtensionsFormBase
     {
-        public GourceStart(string pathToGource, GitUIBaseEventArgs gitUIArgs, string gourceArguments)
+        public GourceStart(string pathToGource, GitUIEventArgs gitUIArgs, string gourceArguments)
         {
             InitializeComponent();
             Translate();
@@ -24,7 +24,7 @@ namespace Gource
             Arguments.Text = GourceArguments;
         }
 
-        private GitUIBaseEventArgs GitUIArgs { get; set; }
+        private GitUIEventArgs GitUIArgs { get; }
 
         public string PathToGource { get; set; }
 
@@ -62,7 +62,10 @@ namespace Gource
             GourceArguments = Arguments.Text;
             string gourceAvatarsDir = "";
             if (GourceArguments.Contains("$(AVATARS)"))
+            {
                 gourceAvatarsDir = LoadAvatars();
+            }
+
             string arguments = GourceArguments.Replace("$(AVATARS)", gourceAvatarsDir);
             PathToGource = GourcePath.Text;
             GitWorkingDir = WorkingDir.Text;
@@ -76,7 +79,10 @@ namespace Gource
             var gourceAvatarsDir = Path.Combine(Path.GetTempPath(), "GitAvatars");
             Directory.CreateDirectory(gourceAvatarsDir);
             foreach (var file in Directory.GetFiles(gourceAvatarsDir))
+            {
                 File.Delete(file);
+            }
+
             var lines = GitUIArgs.GitModule.RunGitCmd("log --pretty=format:\"%aE|%aN\"").Split('\n');
             HashSet<string> authors = new HashSet<string>();
             foreach (var line in lines)
@@ -101,6 +107,7 @@ namespace Gource
                     }
                 }
             }
+
             return gourceAvatarsDir;
         }
 
@@ -108,10 +115,10 @@ namespace Gource
         {
             using (var fileDialog =
                 new OpenFileDialog
-                    {
-                        Filter = "Gource (gource.exe)|gource.exe",
-                        FileName = GourcePath.Text
-                    })
+                {
+                    Filter = "Gource (gource.exe)|gource.exe",
+                    FileName = GourcePath.Text
+                })
             {
                 fileDialog.ShowDialog(this);
 

@@ -15,8 +15,16 @@ namespace GitUIPluginInterfaces
             return GetValue<bool?>(name, null, x =>
             {
                 var val = x.ToString().ToLower();
-                if (val == "true") return true;
-                if (val == "false") return false;
+                if (val == "true")
+                {
+                    return true;
+                }
+
+                if (val == "false")
+                {
+                    return false;
+                }
+
                 return null;
             });
         }
@@ -28,12 +36,12 @@ namespace GitUIPluginInterfaces
 
         public void SetBool(string name, bool? value)
         {
-            SetValue<bool?>(name, value, (bool? b) => b.HasValue ? (b.Value ? "true" : "false") : null);
+            SetValue(name, value, b => b.HasValue ? (b.Value ? "true" : "false") : null);
         }
 
         public void SetInt(string name, int? value)
         {
-            SetValue<int?>(name, value, (int? b) => b.HasValue ? b.ToString() : null);
+            SetValue(name, value, b => b.HasValue ? b.ToString() : null);
         }
 
         public int? GetInt(string name)
@@ -41,7 +49,9 @@ namespace GitUIPluginInterfaces
             return GetValue<int?>(name, null, x =>
             {
                 if (int.TryParse(x, out var result))
+                {
                     return result;
+                }
 
                 return null;
             });
@@ -49,7 +59,7 @@ namespace GitUIPluginInterfaces
 
         public void SetFloat(string name, float? value)
         {
-            SetValue<float?>(name, value, (float? b) => b.HasValue ? b.ToString() : null);
+            SetValue(name, value, b => b.HasValue ? b.ToString() : null);
         }
 
         public float? GetFloat(string name)
@@ -57,7 +67,9 @@ namespace GitUIPluginInterfaces
             return GetValue<float?>(name, null, x =>
             {
                 if (float.TryParse(x, out var result))
+                {
                     return result;
+                }
 
                 return null;
             });
@@ -70,7 +82,7 @@ namespace GitUIPluginInterfaces
 
         public void SetDate(string name, DateTime? value)
         {
-            SetValue<DateTime?>(name, value, (DateTime? b) => b?.ToString("yyyy/M/dd", CultureInfo.InvariantCulture));
+            SetValue(name, value, b => b?.ToString("yyyy/M/dd", CultureInfo.InvariantCulture));
         }
 
         public DateTime? GetDate(string name)
@@ -78,7 +90,9 @@ namespace GitUIPluginInterfaces
             return GetValue<DateTime?>(name, null, x =>
             {
                 if (DateTime.TryParseExact(x, "yyyy/M/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
+                {
                     return result;
+                }
 
                 return null;
             });
@@ -91,17 +105,17 @@ namespace GitUIPluginInterfaces
 
         public void SetFont(string name, Font value)
         {
-            SetValue<Font>(name, value, x => x.AsString());
+            SetValue(name, value, x => x.AsString());
         }
 
         public Font GetFont(string name, Font defaultValue)
         {
-            return GetValue<Font>(name, defaultValue, x => x.Parse(defaultValue));
+            return GetValue(name, defaultValue, x => x.Parse(defaultValue));
         }
 
         public void SetColor(string name, Color? value)
         {
-            SetValue<Color?>(name, value, x => x.HasValue ? ColorTranslator.ToHtml(x.Value) : null);
+            SetValue(name, value, x => x.HasValue ? ColorTranslator.ToHtml(x.Value) : null);
         }
 
         public Color? GetColor(string name)
@@ -116,17 +130,19 @@ namespace GitUIPluginInterfaces
 
         public void SetEnum<T>(string name, T value)
         {
-            SetValue<T>(name, value, x => x.ToString());
+            SetValue(name, value, x => x.ToString());
         }
 
         public T GetEnum<T>(string name, T defaultValue) where T : struct
         {
-            return GetValue<T>(name, defaultValue, x =>
+            return GetValue(name, defaultValue, x =>
             {
                 var val = x.ToString();
 
                 if (Enum.TryParse(val, true, out T result))
+                {
                     return result;
+                }
 
                 return defaultValue;
             });
@@ -134,7 +150,7 @@ namespace GitUIPluginInterfaces
 
         public void SetNullableEnum<T>(string name, T? value) where T : struct
         {
-            SetValue<T?>(name, value, x => x.HasValue ? x.ToString() : string.Empty);
+            SetValue(name, value, x => x.HasValue ? x.ToString() : string.Empty);
         }
 
         public T? GetNullableEnum<T>(string name) where T : struct
@@ -144,10 +160,14 @@ namespace GitUIPluginInterfaces
                 var val = x.ToString();
 
                 if (string.IsNullOrEmpty(val))
+                {
                     return null;
+                }
 
                 if (Enum.TryParse(val, true, out T result))
+                {
                     return result;
+                }
 
                 return null;
             });
@@ -155,48 +175,53 @@ namespace GitUIPluginInterfaces
 
         public void SetString(string name, string value)
         {
-            SetValue<string>(name, value, s => string.IsNullOrEmpty(s) ? null : s);
+            SetValue(name, value, s => string.IsNullOrEmpty(s) ? null : s);
         }
 
         public string GetString(string name, string defaultValue)
         {
-            return GetValue<string>(name, defaultValue, x => x);
+            return GetValue(name, defaultValue, x => x);
         }
     }
 
-
     public static class FontParser
     {
+        private const string InvariantCultureId = "_IC_";
 
-        private static readonly string InvariantCultureId = "_IC_";
         public static string AsString(this Font value)
         {
-            return String.Format(CultureInfo.InvariantCulture,
+            return string.Format(CultureInfo.InvariantCulture,
                 "{0};{1};{2}", value.FontFamily.Name, value.Size, InvariantCultureId);
         }
 
         public static Font Parse(this string value, Font defaultValue)
         {
             if (value == null)
+            {
                 return defaultValue;
+            }
 
             string[] parts = value.Split(';');
 
             if (parts.Length < 2)
+            {
                 return defaultValue;
+            }
 
             try
             {
                 string fontSize;
-                if (parts.Length == 3 && InvariantCultureId.Equals(parts[2]))
+                if (parts.Length == 3 && parts[2] == InvariantCultureId)
+                {
                     fontSize = parts[1];
+                }
                 else
                 {
                     fontSize = parts[1].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator);
                     fontSize = fontSize.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator);
                 }
 
-                return new Font(parts[0], Single.Parse(fontSize, CultureInfo.InvariantCulture));
+                return new Font(parts[0], float.Parse(fontSize, CultureInfo.InvariantCulture));
             }
             catch (Exception)
             {

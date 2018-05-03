@@ -4,7 +4,7 @@ using System.Text;
 
 namespace GitUI
 {
-    internal class NativeMethods
+    internal static class NativeMethods
     {
         #region Unmanaged Code
 
@@ -20,18 +20,18 @@ namespace GitUI
         [StructLayout(LayoutKind.Sequential)]
         internal struct CHARRANGE
         {
-            public int cpMin;         //First character of range (0 for start of doc)
-            public int cpMax;           //Last character of range (-1 for end of doc)
+            public int cpMin;         // First character of range (0 for start of doc)
+            public int cpMax;           // Last character of range (-1 for end of doc)
         }
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct FORMATRANGE
         {
-            public IntPtr hdc;             //Actual DC to draw on
-            public IntPtr hdcTarget;       //Target DC for determining text formatting
-            public RECT rc;                //Region of the DC to draw to (in twips)
-            public RECT rcPage;            //Region of the whole DC (page size) (in twips)
-            public CHARRANGE chrg;         //Range of text to draw (see earlier declaration)
+            public IntPtr hdc;             // Actual DC to draw on
+            public IntPtr hdcTarget;       // Target DC for determining text formatting
+            public RECT rc;                // Region of the DC to draw to (in twips)
+            public RECT rcPage;            // Region of the whole DC (page size) (in twips)
+            public CHARRANGE chrg;         // Range of text to draw (see earlier declaration)
         }
 
         internal const int WM_USER = 0x0400;
@@ -40,15 +40,12 @@ namespace GitUI
         [DllImport("user32")]
         internal static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wp, ref FORMATRANGE lp);
 
-
-
         [DllImport("user32", CharSet = CharSet.Auto, EntryPoint = "SendMessage")]
-        internal extern static IntPtr SendMessageInt(
+        internal static extern IntPtr SendMessageInt(
             IntPtr handle,
             uint msg,
             IntPtr wParam,
-            IntPtr lParam
-            );
+            IntPtr lParam);
         internal const int EM_LINEINDEX = 0x00BB;
         internal const int EM_LINELENGTH = 0x00C1;
         internal const int EM_POSFROMCHAR = 0x00D6;
@@ -57,7 +54,7 @@ namespace GitUI
 
         [DllImport("user32", EntryPoint = "ShowCaret")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        internal extern static bool ShowCaretAPI(
+        internal static extern bool ShowCaretAPI(
             IntPtr hwnd);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -69,16 +66,10 @@ namespace GitUI
         [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
         internal static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
         #endregion
-
-        private NativeMethods() { }
     }
 
-    internal sealed class NativeConstants
+    internal static class NativeConstants
     {
-        private NativeConstants()
-        {
-        }
-
         internal const uint WM_MOUSEACTIVATE = 0x21;
         internal const uint MA_ACTIVATE = 1;
         internal const uint MA_ACTIVATEANDEAT = 2;

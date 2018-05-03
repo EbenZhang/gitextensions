@@ -12,12 +12,13 @@ namespace GitCommandsTests.ExternalLinks
     public class ExternalLinksManagerIntegrationTests
     {
         private GitModuleTestHelper _testHelper;
-        private string _level1, _level2, _level3;
+        private string _level1;
+        private string _level2;
+        private string _level3;
         private RepoDistSettings _userRoaming;
         private RepoDistSettings _repoDistributed;
         private RepoDistSettings _repoLocal;
         private ExternalLinksLoader _loader;
-
 
         [SetUp]
         public void Setup()
@@ -49,7 +50,6 @@ namespace GitCommandsTests.ExternalLinks
             _testHelper = null;
         }
 
-
         [Test]
         public void Add_should_add_new_definition_to_the_lowest_level_level2()
         {
@@ -69,6 +69,7 @@ namespace GitCommandsTests.ExternalLinks
             manager.Add(definition);
 
             var effectiveSettings = manager.GetEffectiveSettings();
+
             // 2 comes from the user roaming settings
             // 3 come from the distributed
             effectiveSettings.Count.Should().Be(5);
@@ -98,6 +99,7 @@ namespace GitCommandsTests.ExternalLinks
             manager.Add(definition);
 
             var effectiveSettings = manager.GetEffectiveSettings();
+
             // 1 comes from the local
             // 3 come from the distributed
             // 2 comes from the local
@@ -129,6 +131,7 @@ namespace GitCommandsTests.ExternalLinks
             manager.Add(definition);
 
             var effectiveSettings = manager.GetEffectiveSettings();
+
             // 1 comes from the user roaming settings
             // 4 come from the distributed
             // 1 comes from the local
@@ -160,6 +163,7 @@ namespace GitCommandsTests.ExternalLinks
             manager.Save();
 
             var effectiveSettings = manager.GetEffectiveSettings();
+
             // 0 comes from the user roaming settings
             // 3 come from the distributed
             // 1 comes from the local

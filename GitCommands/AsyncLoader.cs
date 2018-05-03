@@ -1,207 +1,198 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using GitUI;
+using Microsoft.VisualStudio.Threading;
 
 namespace GitCommands
 {
-    public class AsyncLoader : IDisposable
+    public sealed class AsyncLoader : IDisposable
     {
-        private readonly TaskScheduler _continuationTaskScheduler;
-        private CancellationTokenSource _cancelledTokenSource;
-        public int Delay { get; set; }
-
-        public AsyncLoader()
-            : this(DefaultContinuationTaskScheduler)
+        /// <summary>
+        /// Invokes <paramref name="loadContent"/> on the thread pool, then executes <paramref name="continueWith"/> on the main thread.
+        /// </summary>
+        /// <remarks>
+        /// Note this method does not perform any cancellation of prior loads, nor does it support cancellation upon disposal.
+        /// If you require those features, use an instance of <see cref="AsyncLoader"/> instead.
+        /// </remarks>
+        /// <typeparam name="T">Type of data returned by <paramref name="loadContent"/> and accepted by <paramref name="continueWith"/>.</typeparam>
+        /// <param name="loadContent">A function to invoke on the thread pool that returns a value to be passed to <paramref name="continueWith"/>.</param>
+        /// <param name="continueWith">An action to invoke on the main thread with the return value from <paramref name="loadContent"/>.</param>
+        /// <param name="onError">
+        /// A callback for notification of exceptions from <paramref name="loadContent"/>.
+        /// Invoked on the original synchronisation context.
+        /// Invoked once per exception, so may be called multiple times.
+        /// Handlers must set <see cref="AsyncErrorEventArgs.Handled"/> to <c>true</c> to prevent any exceptions being re-thrown and faulting the async operation.
+        /// </param>
+        public static async Task<T> DoAsync<T>(Func<T> loadContent, Action<T> continueWith, Action<AsyncErrorEventArgs> onError)
         {
-        }
-
-        public AsyncLoader(TaskScheduler continuationTaskScheduler)
-        {
-            _continuationTaskScheduler = continuationTaskScheduler;
-            Delay = 0;
-        }
-
-        private static int _defaultThreadId = -1;
-        private static TaskScheduler _DefaultContinuationTaskScheduler;
-        public static TaskScheduler DefaultContinuationTaskScheduler
-        {
-            get
+            using (var loader = new AsyncLoader())
             {
-                if (_defaultThreadId == Thread.CurrentThread.ManagedThreadId && _DefaultContinuationTaskScheduler != null)
+                if (onError != null)
                 {
-                    return _DefaultContinuationTaskScheduler;
+                    loader.LoadingError += (_, e) => onError(e);
                 }
 
-                return TaskScheduler.FromCurrentSynchronizationContext();
-            }
-
-            set
-            {
-                _defaultThreadId = Thread.CurrentThread.ManagedThreadId;
-                _DefaultContinuationTaskScheduler = value;
+                return await loader.LoadAsync(loadContent, continueWith).ConfigureAwait(false);
             }
         }
 
-        public event EventHandler<AsyncErrorEventArgs> LoadingError = delegate { };
+        public event EventHandler<AsyncErrorEventArgs> LoadingError;
+
+        private readonly CancellationTokenSequence _cancellationSequence = new CancellationTokenSequence();
+
+        private int _disposed;
 
         /// <summary>
-        /// Does something on threadpool, executes continuation on current sync context thread, executes onError if the async request fails.
-        /// There does probably exist something like this in the .NET library, but I could not find it. //cocytus
+        /// Gets and sets an amount of time to delay calling <c>loadContent</c> actions after a call to one of the <c>Load</c> overloads.
         /// </summary>
-        /// <typeparam name="T">Result to be passed from doMe to continueWith</typeparam>
-        /// <param name="doMe">The stuff we want to do. Should return whatever continueWith expects.</param>
-        /// <param name="continueWith">Do this on original sync context.</param>
-        /// <param name="onError">Do this on original sync context if doMe barfs.</param>
-        public static Task<T> DoAsync<T>(Func<T> doMe, Action<T> continueWith, Action<AsyncErrorEventArgs> onError)
+        /// <remarks>
+        /// Defaults to <see cref="TimeSpan.Zero"/>.
+        /// </remarks>
+        public TimeSpan Delay { get; set; }
+
+        public Task LoadAsync(Action loadContent, Action onLoaded)
         {
-            AsyncLoader loader = new AsyncLoader();
-            loader.LoadingError += (sender, e) => onError(e);
-            return loader.Load(doMe, continueWith);
+            return LoadAsync(token => loadContent(), onLoaded);
         }
 
-        public static Task<T> DoAsync<T>(Func<T> doMe, Action<T> continueWith)
+        public async Task LoadAsync(Action<CancellationToken> loadContent, Action onLoaded)
         {
-            AsyncLoader loader = new AsyncLoader();
-            return loader.Load(doMe, continueWith);
-        }
-
-        public static Task DoAsync(Action doMe, Action continueWith)
-        {
-            AsyncLoader loader = new AsyncLoader();
-            return loader.Load(doMe, continueWith);
-        }
-
-        public Task Load(Action loadContent, Action onLoaded)
-        { 
-            return Load((token) => loadContent(), onLoaded);
-        }
-
-        public Task Load(Action<CancellationToken> loadContent, Action onLoaded)
-        {
-            Cancel();
-            _cancelledTokenSource?.Dispose();
-            _cancelledTokenSource = new CancellationTokenSource();
-            var token = _cancelledTokenSource.Token;
-            return Task.Factory.StartNew(() =>
+            await LoadAsync(
+                (token) =>
                 {
-                    if (Delay > 0)
-                    {
-                        token.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(Delay));
-                    }
-                    if (!token.IsCancellationRequested)
-                    {
-                        loadContent(token);
-                    }
-                }, token)
-                .ContinueWith((task) =>
-                    {
-                        if (task.IsFaulted)
-                        {
-                            foreach (var e in task.Exception.InnerExceptions)
-                                if (!OnLoadingError(e))
-                                    throw e;
-                            return;
-                        }
-                        try
-                        {
-                            if (!token.IsCancellationRequested)
-                            {
-                                onLoaded();
-                            }
-                        }
-                        catch (Exception exception)
-                        {
-                            if (!OnLoadingError(exception))
-                                throw;
-                        }
-                    }, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, _continuationTaskScheduler);
+                    loadContent(token);
+                    return string.Empty;
+                },
+                _ => onLoaded());
         }
 
-        public Task<T> Load<T>(Func<T> loadContent, Action<T> onLoaded)
+        public Task<T> LoadAsync<T>(Func<T> loadContent, Action<T> onLoaded)
         {
-            return Load((token) => loadContent(), onLoaded);
+            return LoadAsync(token => loadContent(), onLoaded);
         }
 
-        public Task<T> Load<T>(Func<CancellationToken, T> loadContent, Action<T> onLoaded)
+        public async Task<T> LoadAsync<T>(Func<CancellationToken, T> loadContent, Action<T> onLoaded)
         {
-            Cancel();
-            _cancelledTokenSource?.Dispose();
-            _cancelledTokenSource = new CancellationTokenSource();
-            var token = _cancelledTokenSource.Token;
-            return Task.Factory.StartNew(() => 
-                {
-                    if (Delay > 0)
-                    {
-                        token.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(Delay));
-                    }
-                    if (token.IsCancellationRequested)
-                    {
-                        return default;
-                    }
-                    return loadContent(token);
-
-                }, token)
-                .ContinueWith((task) =>
+            if (Volatile.Read(ref _disposed) != 0)
             {
-                if (task.IsFaulted)
+                throw new ObjectDisposedException(nameof(AsyncLoader));
+            }
+
+            // Stop any prior operation
+            Cancel();
+
+            // Create a new cancellation token
+            var token = _cancellationSequence.Next();
+
+            T result;
+
+            try
+            {
+                // Defer the load operation if requested
+                if (Delay > TimeSpan.Zero)
                 {
-                    foreach (var e in task.Exception.InnerExceptions)
-                        if (!OnLoadingError(e))
-                            throw e;
+                    await Task.Delay(Delay, token).ConfigureAwait(false);
+                }
+                else
+                {
+                    await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+                }
+
+                // Bail early if cancelled, returning default value for type
+                if (token.IsCancellationRequested)
+                {
+                    result = default;
+                }
+                else
+                {
+                    // Load content
+                    result = loadContent(token);
+                }
+            }
+            catch (Exception e)
+            {
+                if (e is OperationCanceledException && token.IsCancellationRequested)
+                {
                     return default;
                 }
+
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                if (!OnLoadingError(e))
+                {
+                    throw;
+                }
+
+                return default;
+            }
+
+            try
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+            }
+
+            // Invoke continuation unless cancelled
+            if (!token.IsCancellationRequested)
+            {
                 try
                 {
-                    if (!token.IsCancellationRequested)
-                    {
-                        onLoaded(task.Result);
-                    }
-                    return task.Result;
+                    onLoaded(result);
                 }
-                catch (Exception exception)
+                catch (Exception e)
                 {
-                    if (!OnLoadingError(exception))
+                    if (!OnLoadingError(e))
+                    {
                         throw;
+                    }
+
                     return default;
                 }
-            }, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, _continuationTaskScheduler);
-        }
+            }
 
-        public void Cancel()
-        {
-            _cancelledTokenSource?.Cancel();
+            return result;
         }
 
         private bool OnLoadingError(Exception exception)
         {
             var args = new AsyncErrorEventArgs(exception);
-            LoadingError(this, args);
+            LoadingError?.Invoke(this, args);
             return args.Handled;
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Cancel()
         {
-            if (disposing)
-                _cancelledTokenSource?.Dispose();
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new ObjectDisposedException(nameof(AsyncLoader));
+            }
+
+            _cancellationSequence.CancelCurrent();
         }
 
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+            {
+                return;
+            }
+
+            _cancellationSequence?.Dispose();
         }
     }
 
-    public class AsyncErrorEventArgs : EventArgs
+    public sealed class AsyncErrorEventArgs : EventArgs
     {
+        public Exception Exception { get; }
+
+        public bool Handled { get; set; } = true;
+
         public AsyncErrorEventArgs(Exception exception)
         {
             Exception = exception;
-            Handled = true;
         }
-
-        public Exception Exception { get; private set; }
-
-        public bool Handled { get; set; }
     }
 }

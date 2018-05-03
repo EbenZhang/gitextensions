@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.Repository;
+using GitCommands.UserRepositoryHistory;
 using GitUIPluginInterfaces.RepositoryHosts;
 using ResourceManager;
 
@@ -34,15 +34,16 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private readonly TranslationString _strCloneFolderCanNotBeEmpty = new TranslationString("Clone folder can not be empty");
         #endregion
 
-        readonly IRepositoryHostPlugin _gitHoster;
-        private EventHandler<GitModuleEventArgs> GitModuleChanged;
+        private readonly IRepositoryHostPlugin _gitHoster;
+        private readonly EventHandler<GitModuleEventArgs> _gitModuleChanged;
 
-        public ForkAndCloneForm(IRepositoryHostPlugin gitHoster, EventHandler<GitModuleEventArgs> GitModuleChanged)
+        public ForkAndCloneForm(IRepositoryHostPlugin gitHoster, EventHandler<GitModuleEventArgs> gitModuleChanged)
         {
-            this.GitModuleChanged = GitModuleChanged;
+            _gitModuleChanged = gitModuleChanged;
             _gitHoster = gitHoster;
             InitializeComponent();
             Translate();
+            this.AdjustForDpiScaling();
         }
 
         private void ForkAndCloneForm_Load(object sender, EventArgs e)
@@ -58,14 +59,18 @@ namespace GitUI.CommandsDialogs.RepoHosting
             }
             else
             {
-                var hist = Repositories.RepositoryHistory;
-                var lastRepo = hist.Repositories.FirstOrDefault();
-                if (lastRepo != null && !string.IsNullOrEmpty(lastRepo.Path))
+                ThreadHelper.JoinableTaskFactory.Run(async () =>
                 {
-                    string p = lastRepo.Path.Trim('/', '\\');
+                    var repositoryHistory = await RepositoryHistoryManager.Locals.LoadHistoryAsync();
 
-                    _destinationTB.Text = Path.GetDirectoryName(p);
-                }
+                    await this.SwitchToMainThreadAsync();
+                    var lastRepo = repositoryHistory.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(lastRepo?.Path))
+                    {
+                        string p = lastRepo.Path.Trim('/', '\\');
+                        _destinationTB.Text = Path.GetDirectoryName(p);
+                    }
+                });
             }
 
             Text = _gitHoster.Description + ": " + Text;
@@ -81,7 +86,6 @@ namespace GitUI.CommandsDialogs.RepoHosting
 
             AsyncLoader.DoAsync(
                 () => _gitHoster.GetMyRepos(),
-
                 repos =>
                 {
                     _myReposLV.Items.Clear();
@@ -94,11 +98,10 @@ namespace GitUI.CommandsDialogs.RepoHosting
                         _myReposLV.Items.Add(lvi);
                     }
                 },
-
                 ex =>
                 {
                     _myReposLV.Items.Clear();
-                    _helpTextLbl.Text = string.Format(_strFailedToGetRepos.Text, _gitHoster.Description) + 
+                    _helpTextLbl.Text = string.Format(_strFailedToGetRepos.Text, _gitHoster.Description) +
                         "\r\n\r\nException: " + ex.Exception.Message + "\r\n\r\n" + _helpTextLbl.Text;
                 });
         }
@@ -108,7 +111,9 @@ namespace GitUI.CommandsDialogs.RepoHosting
         {
             var search = _searchTB.Text;
             if (search == null || search.Trim().Length == 0)
+            {
                 return;
+            }
 
             PrepareSearch(sender, e);
 
@@ -122,11 +127,15 @@ namespace GitUI.CommandsDialogs.RepoHosting
                     _searchBtn.Enabled = true;
                 });
         }
+
         private void _getFromUserBtn_Click(object sender, EventArgs e)
         {
             var search = _searchTB.Text;
             if (search == null || search.Trim().Length == 0)
+            {
                 return;
+            }
+
             PrepareSearch(sender, e);
 
             AsyncLoader.DoAsync(
@@ -135,14 +144,18 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 ex =>
                 {
                     if (ex.Exception.Message.Contains("404"))
+                    {
                         MessageBox.Show(this, _strUserNotFound.Text, _strError.Text);
+                    }
                     else
+                    {
                         MessageBox.Show(this, _strCouldNotFetchReposOfUser.Text + Environment.NewLine +
                             ex.Exception.Message, _strError.Text);
+                    }
+
                     _searchBtn.Enabled = true;
                 });
         }
-
 
         private void PrepareSearch(object sender, EventArgs e)
         {
@@ -152,20 +165,27 @@ namespace GitUI.CommandsDialogs.RepoHosting
             _searchResultsLV.Items.Add(new ListViewItem { Text = _strSearching.Text });
         }
 
-        private void HandleSearchResult(IList<IHostedRepository> repos)
+        private void HandleSearchResult(IReadOnlyList<IHostedRepository> repos)
         {
             _searchResultsLV.Items.Clear();
+
             foreach (var repo in repos)
             {
-                var lvi = new ListViewItem { Tag = repo, Text = repo.Name };
-                lvi.SubItems.Add(repo.Owner);
-                lvi.SubItems.Add(repo.Forks.ToString());
-                lvi.SubItems.Add(repo.IsAFork ? _strYes.Text : _strNo.Text);
-                _searchResultsLV.Items.Add(lvi);
+                _searchResultsLV.Items.Add(new ListViewItem
+                {
+                    Tag = repo,
+                    Text = repo.Name,
+                    SubItems =
+                    {
+                        repo.Owner,
+                        repo.Forks.ToString(),
+                        repo.IsAFork ? _strYes.Text : _strNo.Text
+                    }
+                });
             }
+
             _searchBtn.Enabled = true;
         }
-
 
         private void _forkBtn_Click(object sender, EventArgs e)
         {
@@ -234,12 +254,19 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private void _openGitupPageBtn_Click(object sender, EventArgs e)
         {
             if (CurrentySelectedGitRepo == null)
+            {
                 return;
+            }
+
             string hp = CurrentySelectedGitRepo.Homepage;
             if (string.IsNullOrEmpty(hp) || (!hp.StartsWith("http://") && !hp.StartsWith("https://")))
+            {
                 MessageBox.Show(this, _strNoHomepageDefined.Text, _strError.Text);
+            }
             else
+            {
                 Process.Start(CurrentySelectedGitRepo.Homepage);
+            }
         }
 
         private void _closeBtn_Click(object sender, EventArgs e)
@@ -251,7 +278,9 @@ namespace GitUI.CommandsDialogs.RepoHosting
         {
             UpdateCloneInfo();
             if (_tabControl.SelectedTab == _searchReposPage)
+            {
                 _searchTB.Focus();
+            }
         }
 
         private void _myReposLV_SelectedIndexChanged(object sender, EventArgs e)
@@ -279,18 +308,25 @@ namespace GitUI.CommandsDialogs.RepoHosting
         {
             string targetDir = GetTargetDir();
             if (targetDir == null)
+            {
                 return;
+            }
 
             string repoSrc = repo.CloneReadWriteUrl;
 
             string cmd = GitCommandHelpers.CloneCmd(repoSrc, targetDir);
 
-            FormRemoteProcess formRemoteProcess = new FormRemoteProcess(new GitModule(null), AppSettings.GitCommand, cmd);
-            formRemoteProcess.Remote = repoSrc;
+            var formRemoteProcess = new FormRemoteProcess(new GitModule(null), AppSettings.GitCommand, cmd)
+            {
+                Remote = repoSrc
+            };
+
             formRemoteProcess.ShowDialog();
 
             if (formRemoteProcess.ErrorOccurred())
+            {
                 return;
+            }
 
             GitModule module = new GitModule(targetDir);
 
@@ -298,10 +334,12 @@ namespace GitUI.CommandsDialogs.RepoHosting
             {
                 var error = module.AddRemote(_addRemoteAsTB.Text.Trim(), repo.ParentReadOnlyUrl);
                 if (!string.IsNullOrEmpty(error))
+                {
                     MessageBox.Show(this, error, _strCouldNotAddRemote.Text);
+                }
             }
 
-            GitModuleChanged?.Invoke(this, new GitModuleEventArgs(module));
+            _gitModuleChanged?.Invoke(this, new GitModuleEventArgs(module));
 
             Close();
         }
@@ -313,23 +351,23 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 if (_tabControl.SelectedTab == _searchReposPage)
                 {
                     if (_searchResultsLV.SelectedItems.Count != 1)
+                    {
                         return null;
+                    }
 
                     return (IHostedRepository)_searchResultsLV.SelectedItems[0].Tag;
                 }
+
                 if (_myReposLV.SelectedItems.Count != 1)
+                {
                     return null;
+                }
 
                 return (IHostedRepository)_myReposLV.SelectedItems[0].Tag;
             }
         }
 
-        private void UpdateCloneInfo()
-        {
-            UpdateCloneInfo(true);
-        }
-
-        private void UpdateCloneInfo(bool updateCreateDirTB)
+        private void UpdateCloneInfo(bool updateCreateDirTB = true)
         {
             var repo = CurrentySelectedGitRepo;
 
@@ -346,9 +384,13 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 var moreInfo = !string.IsNullOrEmpty(_addRemoteAsTB.Text) ? string.Format(_strWillBeAddedAsARemote.Text, _addRemoteAsTB.Text.Trim()) : "";
 
                 if (_tabControl.SelectedTab == _searchReposPage)
+                {
                     _cloneInfoText.Text = string.Format(_strWillCloneInfo.Text, repo.CloneReadWriteUrl, GetTargetDir(), moreInfo);
+                }
                 else if (_tabControl.SelectedTab == _myReposPage)
+                {
                     _cloneInfoText.Text = string.Format(_strWillCloneWithPushAccess.Text, repo.CloneReadWriteUrl, GetTargetDir(), moreInfo);
+                }
             }
             else
             {
@@ -374,13 +416,17 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private void _destinationTB_Validating(object sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_destinationTB.Text.IndexOfAny(Path.GetInvalidPathChars()) != -1)
+            {
                 e.Cancel = true;
+            }
         }
 
         private void _createDirTB_Validating(object sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_createDirTB.Text.IndexOfAny(Path.GetInvalidPathChars()) != -1)
+            {
                 e.Cancel = true;
+            }
         }
     }
 }

@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
-using ResourceManager;
-using GitUIPluginInterfaces;
 using GitCommands.Settings;
-using System.Linq;
+using GitUIPluginInterfaces;
+using JetBrains.Annotations;
+using ResourceManager;
 
 namespace GitUI.CommandsDialogs.SettingsDialog
 {
@@ -14,35 +15,36 @@ namespace GitUI.CommandsDialogs.SettingsDialog
     /// </summary>
     public abstract class SettingsPageBase : GitExtensionsControl, ISettingsPage
     {
-        private List<ISettingControlBinding> _controlBindings = new List<ISettingControlBinding>();
-        private ISettingsPageHost _PageHost;
+        private readonly List<ISettingControlBinding> _controlBindings = new List<ISettingControlBinding>();
+        private ISettingsPageHost _pageHost;
         protected ISettingsPageHost PageHost
         {
             get
             {
-                if (_PageHost == null)
+                if (_pageHost == null)
+                {
                     throw new InvalidOperationException("PageHost instance was not passed to page: " + GetType().FullName);
+                }
 
-                return _PageHost;
+                return _pageHost;
             }
         }
 
         protected CheckSettingsLogic CheckSettingsLogic => PageHost.CheckSettingsLogic;
         protected CommonLogic CommonLogic => CheckSettingsLogic.CommonLogic;
 
+        protected GitModule Module => CommonLogic.Module;
 
-        protected GitModule Module => this.CommonLogic.Module;
-
-        protected virtual void Init(ISettingsPageHost aPageHost)
+        protected virtual void Init(ISettingsPageHost pageHost)
         {
-            _PageHost = aPageHost;
+            _pageHost = pageHost;
         }
 
-        public static T Create<T>(ISettingsPageHost aPageHost) where T : SettingsPageBase, new()
+        public static T Create<[MeansImplicitUse] T>(ISettingsPageHost pageHost) where T : SettingsPageBase, new()
         {
             T result = new T();
 
-            result.Init(aPageHost);
+            result.Init(pageHost);
 
             return result;
         }
@@ -101,67 +103,76 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         protected abstract ISettingsSource GetCurrentSettings();
         protected abstract bool AreEffectiveSettings { get; }
 
-        public void AddControlBinding(ISettingControlBinding aBinding)
+        public void AddControlBinding(ISettingControlBinding binding)
         {
-            _controlBindings.Add(aBinding);
+            _controlBindings.Add(binding);
         }
 
-        protected void AddSettingBinding(BoolNullableSetting aSetting, CheckBox aCheckBox)
+        protected void AddSettingBinding(BoolNullableSetting setting, CheckBox checkBox)
         {
-            var adapter = new BoolCheckBoxAdapter(aSetting, aCheckBox);
+            var adapter = new BoolCheckBoxAdapter(setting, checkBox);
             AddControlBinding(adapter.CreateControlBinding());
         }
 
-        protected void AddSettingBinding(IntNullableSetting aSetting, TextBox aControl)
+        protected void AddSettingBinding(IntNullableSetting setting, TextBox control)
         {
-            var adapter = new IntTextBoxAdapter(aSetting, aControl);
+            var adapter = new IntTextBoxAdapter(setting, control);
             AddControlBinding(adapter.CreateControlBinding());
         }
 
-        protected void AddSettingBinding(GitCommands.Settings.StringSetting aSetting, ComboBox aComboBox)
+        protected void AddSettingBinding(GitCommands.Settings.StringSetting setting, ComboBox comboBox)
         {
-            var adapter = new StringComboBoxAdapter(aSetting, aComboBox);
+            var adapter = new StringComboBoxAdapter(setting, comboBox);
             AddControlBinding(adapter.CreateControlBinding());
         }
 
-        IList<string> childrenText;
+        private IReadOnlyList<string> _childrenText;
 
         /// <summary>
         /// override to provide search keywords
         /// </summary>
         public virtual IEnumerable<string> GetSearchKeywords()
         {
-            return childrenText ?? (childrenText = GetChildrenText(this));
+            return _childrenText ?? (_childrenText = GetChildrenText(this));
         }
 
-        /// <summary>Recursively gets the text from all <see cref="Control"/>s within the specified <paramref name="control"/>.</summary>
-        static IList<string> GetChildrenText(Control control)
+        /// <summary>
+        /// Gets the <see cref="Control.Text"/> values of <paramref name="control"/>
+        /// and all its descendants.
+        /// </summary>
+        private static IReadOnlyList<string> GetChildrenText(Control control)
         {
-            if (control.HasChildren == false) { return new string[0]; }
+            var texts = new List<string>();
 
-            List<string> texts = new List<string>();
-            foreach (Control child in control.Controls)
+            var queue = new Queue<Control>();
+            queue.Enqueue(control);
+
+            while (queue.Count != 0)
             {
-                if (!child.Visible || child is NumericUpDown)
-                {// skip: invisible; some input controls
+                var next = queue.Dequeue();
+
+                if (!next.Visible || next is NumericUpDown)
+                {
+                    // skip: invisible; some input controls
                     continue;
                 }
 
-                if (child.Enabled && !string.IsNullOrWhiteSpace(child.Text))
-                {// enabled AND not whitespace -> add
+                if (next.Enabled && !string.IsNullOrWhiteSpace(next.Text))
+                {
+                    // enabled AND not whitespace -> add
                     // also searches text boxes and comboboxes
                     // TODO(optional): search through the drop down list of comboboxes
                     // TODO(optional): convert numeric dropdown values to text
-                    texts.Add(child.Text.Trim().ToLowerInvariant());
+                    texts.Add(next.Text.Trim().ToLowerInvariant());
                 }
-                texts.AddRange(GetChildrenText(child));// recurse
-            }
-            return texts;
-        }
 
-        protected virtual string GetCommaSeparatedKeywordList()
-        {
-            return "";
+                foreach (Control child in next.Controls)
+                {
+                    queue.Enqueue(child);
+                }
+            }
+
+            return texts;
         }
 
         public virtual bool IsInstantSavePage => false;
@@ -171,28 +182,28 @@ namespace GitUI.CommandsDialogs.SettingsDialog
 
     public class BoolCheckBoxAdapter : GitUIPluginInterfaces.BoolSetting
     {
-        public BoolCheckBoxAdapter(BoolNullableSetting aSetting, CheckBox aCheckBox)
-            : base(aSetting.FullPath, aSetting.DefaultValue.Value)
+        public BoolCheckBoxAdapter(BoolNullableSetting setting, CheckBox checkBox)
+            : base(setting.FullPath, setting.DefaultValue.Value)
         {
-            CustomControl = aCheckBox;
+            CustomControl = checkBox;
         }
     }
 
-    public class StringComboBoxAdapter : GitUIPluginInterfaces.ChoiceSetting
+    public class StringComboBoxAdapter : ChoiceSetting
     {
-        public StringComboBoxAdapter(GitCommands.Settings.StringSetting aSetting, ComboBox aComboBox)
-            : base(aSetting.FullPath, aComboBox.Items.Cast<string>().ToList(), aSetting.DefaultValue)
+        public StringComboBoxAdapter(GitCommands.Settings.StringSetting setting, ComboBox comboBox)
+            : base(setting.FullPath, comboBox.Items.Cast<string>().ToList(), setting.DefaultValue)
         {
-            CustomControl = aComboBox;
+            CustomControl = comboBox;
         }
     }
 
-    public class IntTextBoxAdapter : GitUIPluginInterfaces.NumberSetting<int>
+    public class IntTextBoxAdapter : NumberSetting<int>
     {
-        public IntTextBoxAdapter(IntNullableSetting aSetting, TextBox aControl)
-            : base(aSetting.FullPath, aSetting.DefaultValue.Value)
+        public IntTextBoxAdapter(IntNullableSetting setting, TextBox control)
+            : base(setting.FullPath, setting.DefaultValue.Value)
         {
-            CustomControl = aControl;
+            CustomControl = control;
         }
     }
 }

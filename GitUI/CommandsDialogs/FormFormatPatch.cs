@@ -39,13 +39,15 @@ namespace GitUI.CommandsDialogs
         {
         }
 
-        public FormFormatPatch(GitUICommands aCommands)
-            : base(aCommands)
+        public FormFormatPatch(GitUICommands commands)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
-            if (aCommands != null)
+            if (commands != null)
+            {
                 MailFrom.Text = Module.GetEffectiveSetting(SettingKeyString.UserEmail);
+            }
         }
 
         private void Browse_Click(object sender, EventArgs e)
@@ -72,7 +74,9 @@ namespace GitUI.CommandsDialogs
         private void OutputPath_TextChanged(object sender, EventArgs e)
         {
             if (Directory.Exists(OutputPath.Text))
-               AppSettings.LastFormatPatchDir = OutputPath.Text;
+            {
+                AppSettings.LastFormatPatchDir = OutputPath.Text;
+            }
         }
 
         private void FormatPatch_Click(object sender, EventArgs e)
@@ -109,7 +113,9 @@ namespace GitUI.CommandsDialogs
                 if (Directory.Exists(savePatchesToDir))
                 {
                     foreach (string file in Directory.GetFiles(savePatchesToDir, "*.patch"))
+                    {
                         File.Delete(file);
+                    }
                 }
                 else
                 {
@@ -151,27 +157,31 @@ namespace GitUI.CommandsDialogs
                     }
                 }
             }
-            else
-                if (string.IsNullOrEmpty(rev1) || string.IsNullOrEmpty(rev2))
-                {
-                    MessageBox.Show(this, _twoRevisionsNeededText.Text, _twoRevisionsNeededCaption.Text);
-                    return;
-                }
+            else if (string.IsNullOrEmpty(rev1) || string.IsNullOrEmpty(rev2))
+            {
+                MessageBox.Show(this, _twoRevisionsNeededText.Text, _twoRevisionsNeededCaption.Text);
+                return;
+            }
 
             if (!SaveToDir.Checked)
             {
                 result += Environment.NewLine + Environment.NewLine;
                 if (SendMail(savePatchesToDir))
+                {
                     result += _sendMailResult.Text + " " + MailTo.Text;
+                }
                 else
+                {
                     result += _sendMailResultFailed.Text;
+                }
 
-
-                //Clean up
+                // Clean up
                 if (Directory.Exists(savePatchesToDir))
                 {
                     foreach (string file in Directory.GetFiles(savePatchesToDir, "*.patch"))
+                    {
                         File.Delete(file);
+                    }
                 }
             }
 
@@ -186,7 +196,9 @@ namespace GitUI.CommandsDialogs
                 string from = MailFrom.Text;
 
                 if (string.IsNullOrEmpty(from))
+                {
                     MessageBox.Show(this, _noGitMailConfigured.Text);
+                }
 
                 string to = MailTo.Text;
 
@@ -198,19 +210,23 @@ namespace GitUI.CommandsDialogs
                         mail.Attachments.Add(attacheMent);
                     }
 
-                    var smtpClient = new SmtpClient(AppSettings.SmtpServer);
-                    smtpClient.Port = AppSettings.SmtpPort;
-                    smtpClient.EnableSsl = AppSettings.SmtpUseSsl;
+                    var smtpClient = new SmtpClient(AppSettings.SmtpServer)
+                    {
+                        Port = AppSettings.SmtpPort,
+                        EnableSsl = AppSettings.SmtpUseSsl
+                    };
+
                     using (var credentials = new SmtpCredentials())
                     {
                         credentials.login.Text = from;
-                        if (credentials.ShowDialog(this) == DialogResult.OK)
-                            smtpClient.Credentials = new NetworkCredential(credentials.login.Text, credentials.password.Text);
-                        else
-                            smtpClient.Credentials = CredentialCache.DefaultNetworkCredentials;
+
+                        smtpClient.Credentials = credentials.ShowDialog(this) == DialogResult.OK
+                            ? new NetworkCredential(credentials.login.Text, credentials.password.Text)
+                            : CredentialCache.DefaultNetworkCredentials;
                     }
-                    ServicePointManager.ServerCertificateValidationCallback =
-                        (sender, certificate, chain, errors) => true;
+
+                    ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+
                     smtpClient.Send(mail);
                 }
             }
@@ -219,6 +235,7 @@ namespace GitUI.CommandsDialogs
                 MessageBox.Show(this, ex.Message);
                 return false;
             }
+
             return true;
         }
 

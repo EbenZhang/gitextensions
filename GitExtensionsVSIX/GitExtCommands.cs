@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
-
 using EnvDTE;
 using EnvDTE80;
-
+using GitExtensionsVSIX.Commands;
 using GitPluginShared;
 using GitPluginShared.Commands;
-
 using Microsoft.VisualStudio.Shell;
 using static GitExtensionsVSIX.PackageIds;
-using GitExtensionsVSIX.Commands;
 
 namespace GitExtensionsVSIX
 {
@@ -34,7 +31,7 @@ namespace GitExtensionsVSIX
 
         private readonly DTE2 _application;
         private OutputWindowPane _outputPane;
-        private OleMenuCommandService _commandService;
+        private readonly OleMenuCommandService _commandService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GitExtCommands"/> class.
@@ -65,11 +62,11 @@ namespace GitExtensionsVSIX
 
         private void RegisterCommands()
         {
-            //RegisterCommand("Difftool_Selection", new ToolbarCommand<OpenWithDiftool>(runForSelection: true));
+            ////RegisterCommand("Difftool_Selection", new ToolbarCommand<OpenWithDiftool>(runForSelection: true));
             RegisterCommand("Difftool", new ToolbarCommand<OpenWithDiftool>(), gitExtDiffCommand);
-            //RegisterCommand("ShowFileHistory_Selection", new ToolbarCommand<FileHistory>(runForSelection: true));
+            ////RegisterCommand("ShowFileHistory_Selection", new ToolbarCommand<FileHistory>(runForSelection: true));
             RegisterCommand("ShowFileHistory", new ToolbarCommand<FileHistory>(), gitExtHistoryCommand);
-            //RegisterCommand("ResetChanges_Selection", new ToolbarCommand<Revert>(runForSelection: true));
+            ////RegisterCommand("ResetChanges_Selection", new ToolbarCommand<Revert>(runForSelection: true));
             RegisterCommand("ResetChanges", new ToolbarCommand<Revert>(), gitExtResetFileCommand);
             RegisterCommand("Browse", new ToolbarCommand<Browse>(), gitExtBrowseCommand);
             RegisterCommand("Clone", new ToolbarCommand<Clone>(), gitExtCloneCommand);
@@ -115,7 +112,9 @@ namespace GitExtensionsVSIX
         {
             OleMenuCommand guiCommand = (OleMenuCommand)sender;
             if (_commands.TryGetValue(guiCommand.CommandID.ID, out var command))
+            {
                 command.BeforeQueryStatus(_application, guiCommand);
+            }
         }
 
         /// <summary>
@@ -150,7 +149,9 @@ namespace GitExtensionsVSIX
         {
             var guiCommand = (MenuCommand)sender;
             if (_commands.TryGetValue(guiCommand.CommandID.ID, out var command))
+            {
                 command.BaseCommand.OnCommand(_application, OutputPane);
+            }
         }
     }
 }

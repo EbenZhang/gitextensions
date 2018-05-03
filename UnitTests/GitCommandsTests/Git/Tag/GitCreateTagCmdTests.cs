@@ -11,8 +11,7 @@ namespace GitCommandsTests.Git.Tag
         private const string Revision = "0123456789";
         private const string TagMessage = "foo";
         private const string KeyId = "A9876F";
-        private const string  TagMessageFile = "c:/.git/TAGMESSAGE";
-
+        private const string TagMessageFile = "c:/.git/TAGMESSAGE";
 
         [TestCase(null)]
         [TestCase("")]
@@ -56,7 +55,6 @@ namespace GitCommandsTests.Git.Tag
             Assert.Throws<NotSupportedException>(() => cmd.ToLine());
         }
 
-
         [TestCase(true, "tag -f -s -F \"c:/.git/TAGMESSAGE\" \"bla\" -- \"0123456789\"")]
         [TestCase(false, "tag -s -F \"c:/.git/TAGMESSAGE\" \"bla\" -- \"0123456789\"")]
         public void ToLine_should_render_force_flag(bool force, string expected)
@@ -82,6 +80,5 @@ namespace GitCommandsTests.Git.Tag
 
             Assert.AreEqual(expected, actualCmdLine);
         }
-
     }
 }

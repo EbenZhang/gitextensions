@@ -1,5 +1,6 @@
 ﻿using System;
 using GitCommands.ExternalLinks;
+using GitExtUtils.GitUI;
 
 namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 {
@@ -7,13 +8,15 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
     {
         private ExternalLinksManager _externalLinksManager;
 
-
         public RevisionLinksSettingsPage()
         {
             InitializeComponent();
-            Text = @"Revision links";
+            CaptionCol.Width = DpiUtil.Scale(150);
+            Text = "Revision links";
             Translate();
             LinksGrid.AutoGenerateColumns = false;
+            CaptionCol.DataPropertyName = nameof(ExternalLinkFormat.Caption);
+            URICol.DataPropertyName = nameof(ExternalLinkFormat.Format);
         }
 
         protected override void SettingsToPage()
@@ -25,6 +28,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             {
                 _NO_TRANSLATE_Categories.SelectedIndex = 0;
             }
+
             CategoryChanged();
         }
 
@@ -48,7 +52,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             var effectiveLinkDefinitions = _externalLinksManager.GetEffectiveSettings();
 
             _NO_TRANSLATE_Categories.DataSource = null;
-            _NO_TRANSLATE_Categories.DisplayMember = "Name";
+            _NO_TRANSLATE_Categories.DisplayMember = nameof(ExternalLinkDefinition.Name);
             _NO_TRANSLATE_Categories.DataSource = effectiveLinkDefinitions;
         }
 
@@ -113,7 +117,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private void Remove_Click(object sender, EventArgs e)
         {
             if (SelectedLinkDefinition == null)
+            {
                 return;
+            }
 
             int idx = _NO_TRANSLATE_Categories.SelectedIndex;
 
@@ -150,7 +156,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private void MessageChx_CheckedChanged(object sender, EventArgs e)
         {
-
             if (SelectedLinkDefinition != null)
             {
                 if (MessageChx.Checked)

@@ -7,16 +7,18 @@ namespace GitCommands
 {
     public sealed class GitDeleteBranchCmd : GitCommand
     {
-        private readonly ICollection<IGitRef> branches;
-        private readonly bool force;
+        private readonly IReadOnlyCollection<IGitRef> _branches;
+        private readonly bool _force;
 
-        public GitDeleteBranchCmd(IEnumerable<IGitRef> branches, bool force)
+        public GitDeleteBranchCmd(IReadOnlyCollection<IGitRef> branches, bool force)
         {
             if (branches == null)
+            {
                 throw new ArgumentNullException(nameof(branches));
+            }
 
-            this.branches = branches.ToArray();
-            this.force = force;
+            _branches = branches;
+            _force = force;
         }
 
         public override string GitComandName()
@@ -26,15 +28,20 @@ namespace GitCommands
 
         protected override IEnumerable<string> CollectArguments()
         {
-            yield return force ? "-D" : "-d";
+            yield return _force ? "-D" : "-d";
 
-            var hasRemoteBranch = branches.Any(branch => branch.IsRemote);
-            var hasNonRemoteBranch = branches.Any(branch => !branch.IsRemote);
+            var hasRemoteBranch = _branches.Any(branch => branch.IsRemote);
+            var hasNonRemoteBranch = _branches.Any(branch => !branch.IsRemote);
+
             if (hasRemoteBranch)
+            {
                 yield return hasNonRemoteBranch ? "-a" : "-r";
+            }
 
-            foreach (var branch in branches)
+            foreach (var branch in _branches)
+            {
                 yield return "\"" + branch.Name + "\"";
+            }
         }
 
         public override bool AccessesRemote()

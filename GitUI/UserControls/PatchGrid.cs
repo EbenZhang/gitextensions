@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
-using PatchApply;
+using GitCommands.Patches;
+using GitExtUtils.GitUI;
 using ResourceManager;
 
 namespace GitUI
@@ -13,44 +13,46 @@ namespace GitUI
 
         public PatchGrid()
         {
-            InitializeComponent(); Translate();
-            Patches.CellPainting += Patches_CellPainting;
+            InitializeComponent();
+            Translate();
+            FileName.DataPropertyName = nameof(PatchFile.Name);
+            subjectDataGridViewTextBoxColumn.DataPropertyName = nameof(PatchFile.Subject);
+            authorDataGridViewTextBoxColumn.DataPropertyName = nameof(PatchFile.Author);
+            dateDataGridViewTextBoxColumn.DataPropertyName = nameof(PatchFile.Date);
+            Status.DataPropertyName = nameof(PatchFile.Status);
+
+            FileName.Width = DpiUtil.Scale(50);
+            authorDataGridViewTextBoxColumn.Width = DpiUtil.Scale(140);
+            dateDataGridViewTextBoxColumn.Width = DpiUtil.Scale(160);
+            Status.Width = DpiUtil.Scale(80);
         }
 
-        static void Patches_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
-        {
-
-        }
-
-        private static void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
-        }
-
-        protected override void OnRuntimeLoad(EventArgs e)
+        protected override void OnRuntimeLoad()
         {
             Initialize();
         }
 
         public void Initialize()
         {
-            IList<PatchFile> patchFiles;
+            var patchFiles = Module.InTheMiddleOfInteractiveRebase()
+                ? Module.GetInteractiveRebasePatchFiles()
+                : Module.GetRebasePatchFiles();
 
-            if (Module.InTheMiddleOfInteractiveRebase())
-                Patches.DataSource = patchFiles = Module.GetInteractiveRebasePatchFiles();
-            else
-                Patches.DataSource = patchFiles = Module.GetRebasePatchFiles();
+            Patches.DataSource = patchFiles;
 
             if (patchFiles.Any())
             {
                 int rowsInView = Patches.DisplayedRowCount(false);
-                Patches.FirstDisplayedScrollingRowIndex = Math.Max(0, patchFiles.TakeWhile(pf => !pf.IsNext).Count() - rowsInView / 2);
+                Patches.FirstDisplayedScrollingRowIndex = Math.Max(0, patchFiles.TakeWhile(pf => !pf.IsNext).Count() - (rowsInView / 2));
             }
         }
 
         private void Patches_DoubleClick(object sender, EventArgs e)
         {
-            if (Patches.SelectedRows.Count != 1) return;
+            if (Patches.SelectedRows.Count != 1)
+            {
+                return;
+            }
 
             var patchFile = (PatchFile)Patches.SelectedRows[0].DataBoundItem;
 

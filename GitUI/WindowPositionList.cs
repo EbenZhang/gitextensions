@@ -54,6 +54,7 @@ namespace GitUI
                 Directory.CreateDirectory(AppDataDir);
             }
         }
+
         protected WindowPositionList()
         {
             WindowPositions = new List<WindowPosition>();
@@ -76,12 +77,13 @@ namespace GitUI
             {
                 return new WindowPositionList();
             }
+
             try
             {
                 using (
                     var stream = File.Open(ConfigFilePath, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite))
                 {
-                    return new XmlSerializer(typeof (WindowPositionList)).Deserialize(stream) as WindowPositionList;
+                    return new XmlSerializer(typeof(WindowPositionList)).Deserialize(stream) as WindowPositionList;
                 }
             }
             catch

@@ -1,39 +1,57 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using JetBrains.Annotations;
 
 namespace GitUI.CommandsDialogs
 {
     public partial class SearchControl<T> : UserControl, IDisposable where T : class
     {
-        private readonly Func<string, IList<T>> getCandidates;
+        private readonly Func<string, IEnumerable<T>> _getCandidates;
         private readonly Action<Size> _onSizeChanged;
-        private AsyncLoader backgroundLoader = new AsyncLoader();
+        private readonly AsyncLoader _backgroundLoader = new AsyncLoader();
         private bool _isUpdatingTextFromCode = false;
         public event Action OnTextEntered;
         public event Action OnCancelled;
 
         public override string Text
         {
-            get { return txtSearchBox.Text; }
-            set { txtSearchBox.Text = value; }
+            get => txtSearchBox.Text;
+            set => txtSearchBox.Text = value;
         }
 
-        public SearchControl(Func<string, IList<T>> getCandidates, Action<Size> onSizeChanged)
+        public SearchControl([NotNull]Func<string, IEnumerable<T>> getCandidates, Action<Size> onSizeChanged)
         {
             InitializeComponent();
+            txtSearchBox.LostFocus += TxtSearchBoxOnLostFocus;
+            listBoxSearchResult.LostFocus += ListBoxSearchResultOnLostFocus;
             listBoxSearchResult.Left = Left;
             txtSearchBox.Select();
 
-            if (getCandidates == null)
-            {
-                throw new InvalidOperationException("getCandidates cannot be null");
-            }
-            this.getCandidates = getCandidates;
+            _getCandidates = getCandidates;
             _onSizeChanged = onSizeChanged;
             AutoFit();
+        }
+
+        private void ListBoxSearchResultOnLostFocus(object sender, EventArgs eventArgs)
+        {
+            CloseDropdownWhenLostFocus();
+        }
+
+        private void TxtSearchBoxOnLostFocus(object sender, EventArgs eventArgs)
+        {
+            CloseDropdownWhenLostFocus();
+        }
+
+        private void CloseDropdownWhenLostFocus()
+        {
+            if (!txtSearchBox.Focused && !listBoxSearchResult.Focused)
+            {
+                CloseDropdown();
+            }
         }
 
         public void CloseDropdown()
@@ -41,23 +59,24 @@ namespace GitUI.CommandsDialogs
             listBoxSearchResult.Visible = false;
         }
 
-        private void SearchForCandidates(IList<T> candidates)
+        private void SearchForCandidates(IEnumerable<T> candidates)
         {
             var selectionStart = txtSearchBox.SelectionStart;
             var selectionLength = txtSearchBox.SelectionLength;
             listBoxSearchResult.BeginUpdate();
             listBoxSearchResult.Items.Clear();
 
-            for (int i = 0; i < candidates.Count && i < 20; i++)
+            foreach (var candidate in candidates.Take(20))
             {
-                listBoxSearchResult.Items.Add(candidates[i]);
+                listBoxSearchResult.Items.Add(candidate);
             }
 
             listBoxSearchResult.EndUpdate();
-            if (candidates.Count > 0)
+            if (listBoxSearchResult.Items.Count > 0)
             {
                 listBoxSearchResult.SelectedIndex = 0;
             }
+
             txtSearchBox.SelectionStart = selectionStart;
             txtSearchBox.SelectionLength = selectionLength;
             AutoFit();
@@ -98,6 +117,7 @@ namespace GitUI.CommandsDialogs
                 var listBoxLocationOnScreen = txtBoxOnScreen;
                 listBoxSearchResult.Location = ParentForm.PointToClient(listBoxLocationOnScreen);
             }
+
             listBoxSearchResult.BringToFront();
         }
 
@@ -105,11 +125,7 @@ namespace GitUI.CommandsDialogs
 
         void IDisposable.Dispose()
         {
-            if (backgroundLoader != null)
-            {
-                backgroundLoader.Cancel();
-            }
-            backgroundLoader = null;
+            _backgroundLoader?.Dispose();
         }
 
         private void txtSearchBox_TextChange(object sender, EventArgs e)
@@ -120,9 +136,10 @@ namespace GitUI.CommandsDialogs
                 _isUpdatingTextFromCode = false;
                 return;
             }
-            string  _selectedText = txtSearchBox.Text;
 
-            backgroundLoader.Load(() => getCandidates(_selectedText), SearchForCandidates);
+            string selectedText = txtSearchBox.Text;
+
+            _backgroundLoader.LoadAsync(() => _getCandidates(selectedText), SearchForCandidates);
         }
 
         private void txtSearchBox_KeyUp(object sender, KeyEventArgs e)
@@ -138,10 +155,7 @@ namespace GitUI.CommandsDialogs
                 listBoxSearchResult.SelectedItem = null;
                 listBoxSearchResult.Visible = false;
                 e.SuppressKeyPress = true;
-                if (OnCancelled != null)
-                {
-                    OnCancelled();
-                }
+                OnCancelled?.Invoke();
             }
         }
 
@@ -152,11 +166,9 @@ namespace GitUI.CommandsDialogs
             {
                 txtSearchBox.Text = listBoxSearchResult.SelectedItem.ToString();
             }
+
             listBoxSearchResult.Visible = false;
-            if (OnTextEntered != null)
-            {
-                OnTextEntered();
-            }
+            OnTextEntered?.Invoke();
         }
 
         private void txtSearchBox_KeyDown(object sender, KeyEventArgs e)
@@ -176,7 +188,9 @@ namespace GitUI.CommandsDialogs
                 {
                     var newSelectedIndex = listBoxSearchResult.SelectedIndex - 1;
                     if (newSelectedIndex < 0)
+                    {
                         newSelectedIndex = listBoxSearchResult.Items.Count - 1;
+                    }
 
                     listBoxSearchResult.SelectedIndex = newSelectedIndex;
                     e.SuppressKeyPress = true;
@@ -184,7 +198,9 @@ namespace GitUI.CommandsDialogs
             }
 
             if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Escape)
+            {
                 e.SuppressKeyPress = true;
+            }
         }
 
         private void listBoxSearchResult_DoubleClick(object sender, EventArgs e)

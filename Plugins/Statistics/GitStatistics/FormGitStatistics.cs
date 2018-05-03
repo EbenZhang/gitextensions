@@ -4,13 +4,14 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Statistics;
 using GitStatistics.PieChart;
+using GitUI;
 using GitUIPluginInterfaces;
+using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
 namespace GitStatistics
@@ -32,8 +33,7 @@ namespace GitStatistics
         private readonly string _codeFilePattern;
         private readonly bool _countSubmodule;
 
-        protected Color[] DecentColors =
-            new[]
+        protected Color[] DecentColors { get; } =
                 {
                     Color.Red,
                     Color.Yellow,
@@ -51,16 +51,14 @@ namespace GitStatistics
                 };
 
         public string DirectoriesToIgnore { get; set; }
-        private readonly SynchronizationContext _syncContext;
         private LineCounter _lineCounter;
-#pragma warning disable 0414
-        private Task _loadThread;
-#pragma warning restore 0414
         private readonly IGitModule _module;
 
-        public FormGitStatistics(IGitModule aModule, string codeFilePattern, bool countSubmodule)
+        public FormGitStatistics(IGitModule module, string codeFilePattern, bool countSubmodule)
         {
-            _module = aModule;
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            _module = module;
             _codeFilePattern = codeFilePattern;
             _countSubmodule = countSubmodule;
             InitializeComponent();
@@ -72,7 +70,7 @@ namespace GitStatistics
             TotalCommits.Font = TotalLinesOfCode.Font;
             LoadingLabel.Font = TotalLinesOfCode.Font;
 
-            _syncContext = SynchronizationContext.Current;
+            this.AdjustForDpiScaling();
         }
 
         private void FormGitStatisticsSizeChanged(object sender, EventArgs e)
@@ -91,42 +89,36 @@ namespace GitStatistics
 
         private void InitializeCommitCount()
         {
-            Action<FormGitStatistics> a = sender =>
-            {
-                var allCommitsByUser = CommitCounter.GroupAllCommitsByContributor(_module);
-                _syncContext.Post(o =>
+            ThreadHelper.JoinableTaskFactory.RunAsync(
+                async () =>
                 {
-                    if (this.IsDisposed)
-                        return;
-                    var totalCommits = allCommitsByUser.Item2;
-                    var commitsPerUser = allCommitsByUser.Item1;
+                    await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+
+                    var (commitsPerUser, totalCommits) = CommitCounter.GroupAllCommitsByContributor(_module);
+
+                    await this.SwitchToMainThreadAsync();
 
                     TotalCommits.Text = string.Format(_commits.Text, totalCommits);
 
                     var builder = new StringBuilder();
 
-                    var commitCountValues = new Decimal[commitsPerUser.Count];
+                    var commitCountValues = new decimal[commitsPerUser.Count];
                     var commitCountLabels = new string[commitsPerUser.Count];
                     var n = 0;
-                    foreach (var keyValuePair in commitsPerUser)
+                    foreach (var (user, commits) in commitsPerUser)
                     {
-                        var user = keyValuePair.Key;
-                        var commits = keyValuePair.Value;
-
                         builder.AppendLine(commits + " " + user);
 
                         commitCountValues[n] = commits;
                         commitCountLabels[n] = string.Format(_commitsBy.Text, commits, user);
                         n++;
                     }
+
                     CommitCountPie.SetValues(commitCountValues);
                     CommitCountPie.ToolTips = commitCountLabels;
 
                     CommitStatistics.Text = builder.ToString();
-
-                }, null);
-            };
-            a.BeginInvoke(null, null, this);
+                });
         }
 
         private void SetPieStyle(PieChartControl pie)
@@ -153,18 +145,20 @@ namespace GitStatistics
             }
         }
 
-        bool _initializeLinesOfCodeDone;
+        private bool _initializeLinesOfCodeDone;
         private void InitializeLinesOfCode()
         {
             if (_initializeLinesOfCodeDone)
+            {
                 return;
+            }
 
             _initializeLinesOfCodeDone = true;
 
             _lineCounter = new LineCounter();
             _lineCounter.LinesOfCodeUpdated += lineCounter_LinesOfCodeUpdated;
 
-            _loadThread = Task.Factory.StartNew(LoadLinesOfCode);
+            Task.Run(() => LoadLinesOfCode());
         }
 
         public void LoadLinesOfCode()
@@ -182,7 +176,7 @@ namespace GitStatistics
                 }
             }
 
-            //Send 'changed' event when done
+            // Send 'changed' event when done
             lineCounter_LinesOfCodeUpdated(_lineCounter, EventArgs.Empty);
         }
 
@@ -195,11 +189,11 @@ namespace GitStatistics
             _lineCounter.FindAndAnalyzeCodeFiles(_codeFilePattern, DirectoriesToIgnore, filesToCheck);
         }
 
-        void lineCounter_LinesOfCodeUpdated(object sender, EventArgs e)
+        private void lineCounter_LinesOfCodeUpdated(object sender, EventArgs e)
         {
             LineCounter lineCounter = (LineCounter)sender;
 
-            //Must do this synchronously because lineCounter.LinesOfCodePerExtension might change while we are iterating over it otherwise.
+            // Must do this synchronously because lineCounter.LinesOfCodePerExtension might change while we are iterating over it otherwise.
             var extensionValues = new decimal[lineCounter.LinesOfCodePerExtension.Count];
             var extensionLabels = new string[lineCounter.LinesOfCodePerExtension.Count];
 
@@ -208,17 +202,21 @@ namespace GitStatistics
 
             var n = 0;
             string linesOfCodePerLanguageText = "";
-            foreach (var keyValuePair in linesOfCodePerExtension)
+            foreach (var (extension, loc) in linesOfCodePerExtension)
             {
-                string percent = ((double)keyValuePair.Value / lineCounter.NumberCodeLines).ToString("P1");
-                linesOfCodePerLanguageText += string.Format(_linesOfCodeInFiles.Text, keyValuePair.Value, keyValuePair.Key, percent) + Environment.NewLine;
-                extensionValues[n] = keyValuePair.Value;
-                extensionLabels[n] = string.Format(_linesOfCodeInFiles.Text, keyValuePair.Value, keyValuePair.Key, percent);
+                string percent = ((double)loc / lineCounter.NumberCodeLines).ToString("P1");
+                linesOfCodePerLanguageText += string.Format(_linesOfCodeInFiles.Text, loc, extension, percent) + Environment.NewLine;
+                extensionValues[n] = loc;
+                extensionLabels[n] = string.Format(_linesOfCodeInFiles.Text, loc, extension, percent);
                 n++;
             }
 
-            //Sync rest to UI thread
-            _syncContext.Post(o => UpdateUI(lineCounter, linesOfCodePerLanguageText, extensionValues, extensionLabels), null);
+            // Sync rest to UI thread
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await this.SwitchToMainThreadAsync();
+                UpdateUI(lineCounter, linesOfCodePerLanguageText, extensionValues, extensionLabels);
+            }).FileAndForget();
         }
 
         private void UpdateUI(LineCounter lineCounter, string linesOfCodePerLanguageText, decimal[] extensionValues,
@@ -232,9 +230,9 @@ namespace GitStatistics
                     lineCounter.NumberCodeLines - lineCounter.NumberTestCodeLines
                 });
 
-            string percent_t = ((double) lineCounter.NumberTestCodeLines/lineCounter.NumberCodeLines).ToString("P1");
+            string percent_t = ((double)lineCounter.NumberTestCodeLines / lineCounter.NumberCodeLines).ToString("P1");
             string percent_p =
-                ((double) (lineCounter.NumberCodeLines - lineCounter.NumberTestCodeLines)/lineCounter.NumberCodeLines).ToString(
+                ((double)(lineCounter.NumberCodeLines - lineCounter.NumberTestCodeLines) / lineCounter.NumberCodeLines).ToString(
                     "P1");
             TestCodePie.ToolTips =
                 new[]
@@ -244,13 +242,12 @@ namespace GitStatistics
                     };
 
             TestCodeText.Text = string.Format(_linesOfTestCodeP.Text, lineCounter.NumberTestCodeLines, percent_t) + Environment.NewLine +
-                string.Format(_linesOfProductionCodeP.Text, (lineCounter.NumberCodeLines - lineCounter.NumberTestCodeLines), percent_p);
+                string.Format(_linesOfProductionCodeP.Text, lineCounter.NumberCodeLines - lineCounter.NumberTestCodeLines, percent_p);
 
-
-            string percentBlank = ((double) lineCounter.NumberBlankLines/lineCounter.NumberLines).ToString("P1");
-            string percentComments = ((double) lineCounter.NumberCommentsLines/lineCounter.NumberLines).ToString("P1");
-            string percentCode = ((double) lineCounter.NumberCodeLines/lineCounter.NumberLines).ToString("P1");
-            string percentDesigner = ((double) lineCounter.NumberLinesInDesignerFiles/lineCounter.NumberLines).ToString("P1");
+            string percentBlank = ((double)lineCounter.NumberBlankLines / lineCounter.NumberLines).ToString("P1");
+            string percentComments = ((double)lineCounter.NumberCommentsLines / lineCounter.NumberLines).ToString("P1");
+            string percentCode = ((double)lineCounter.NumberCodeLines / lineCounter.NumberLines).ToString("P1");
+            string percentDesigner = ((double)lineCounter.NumberLinesInDesignerFiles / lineCounter.NumberLines).ToString("P1");
             LinesOfCodePie.SetValues(new decimal[]
                 {
                     lineCounter.NumberBlankLines,
@@ -288,11 +285,9 @@ namespace GitStatistics
             Tabs.Visible = true;
             LoadingLabel.Visible = false;
 
-
             FormGitStatisticsSizeChanged(null, null);
             SizeChanged += FormGitStatisticsSizeChanged;
         }
-
 
         private void TabsSelectedIndexChanged(object sender, EventArgs e)
         {

@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using DeleteUnusedBranches.Properties;
+using GitExtUtils.GitUI;
+using GitUI;
 using GitUIPluginInterfaces;
-using System.Text.RegularExpressions;
+using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
 namespace DeleteUnusedBranches
@@ -33,21 +36,31 @@ namespace DeleteUnusedBranches
         private readonly IGitPlugin _gitPlugin;
         private CancellationTokenSource _refreshCancellation;
 
-        public DeleteUnusedBranchesForm()
-        {
-            InitializeComponent();
-            Translate();
-        }
-
         public DeleteUnusedBranchesForm(DeleteUnusedBranchesFormSettings settings, IGitModule gitCommands, IGitUICommands gitUiCommands, IGitPlugin gitPlugin)
-            : this()
         {
             _settings = settings;
             _gitCommands = gitCommands;
             _gitUiCommands = gitUiCommands;
             _gitPlugin = gitPlugin;
+
+            InitializeComponent();
+
+            deleteDataGridViewCheckBoxColumn.Width = DpiUtil.Scale(50);
+            dateDataGridViewTextBoxColumn.Width = DpiUtil.Scale(175);
+            Author.Width = DpiUtil.Scale(91);
+
+            Translate();
             imgLoading.Image = Resources.loadingpanel;
-            RefreshObsoleteBranches();
+
+            deleteDataGridViewCheckBoxColumn.DataPropertyName = nameof(Branch.Delete);
+            nameDataGridViewTextBoxColumn.DataPropertyName = nameof(Branch.Name);
+            dateDataGridViewTextBoxColumn.DataPropertyName = nameof(Branch.Date);
+            Author.DataPropertyName = nameof(Branch.Author);
+            Message.DataPropertyName = nameof(Branch.Message);
+
+            this.AdjustForDpiScaling();
+
+            ThreadHelper.JoinableTaskFactory.RunAsync(() => RefreshObsoleteBranchesAsync());
         }
 
         protected override void OnLoad(EventArgs e)
@@ -86,9 +99,13 @@ namespace DeleteUnusedBranches
         {
             RegexOptions options;
             if (context.RegexIgnoreCase)
+            {
                 options = RegexOptions.Compiled | RegexOptions.IgnoreCase;
+            }
             else
+            {
                 options = RegexOptions.Compiled;
+            }
 
             var regex = string.IsNullOrEmpty(context.RegexFilter) ? null : new Regex(context.RegexFilter, options);
             bool regexMustMatch = !context.RegexDoesNotMatch;
@@ -115,7 +132,9 @@ namespace DeleteUnusedBranches
             }
 
             if (MessageBox.Show(this, string.Format(_areYouSureToDelete.Text, selectedBranches.Count), _deleteCaption.Text, MessageBoxButtons.YesNo) != DialogResult.Yes)
+            {
                 return;
+            }
 
             var remoteName = _NO_TRANSLATE_Remote.Text;
             var remoteBranchPrefix = remoteName + "/";
@@ -128,7 +147,9 @@ namespace DeleteUnusedBranches
             {
                 var message = string.Format(_dangerousAction.Text, remoteName);
                 if (MessageBox.Show(this, message, _deleteCaption.Text, MessageBoxButtons.YesNo) != DialogResult.Yes)
+                {
                     return;
+                }
             }
 
             var localBranches = selectedBranches.Except(remoteBranches).ToList();
@@ -136,8 +157,10 @@ namespace DeleteUnusedBranches
             imgLoading.Visible = true;
             lblStatus.Text = _deletingBranches.Text;
 
-            Task.Factory.StartNew(() =>
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
+                await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+
                 if (remoteBranches.Count > 0)
                 {
                     // TODO: use GitCommandHelpers.PushMultipleCmd after moving this window to GE (see FormPush as example)
@@ -151,15 +174,12 @@ namespace DeleteUnusedBranches
                     var localBranchNames = string.Join(" ", localBranches.Select(branch => branch.Name));
                     _gitCommands.RunGitCmd("branch -d " + localBranchNames);
                 }
-            })
-            .ContinueWith(_ =>
-            {
-                if (IsDisposed)
-                    return;
+
+                await this.SwitchToMainThreadAsync();
 
                 tableLayoutPanel2.Enabled = tableLayoutPanel3.Enabled = true;
-                RefreshObsoleteBranches();
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+                await RefreshObsoleteBranchesAsync().ConfigureAwait(false);
+            });
         }
 
         private void buttonSettings_Click(object sender, EventArgs e)
@@ -174,7 +194,9 @@ namespace DeleteUnusedBranches
             ClearResults(sender, e);
 
             if (includeUnmergedBranches.Checked)
+            {
                 MessageBox.Show(this, _deletingUnmergedBranches.Text, _deleteCaption.Text, MessageBoxButtons.OK);
+            }
         }
 
         private void ClearResults(object sender, EventArgs e)
@@ -187,20 +209,22 @@ namespace DeleteUnusedBranches
 
         private void Refresh_Click(object sender, EventArgs e)
         {
-            RefreshObsoleteBranches();
+            ThreadHelper.JoinableTaskFactory.RunAsync(() => RefreshObsoleteBranchesAsync());
         }
 
         private void BranchesGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             // track only “Deleted” column
             if (e.ColumnIndex != 0)
+            {
                 return;
+            }
 
             BranchesGrid.CommitEdit(DataGridViewDataErrorContexts.Commit);
             lblStatus.Text = GetDefaultStatusText();
         }
 
-        private void RefreshObsoleteBranches()
+        private async Task RefreshObsoleteBranchesAsync()
         {
             if (IsRefreshing)
             {
@@ -222,21 +246,36 @@ namespace DeleteUnusedBranches
                 regexDoesNotMatch.Checked ? regexDoesNotMatch.Checked : false,
                 TimeSpan.FromDays((int)olderThanDays.Value),
                 _refreshCancellation.Token);
-            Task.Factory.StartNew(() => GetObsoleteBranches(context, curBranch).ToList(), CancellationToken.None, TaskCreationOptions.None, TaskScheduler.Default)
-                .ContinueWith(task =>
+
+            await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+
+            IEnumerable<Branch> branches;
+            try
+            {
+                branches = GetObsoleteBranches(context, curBranch);
+            }
+            catch
+            {
+                await this.SwitchToMainThreadAsync();
+                if (context.CancellationToken.IsCancellationRequested)
                 {
-                    if (IsDisposed || context.CancellationToken.IsCancellationRequested)
-                        return;
+                    return;
+                }
 
-                    if (task.IsCompleted)
-                    {
-                        _branches.Clear();
-                        _branches.AddRange(task.Result);
-                        _branches.ResetBindings();
-                    }
+                throw;
+            }
 
-                    IsRefreshing = false;
-                }, TaskScheduler.FromCurrentSynchronizationContext());
+            await this.SwitchToMainThreadAsync();
+            if (context.CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _branches.Clear();
+            _branches.AddRange(branches);
+            _branches.ResetBindings();
+
+            IsRefreshing = false;
         }
 
         private bool IsRefreshing
@@ -245,7 +284,9 @@ namespace DeleteUnusedBranches
             set
             {
                 if (value == IsRefreshing)
+                {
                     return;
+                }
 
                 _refreshCancellation = value ? new CancellationTokenSource() : null;
                 RefreshBtn.Text = value ? _cancel.Text : _searchBranches.Text;

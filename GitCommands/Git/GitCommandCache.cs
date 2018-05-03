@@ -23,7 +23,7 @@ namespace GitCommands
             public readonly byte[] Error;
         }
 
-        //Cache limit
+        // Cache limit
         private const int CacheLimit = 40;
 
         public static event EventHandler CachedCommandsChanged = delegate { };
@@ -49,7 +49,7 @@ namespace GitCommands
 
         public static bool TryGet(string cmd, out byte[] output, out byte[] error)
         {
-            //Never cache empty commands
+            // Never cache empty commands
             if (string.IsNullOrEmpty(cmd))
             {
                 output = null;
@@ -75,26 +75,33 @@ namespace GitCommands
 
         public static void Add(string cmd, byte[] output, byte[] error)
         {
-            //Never cache empty commands
+            // Never cache empty commands
             if (string.IsNullOrEmpty(cmd))
+            {
                 return;
+            }
 
             lock (queue)
             {
                 commandCache[cmd] = new CacheItem(output, error);
                 queue.Enqueue(cmd);
 
-                //Limit cache to X commands
+                // Limit cache to X commands
                 if (queue.Count >= CacheLimit)
+                {
                     commandCache.Remove(queue.Dequeue());
+                }
             }
+
             CachedCommandsChanged(typeof(GitCommandCache), EventArgs.Empty);
         }
 
         public static void CleanCache()
         {
             lock (queue)
+            {
                 queue?.Clear();
+            }
 
             CachedCommandsChanged(typeof(GitCommandCache), EventArgs.Empty);
         }

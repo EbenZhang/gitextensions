@@ -1,8 +1,10 @@
-﻿using GitUIPluginInterfaces;
+﻿using System.ComponentModel.Composition;
+using GitUIPluginInterfaces;
 using ResourceManager;
 
 namespace DeleteUnusedBranches
 {
+    [Export(typeof(IGitPlugin))]
     public class DeleteUnusedBranchesPlugin : GitPluginBase, IGitPluginForRepository
     {
         public DeleteUnusedBranchesPlugin()
@@ -11,45 +13,45 @@ namespace DeleteUnusedBranches
             Translate();
         }
 
-        private StringSetting MergedInBranch = new StringSetting("Branch where all branches should be merged in", "HEAD");
-        private NumberSetting<int> DaysOlderThan = new NumberSetting<int>("Delete obsolete branches older than (days)", 30);
-        private BoolSetting DeleteRemoteBranchesFromFlag = new BoolSetting("Delete obsolete branches from remote", false);
-        private StringSetting RemoteName = new StringSetting("Remote name obsoleted branches should be deleted from", "origin");
-        private BoolSetting UseRegexToFilterBranchesFlag = new BoolSetting("Use regex to filter branches to delete", false);
-        private StringSetting RegexFilter = new StringSetting("Regex to filter branches to delete", "/(feature|develop)/");
-        private BoolSetting RegexCaseInsensitiveFlag = new BoolSetting("Is regex filter case insensitive?", false);
-        private BoolSetting RegexInvertedFlag = new BoolSetting("Search branches that does not match regex", false);
-        private BoolSetting IncludeUnmergedBranchesFlag = new BoolSetting("Delete unmerged branches", false);
+        private readonly StringSetting _mergedInBranch = new StringSetting("Branch where all branches should be merged in", "HEAD");
+        private readonly NumberSetting<int> _daysOlderThan = new NumberSetting<int>("Delete obsolete branches older than (days)", 30);
+        private readonly BoolSetting _deleteRemoteBranchesFromFlag = new BoolSetting("Delete obsolete branches from remote", false);
+        private readonly StringSetting _remoteName = new StringSetting("Remote name obsoleted branches should be deleted from", "origin");
+        private readonly BoolSetting _useRegexToFilterBranchesFlag = new BoolSetting("Use regex to filter branches to delete", false);
+        private readonly StringSetting _regexFilter = new StringSetting("Regex to filter branches to delete", "/(feature|develop)/");
+        private readonly BoolSetting _regexCaseInsensitiveFlag = new BoolSetting("Is regex filter case insensitive?", false);
+        private readonly BoolSetting _regexInvertedFlag = new BoolSetting("Search branches that does not match regex", false);
+        private readonly BoolSetting _includeUnmergedBranchesFlag = new BoolSetting("Delete unmerged branches", false);
 
         public override System.Collections.Generic.IEnumerable<ISetting> GetSettings()
         {
-            yield return DaysOlderThan;
-            yield return MergedInBranch;
-            yield return DeleteRemoteBranchesFromFlag;
-            yield return RemoteName;
-            yield return UseRegexToFilterBranchesFlag;
-            yield return RegexFilter;
-            yield return RegexCaseInsensitiveFlag;
-            yield return RegexInvertedFlag;
-            yield return IncludeUnmergedBranchesFlag;
+            yield return _daysOlderThan;
+            yield return _mergedInBranch;
+            yield return _deleteRemoteBranchesFromFlag;
+            yield return _remoteName;
+            yield return _useRegexToFilterBranchesFlag;
+            yield return _regexFilter;
+            yield return _regexCaseInsensitiveFlag;
+            yield return _regexInvertedFlag;
+            yield return _includeUnmergedBranchesFlag;
         }
 
-        public override bool Execute(GitUIBaseEventArgs gitUiArgs)
+        public override bool Execute(GitUIEventArgs args)
         {
             var settings = new DeleteUnusedBranchesFormSettings(
-                DaysOlderThan.ValueOrDefault(Settings),
-                MergedInBranch.ValueOrDefault(Settings),
-                DeleteRemoteBranchesFromFlag.ValueOrDefault(Settings),
-                RemoteName.ValueOrDefault(Settings),
-                UseRegexToFilterBranchesFlag.ValueOrDefault(Settings),
-                RegexFilter.ValueOrDefault(Settings),
-                RegexCaseInsensitiveFlag.ValueOrDefault(Settings),
-                RegexInvertedFlag.ValueOrDefault(Settings),
-                IncludeUnmergedBranchesFlag.ValueOrDefault(Settings));
+                _daysOlderThan.ValueOrDefault(Settings),
+                _mergedInBranch.ValueOrDefault(Settings),
+                _deleteRemoteBranchesFromFlag.ValueOrDefault(Settings),
+                _remoteName.ValueOrDefault(Settings),
+                _useRegexToFilterBranchesFlag.ValueOrDefault(Settings),
+                _regexFilter.ValueOrDefault(Settings),
+                _regexCaseInsensitiveFlag.ValueOrDefault(Settings),
+                _regexInvertedFlag.ValueOrDefault(Settings),
+                _includeUnmergedBranchesFlag.ValueOrDefault(Settings));
 
-            using (var frm = new DeleteUnusedBranchesForm(settings, gitUiArgs.GitModule, gitUiArgs.GitUICommands, this))
+            using (var frm = new DeleteUnusedBranchesForm(settings, args.GitModule, args.GitUICommands, this))
             {
-                frm.ShowDialog(gitUiArgs.OwnerForm);
+                frm.ShowDialog(args.OwnerForm);
             }
 
             return true;

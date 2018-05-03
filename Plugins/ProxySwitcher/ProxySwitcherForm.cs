@@ -29,7 +29,7 @@ namespace ProxySwitcher
             InitializeComponent();
         }
 
-        public ProxySwitcherForm(ProxySwitcherPlugin plugin, ISettingsSource settings, GitUIBaseEventArgs gitUiCommands)
+        public ProxySwitcherForm(ProxySwitcherPlugin plugin, ISettingsSource settings, GitUIEventArgs gitUiCommands)
         {
             InitializeComponent();
             Translate();
@@ -44,8 +44,8 @@ namespace ProxySwitcher
         {
             if (string.IsNullOrEmpty(_plugin.HttpProxy.ValueOrDefault(_settings)))
             {
-                MessageBox.Show(this, _pleaseSetProxy.Text, this.Text, MessageBoxButtons.OK);
-                this.Close();
+                MessageBox.Show(this, _pleaseSetProxy.Text, Text, MessageBoxButtons.OK);
+                Close();
             }
             else
             {
@@ -60,7 +60,7 @@ namespace ProxySwitcher
             ApplyGlobally_CheckBox.Checked = string.Equals(LocalHttpProxy_TextBox.Text, GlobalHttpProxy_TextBox.Text);
         }
 
-        private string HidePassword(string httpProxy)
+        private static string HidePassword(string httpProxy)
         {
             return Regex.Replace(httpProxy, ":(.*)@", ":****@");
         }
@@ -74,13 +74,15 @@ namespace ProxySwitcher
             {
                 var password = _plugin.Password.ValueOrDefault(_settings);
                 sb.Append(username);
-                if(!string.IsNullOrEmpty(password))
+                if (!string.IsNullOrEmpty(password))
                 {
                     sb.Append(":");
                     sb.Append(password);
                 }
+
                 sb.Append("@");
             }
+
             sb.Append(_plugin.HttpProxy.ValueOrDefault(_settings));
             var port = _plugin.HttpProxyPort.ValueOrDefault(_settings);
             if (!string.IsNullOrEmpty(port))
@@ -88,6 +90,7 @@ namespace ProxySwitcher
                 sb.Append(":");
                 sb.Append(port);
             }
+
             sb.Append("\"");
             return sb.ToString();
         }
@@ -95,27 +98,24 @@ namespace ProxySwitcher
         private void SetProxy_Button_Click(object sender, EventArgs e)
         {
             var httpproxy = BuildHttpProxy();
-            if (ApplyGlobally_CheckBox.Checked)
-            {
-                _gitCommands.RunGitCmd("config --global http.proxy " + httpproxy);
-            }
-            else
-            {
-                _gitCommands.RunGitCmd("config http.proxy " + httpproxy);
-            }
+
+            var arguments = ApplyGlobally_CheckBox.Checked
+                ? $"config --global http.proxy {httpproxy}"
+                : $"config http.proxy {httpproxy}";
+
+            _gitCommands.RunGitCmd(arguments);
+
             RefreshProxy();
         }
 
         private void UnsetProxy_Button_Click(object sender, EventArgs e)
         {
-            if (ApplyGlobally_CheckBox.Checked)
-            {
-                _gitCommands.RunGitCmd("config --global --unset http.proxy");
-            }
-            else
-            {
-                _gitCommands.RunGitCmd("config --unset http.proxy");
-            }
+            var arguments = ApplyGlobally_CheckBox.Checked
+                ? "config --global --unset http.proxy"
+                : "config --unset http.proxy";
+
+            _gitCommands.RunGitCmd(arguments);
+
             RefreshProxy();
         }
     }

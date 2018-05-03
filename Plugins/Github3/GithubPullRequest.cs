@@ -7,92 +7,100 @@ using GitUIPluginInterfaces.RepositoryHosts;
 
 namespace Github3
 {
-    class GithubPullRequest : IPullRequestInformation
+    internal class GithubPullRequest : IPullRequestInformation
     {
-        private PullRequest pullrequest;
+        private readonly PullRequest _pullrequest;
 
         public GithubPullRequest(PullRequest pullrequest)
         {
-            this.pullrequest = pullrequest;
+            _pullrequest = pullrequest;
         }
 
-        public string Title => pullrequest.Title;
+        public string Title => _pullrequest.Title;
 
-        public string Body => pullrequest.Body;
+        public string Body => _pullrequest.Body;
 
-        public string Owner => pullrequest.User.Login;
+        public string Owner => _pullrequest.User.Login;
 
-        public DateTime Created => pullrequest.CreatedAt;
-
+        public DateTime Created => _pullrequest.CreatedAt;
 
         private string _diffData;
-        public string DiffData 
-        { 
+        public string DiffData
+        {
             get
             {
                 if (_diffData == null)
                 {
-                    HttpWebRequest wr = (HttpWebRequest)WebRequest.Create(pullrequest.DiffUrl);
+                    HttpWebRequest wr = (HttpWebRequest)WebRequest.Create(_pullrequest.DiffUrl);
                     using (var response = wr.GetResponse())
-                    using (var respStream = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                    {
+                        using (var respStream = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
                     {
                         _diffData = respStream.ReadToEnd();
                     }
+                    }
                 }
+
                 return _diffData;
             }
         }
 
-        private IHostedRepository _BaseRepo;
+        private IHostedRepository _baseRepo;
         public IHostedRepository BaseRepo
         {
             get
             {
-                if (_BaseRepo == null)
-                    _BaseRepo = new GithubRepo(pullrequest.Base.Repo);
+                if (_baseRepo == null)
+                {
+                    _baseRepo = new GithubRepo(_pullrequest.Base.Repo);
+                }
 
-                return _BaseRepo;
+                return _baseRepo;
             }
         }
 
-        private IHostedRepository _HeadRepo;
+        private IHostedRepository _headRepo;
         public IHostedRepository HeadRepo
         {
             get
             {
-                if(_HeadRepo == null)
-                    _HeadRepo = new GithubRepo(pullrequest.Head.Repo);
+                if (_headRepo == null)
+                {
+                    _headRepo = new GithubRepo(_pullrequest.Head.Repo);
+                }
 
-                return _HeadRepo;
+                return _headRepo;
             }
         }
 
-        public string BaseSha => pullrequest.Base.Sha;
+        public string BaseSha => _pullrequest.Base.Sha;
 
-        public string HeadSha => pullrequest.Head.Sha;
+        public string HeadSha => _pullrequest.Head.Sha;
 
-        public string BaseRef => pullrequest.Base.Ref;
+        public string BaseRef => _pullrequest.Base.Ref;
 
-        public string HeadRef => pullrequest.Head.Ref;
+        public string HeadRef => _pullrequest.Head.Ref;
 
-        public string Id => pullrequest.Number.ToString();
+        public string Id => _pullrequest.Number.ToString();
 
         public string DetailedInfo => string.Format("Base repo owner: {0}\nHead repo owner: {1}", BaseRepo.Owner, HeadRepo.Owner);
 
         public void Close()
         {
-            pullrequest.Close();
+            _pullrequest.Close();
         }
 
-        private IPullRequestDiscussion _Discussion;
+        private IPullRequestDiscussion _discussion;
         public IPullRequestDiscussion Discussion
         {
             get
             {
-                if(_Discussion == null)
-                    _Discussion = new GithubPullRequestDiscussion(pullrequest);
+                if (_discussion == null)
+                {
+                    _discussion = new GithubPullRequestDiscussion(_pullrequest);
+                }
 
-                return _Discussion;
+                return _discussion;
             }
         }
     }

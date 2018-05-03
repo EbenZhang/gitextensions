@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using FluentAssertions;
 using GitCommands;
+using GitCommands.Git;
+using NSubstitute;
 using NUnit.Framework;
 using ResourceManager;
 using ResourceManager.CommitDataRenders;
-using GitCommands.Git;
-using NSubstitute;
 
 namespace ResourceManagerTests.CommitDataRenders
 {
@@ -92,9 +92,9 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Commit hash:	" + _data.Guid + Environment.NewLine +
                                  "Children:		" +
                                    GitRevision.ToShortSha(_data.ChildrenGuids[0]) + " " +
-                                   GitRevision.ToShortSha(_data.ChildrenGuids[1]) + " "+
+                                   GitRevision.ToShortSha(_data.ChildrenGuids[1]) + " " +
                                    GitRevision.ToShortSha(_data.ChildrenGuids[2]) + Environment.NewLine +
-                                 "Parent(s):		" + 
+                                 "Parent(s):		" +
                                    GitRevision.ToShortSha(_data.ParentGuids[0]) + " " +
                                    GitRevision.ToShortSha(_data.ParentGuids[1]);
 
@@ -111,7 +111,7 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Committer:   <a href='mailto:Jane.Doe@test.com'>Jane Doe &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
                                  "Commit date: 2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
                                  "Commit hash: " + _data.Guid + Environment.NewLine +
-                                 "Children:    " + 
+                                 "Children:    " +
                                    "<a href='gitext://gotocommit/" + _data.ChildrenGuids[0] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[0]) + "</a> " +
                                    "<a href='gitext://gotocommit/" + _data.ChildrenGuids[1] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[1]) + "</a> " +
                                    "<a href='gitext://gotocommit/" + _data.ChildrenGuids[2] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[2]) + "</a>" + Environment.NewLine +
@@ -132,7 +132,7 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Committer:   <a href='mailto:Jane.Doe@test.com'>Jane Doe &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
                                  "Commit date: 2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
                                  "Commit hash: " + _data.Guid + Environment.NewLine +
-                                 "Children:    " + 
+                                 "Children:    " +
                                    GitRevision.ToShortSha(_data.ChildrenGuids[0]) + " " +
                                    GitRevision.ToShortSha(_data.ChildrenGuids[1]) + " " +
                                    GitRevision.ToShortSha(_data.ChildrenGuids[2]) + Environment.NewLine +

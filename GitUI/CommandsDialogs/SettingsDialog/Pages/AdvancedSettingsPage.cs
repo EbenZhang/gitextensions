@@ -10,11 +10,14 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             Text = "Advanced";
             Translate();
 
-            var autoNormaliseSymbols = new[] {
-                new { Key =  "_", Value = "_" },
-                new { Key =  "-", Value = "-" },
-                new { Key =  "(none)", Value = "" },
+            var autoNormaliseSymbols = new[]
+            {
+                new { Key = "_", Value = "_" },
+                new { Key = "-", Value = "-" },
+                new { Key = "(none)", Value = "" },
             };
+            cboAutoNormaliseSymbol.DisplayMember = "Key";
+            cboAutoNormaliseSymbol.ValueMember = "Value";
             cboAutoNormaliseSymbol.DataSource = autoNormaliseSymbols;
             cboAutoNormaliseSymbol.SelectedIndex = 0;
         }
@@ -50,7 +53,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             return new SettingsPageReferenceByType(typeof(AdvancedSettingsPage));
         }
-
 
         private void chkAutoNormaliseBranchName_CheckedChanged(object sender, System.EventArgs e)
         {

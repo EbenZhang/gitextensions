@@ -10,14 +10,13 @@ namespace ResourceManager.CommitDataRenders
     {
         public string FormatLabel(string label, int desiredLength, bool appendColon = true)
         {
-            return FillToLength(appendColon? WebUtility.HtmlEncode(label) + ":" : WebUtility.HtmlEncode(label), desiredLength);
+            return FillToLength(appendColon ? WebUtility.HtmlEncode(label) + ":" : WebUtility.HtmlEncode(label), desiredLength);
         }
 
         public string FormatLabelPlain(string label, int desiredLength)
         {
             return FillToLength(label + ":", desiredLength);
         }
-
 
         private static string FillToLength(string input, int length)
         {
@@ -26,7 +25,7 @@ namespace ResourceManager.CommitDataRenders
             if (input.Length < length)
             {
                 int l = length - input.Length;
-                return input + new string('\t', l / tabsize + (l % tabsize == 0 ? 0 : 1));
+                return input + new string('\t', (l / tabsize) + (l % tabsize == 0 ? 0 : 1));
             }
 
             return input;

@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using GitCommands;
-using NUnit.Framework;
 using System.IO;
 using FluentAssertions;
+using GitCommands;
+using NUnit.Framework;
 
 namespace GitCommandsTests.Helpers
 {
@@ -77,6 +77,18 @@ namespace GitCommandsTests.Helpers
             Assert.AreEqual(PathUtil.IsLocalFile("ssh://domain\\user@serverip/cache/git/something/something.git"), false);
         }
 
+        [TestCase(null, false)]
+        [TestCase("", false)]
+        [TestCase("    ", false)]
+        [TestCase("http://", true)]
+        [TestCase("HTTPS://www", true)]
+        [TestCase("git://", true)]
+        [TestCase("SSH", true)]
+        public void IsUrl(string path, bool expected)
+        {
+            PathUtil.IsUrl(path).Should().Be(expected);
+        }
+
         [Test]
         public void GetFileNameTest()
         {
@@ -108,6 +120,7 @@ namespace GitCommandsTests.Helpers
                 Assert.AreEqual(PathUtil.GetDirectoryName("C:"), "");
                 Assert.AreEqual(PathUtil.GetDirectoryName(""), "");
             }
+
             Assert.AreEqual(PathUtil.GetDirectoryName("//my-pc/Work/GitExtensions/"), "//my-pc/Work/GitExtensions");
             Assert.AreEqual(PathUtil.GetDirectoryName("/Work/GitExtensions/"), "/Work/GitExtensions");
             Assert.AreEqual(PathUtil.GetDirectoryName("/Work/GitExtensions"), "/Work");
@@ -152,8 +165,7 @@ namespace GitCommandsTests.Helpers
         [TestCaseSource(nameof(GetInvalidPaths))]
         public void TryFindFullPath_not_throw_if_file_not_exist(string fileName)
         {
-            string fullPath;
-            PathUtil.TryFindFullPath(fileName, out fullPath).Should().BeFalse();
+            PathUtil.TryFindFullPath(fileName, out _).Should().BeFalse();
         }
 
         private static IEnumerable<string> GetInvalidPaths()
@@ -167,7 +179,7 @@ namespace GitCommandsTests.Helpers
             }
             else
             {
-                //I am not able to figure out any invalid (giving exception) path under mono
+                // I am not able to figure out any invalid (giving exception) path under mono
             }
         }
     }

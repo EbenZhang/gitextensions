@@ -1,8 +1,8 @@
-﻿using GitCommands;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GitCommands;
 
 namespace GitExtensions
 {
@@ -15,7 +15,7 @@ namespace GitExtensions
 
         private static List<string> _optimizedItems;
 
-        private static bool hasChange = false;
+        private static bool _hasChange = false;
 
         public static void Optimize()
         {
@@ -23,6 +23,7 @@ namespace GitExtensions
             {
                 Directory.CreateDirectory(AppDataDir);
             }
+
             if (File.Exists(ConfigFilePath))
             {
                 _optimizedItems = new List<string>(File.ReadAllLines(ConfigFilePath));
@@ -34,13 +35,14 @@ namespace GitExtensions
 
             Optimize(nameof(AppSettings.UseConsoleEmulatorForCommands), false, x => AppSettings.UseConsoleEmulatorForCommands = x);
             Optimize(nameof(AppSettings.AlwaysShowAdvOpt), true, x => AppSettings.AlwaysShowAdvOpt = x);
-            var enabledByMistake = nameof(AppSettings.CloseCommitDialogAfterCommit) + "_fix_enabled_by_mistake";
-            if (!_optimizedItems.Any(x => x == enabledByMistake))
+            const string enabledByMistake = nameof(AppSettings.CloseCommitDialogAfterCommit) + "_fix_enabled_by_mistake";
+            if (_optimizedItems.All(x => x != enabledByMistake))
             {
                 AppSettings.CloseCommitDialogAfterCommit = false;
                 _optimizedItems.Add(enabledByMistake);
-                hasChange = true;
+                _hasChange = true;
             }
+
             Optimize(nameof(AppSettings.CloseCommitDialogAfterLastCommit), true, x => AppSettings.CloseCommitDialogAfterLastCommit = x);
             Optimize(nameof(AppSettings.DontConfirmPushNewBranch), true, x => AppSettings.DontConfirmPushNewBranch = x);
             Optimize(nameof(AppSettings.CloseProcessDialog), true, x => AppSettings.CloseProcessDialog = x);
@@ -50,7 +52,7 @@ namespace GitExtensions
             Optimize(nameof(AppSettings.DontConfirmSecondAbortConfirmation), true, x => AppSettings.DontConfirmSecondAbortConfirmation = x);
             Optimize(nameof(AppSettings.ConEmuStyle), "<Ubuntu>", x => AppSettings.ConEmuStyle.Value = x);
 
-            if (hasChange)
+            if (_hasChange)
             {
                 AppSettings.SaveSettings();
                 File.WriteAllLines(ConfigFilePath, _optimizedItems);
@@ -63,7 +65,7 @@ namespace GitExtensions
             {
                 action(value);
                 _optimizedItems.Add(name);
-                hasChange = true;
+                _hasChange = true;
             }
         }
     }

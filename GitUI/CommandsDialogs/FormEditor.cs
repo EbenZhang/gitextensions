@@ -15,15 +15,18 @@ namespace GitUI.CommandsDialogs
         private bool _hasChanges;
         private string _fileName;
 
-        public FormEditor(GitUICommands aCommands, string fileName, bool showWarning)
-            : base(aCommands)
+        public FormEditor(GitUICommands commands, string fileName, bool showWarning)
+            : base(commands)
         {
             InitializeComponent();
             Translate();
 
             // for translation form
             if (fileName != null)
+            {
                 OpenFile(fileName);
+            }
+
             fileViewer.TextChanged += (s, e) => HasChanges = true;
             fileViewer.TextLoaded += (s, e) => HasChanges = false;
             panelMessage.Visible = showWarning;
@@ -44,7 +47,7 @@ namespace GitUI.CommandsDialogs
             try
             {
                 _fileName = fileName;
-                fileViewer.ViewFile(_fileName);
+                fileViewer.ViewFileAsync(_fileName);
                 fileViewer.IsReadOnly = false;
                 fileViewer.SetVisibilityDiffContextMenu(false, false);
                 Text = _fileName;
@@ -82,6 +85,7 @@ namespace GitUI.CommandsDialogs
                                 return;
                             }
                         }
+
                         DialogResult = DialogResult.OK;
                         break;
                     case DialogResult.Cancel:

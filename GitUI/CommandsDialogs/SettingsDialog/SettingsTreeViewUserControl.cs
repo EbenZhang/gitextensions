@@ -13,11 +13,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         private bool _isSelectionChangeTriggeredByGoto;
         private List<TreeNode> _nodesFoundByTextBox;
         private const string FindPrompt = "Type to find";
-        private readonly Dictionary<SettingsPageReference, TreeNode> _Pages2NodeMap = new Dictionary<SettingsPageReference, TreeNode>();
-        private readonly IList<ISettingsPage> _SettingsPages = new List<ISettingsPage>();
+        private readonly Dictionary<SettingsPageReference, TreeNode> _pages2NodeMap = new Dictionary<SettingsPageReference, TreeNode>();
+        private readonly List<ISettingsPage> _settingsPages = new List<ISettingsPage>();
 
         public event EventHandler<SettingsPageSelectedEventArgs> SettingsPageSelected;
-        public IEnumerable<ISettingsPage> SettingsPages => _SettingsPages;
+        public IEnumerable<ISettingsPage> SettingsPages => _settingsPages;
 
         public SettingsTreeViewUserControl()
         {
@@ -29,10 +29,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             SetFindPrompt(true);
         }
 
-        /// <summary>
-        /// </summary>
-        /// <param name="page"></param>
-        /// <param name="parentPageReference"></param>
         /// <param name="asRoot">only one page can be set as the root page (for the GitExt and Plugin root node)</param>
         public void AddSettingsPage(ISettingsPage page, SettingsPageReference parentPageReference, bool asRoot = false)
         {
@@ -47,20 +43,22 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                 if (asRoot)
                 {
                     // e. g. to set the Checklist on the "Git Extensions" node
-                    node = _Pages2NodeMap[parentPageReference];
+                    node = _pages2NodeMap[parentPageReference];
                 }
                 else
                 {
-                    if (!_Pages2NodeMap.TryGetValue(parentPageReference, out var parentNode))
+                    if (!_pages2NodeMap.TryGetValue(parentPageReference, out var parentNode))
+                    {
                         throw new ArgumentException("You have to add parent page first: " + parentPageReference);
+                    }
 
                     node = parentNode.Nodes.Add(page.GetTitle());
                 }
             }
 
             node.Tag = page;
-            _Pages2NodeMap.Add(page.PageReference, node);
-            _SettingsPages.Add(page);
+            _pages2NodeMap.Add(page.PageReference, node);
+            _settingsPages.Add(page);
         }
 
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
@@ -75,7 +73,8 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         {
             if (SettingsPageSelected != null)
             {
-                ISettingsPage page = node.Tag as ISettingsPage;
+                var page = (ISettingsPage)node.Tag;
+
                 if (page.GuiControl == null)
                 {
                     var firstSubNode = node.FirstNode;
@@ -85,6 +84,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                         return;
                     }
                 }
+
                 SettingsPageSelected(this, new SettingsPageSelectedEventArgs { SettingsPage = page, IsTriggeredByGoto = _isSelectionChangeTriggeredByGoto });
             }
         }
@@ -113,8 +113,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
 
                     // search for keywords (space combines as 'and')
                     var andKeywords = searchFor.Split(' ');
-                    if (andKeywords.All(keyword => settingsPage.GetSearchKeywords().Any(k => k.Contains(keyword)))) // only part of a keyword must match to have a match
+                    if (andKeywords.All(keyword => settingsPage.GetSearchKeywords().Any(k => k.Contains(keyword))))
                     {
+                        // only part of a keyword must match to have a match
                         if (!_nodesFoundByTextBox.Contains(node))
                         {
                             _nodesFoundByTextBox.Add(node);
@@ -140,7 +141,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         }
 
         /// <summary>Highlights a <see cref="TreeNode"/> or returns it to the default colors.</summary>
-        static void HighlightNode(TreeNode treeNode, bool highlight)
+        private static void HighlightNode(TreeNode treeNode, bool highlight)
         {
             treeNode.ForeColor = highlight ? Color.White : Color.Black;
             treeNode.BackColor = highlight ? Color.SeaGreen : new Color();
@@ -175,7 +176,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         {
             if (show)
             {
-                //textBoxFind.Font = new Font("Calibri", textBoxFind.Font.Size, FontStyle.Italic);
+                ////textBoxFind.Font = new Font("Calibri", textBoxFind.Font.Size, FontStyle.Italic);
                 textBoxFind.Font = new Font(textBoxFind.Font, FontStyle.Italic);
                 textBoxFind.Text = FindPrompt;
                 textBoxFind.ForeColor = Color.Gray;
@@ -207,9 +208,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         {
             TreeNode node;
             if (settingsPageReference == null)
+            {
                 node = treeView1.Nodes.Count > 0 ? treeView1.Nodes[0] : null;
+            }
             else
-                _Pages2NodeMap.TryGetValue(settingsPageReference, out node);
+            {
+                _pages2NodeMap.TryGetValue(settingsPageReference, out node);
+            }
 
             if (node != null)
             {
