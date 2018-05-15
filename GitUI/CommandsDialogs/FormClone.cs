@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
 using GitCommands.UserRepositoryHistory;
+using GitExtUtils.GitUI;
 using GitUIPluginInterfaces;
 using ResourceManager;
 
@@ -50,7 +51,7 @@ namespace GitUI.CommandsDialogs
 
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
-                var repositoryHistory = await RepositoryHistoryManager.Locals.LoadHistoryAsync();
+                var repositoryHistory = await RepositoryHistoryManager.Locals.LoadRecentHistoryAsync();
 
                 await this.SwitchToMainThreadAsync();
                 _NO_TRANSLATE_To.DataSource = repositoryHistory;
@@ -61,9 +62,14 @@ namespace GitUI.CommandsDialogs
         protected override void OnRuntimeLoad(EventArgs e)
         {
             base.OnRuntimeLoad(e);
+
+            // scale up for hi DPI
+            MaximumSize = DpiUtil.Scale(new Size(950, 375));
+            MinimumSize = DpiUtil.Scale(new Size(450, 375));
+
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
-                var repositoryHistory = await RepositoryHistoryManager.Remotes.LoadHistoryAsync();
+                var repositoryHistory = await RepositoryHistoryManager.Remotes.LoadRecentHistoryAsync();
 
                 await this.SwitchToMainThreadAsync();
                 _NO_TRANSLATE_From.DataSource = repositoryHistory;

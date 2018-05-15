@@ -1,5 +1,4 @@
-﻿using EnvDTE80;
-using GitPluginShared.Commands;
+﻿using EnvDTE;
 using Microsoft.VisualStudio.Shell;
 
 namespace GitExtensionsVSIX.Commands
@@ -13,7 +12,7 @@ namespace GitExtensionsVSIX.Commands
             BaseCommand = baseCommand;
         }
 
-        public virtual void BeforeQueryStatus(DTE2 application, OleMenuCommand menuCommand)
+        public virtual void BeforeQueryStatus(_DTE application, OleMenuCommand menuCommand)
         {
             menuCommand.Enabled = BaseCommand.IsEnabled(application);
         }
