@@ -4,8 +4,8 @@ rem
 rem Update this version number with every release
 rem
 setlocal
-set version=2.52
-set numericVersion=2.52.99
+set version=2.53
+set numericVersion=2.53.99
 if not "%APPVEYOR_BUILD_VERSION%"=="" (
     set version=%APPVEYOR_BUILD_VERSION%
     set numericVersion=%APPVEYOR_BUILD_VERSION%
