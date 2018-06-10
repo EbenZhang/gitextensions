@@ -139,7 +139,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
             if (UpdateFound)
             {
-                var setupFileName = $"GitExtensions-{release.tag_name}-Setup.msi";
+                var setupFileName = $"GitExtensions-{release.tag_name}.msi";
                 try
                 {
                     var downloadToFolder = Path.Combine(Path.GetTempPath(), "GitExtensionReleases");
