@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Windows.Forms;
 using GitUIPluginInterfaces;
@@ -7,7 +8,7 @@ using ResourceManager;
 namespace JenkinsIntegration.Settings
 {
     [Export(typeof(IBuildServerSettingsUserControl))]
-    [BuildServerSettingsUserControlMetadata("Jenkins")]
+    [BuildServerSettingsUserControlMetadata(JenkinsAdapter.PluginName)]
     [PartCreationPolicy(CreationPolicy.NonShared)]
     public partial class JenkinsSettingsUserControl : GitExtensionsControl, IBuildServerSettingsUserControl
     {
@@ -21,7 +22,7 @@ namespace JenkinsIntegration.Settings
             Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
         }
 
-        public void Initialize(string defaultProjectName)
+        public void Initialize(string defaultProjectName, IEnumerable<string> remotes)
         {
             _defaultProjectName = defaultProjectName;
         }

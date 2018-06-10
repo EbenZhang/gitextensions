@@ -73,6 +73,25 @@
     </Compile>
     <Compile Include="AutoCompletion\CommitAutoCompleteProvider.cs" />
     <Compile Include="AutoCompletion\IAutoCompleteProvider.cs" />
+    <Compile Include="BranchTreePanel\RepoObjectsTree.ContextActions.cs">
+      <SubType>UserControl</SubType>
+      <DependentUpon>RepoObjectsTree.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Branches.cs">
+      <SubType>UserControl</SubType>
+      <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Remotes.cs">
+      <SubType>UserControl</SubType>
+      <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Tags.cs">
+      <SubType>UserControl</SubType>
+      <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
+    </Compile>
     <Compile Include="BuildServerIntegration\BuildInfoDrawingLogic.cs" />
     <Compile Include="BuildServerIntegration\BuildServerWatcher.cs" />
     <Compile Include="CommandsDialogs\AboutBox.cs">
@@ -250,6 +269,8 @@
     <Compile Include="CommandsDialogs\SettingsDialog\Pages\FormBrowseRepoSettingsPage.Designer.cs">
       <DependentUpon>FormBrowseRepoSettingsPage.cs</DependentUpon>
     </Compile>
+    <Compile Include="Editor\GitHighlightingStrategyBase.cs" />
+    <Compile Include="Editor\RebaseTodoHighlightingStrategy.cs" />
     <Compile Include="FindFilePredicateProvider.cs" />
     <Compile Include="Properties\MsVsImages.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -277,6 +298,7 @@
     <Compile Include="Editor\Diff\DiffViewerLineNumberCtrl.cs" />
     <Compile Include="Editor\Diff\LinePrefixHelper.cs" />
     <Compile Include="Editor\Diff\LineSegmentGetter.cs" />
+    <Compile Include="Editor\CommitMessageHighlightingStrategy.cs" />
     <Compile Include="HelperDialogs\FormBuildServerCredentials.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -389,8 +411,17 @@
     <Compile Include="UserControls\NativeTreeView.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UserControls\RevisionGridClasses\CopyToClipboardMenuHelper.cs" />
+    <Compile Include="UserControls\RevisionGridClasses\CopyContextMenuItem.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UserControls\RevisionGridClasses\CopyContextMenuItem.Designer.cs">
+      <DependentUpon>CopyContextMenuItem.cs</DependentUpon>
+    </Compile>
     <Compile Include="UserControls\RevisionGridClasses\CaptionCustomMenuRenderer.cs" />
+    <Compile Include="UserControls\RevisionGridClasses\CopyContextMenuViewModel.cs" />
+    <Compile Include="UserControls\RevisionGridClasses\CopyToClipboardToolStripMenuItem.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="UserControls\RevisionGridClasses\GitRefListsForRevision.cs" />
     <Compile Include="UserControls\RevisionGridClasses\MenuUtil.cs" />
     <Compile Include="UserControls\RevisionGridClasses\NavigationHistory.cs" />
@@ -656,9 +687,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Custom.cs">
       <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-    <Compile Include="BranchTreePanel\RepoObjectsTree.ContextActions.cs">
-      <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Script\ScriptInfo.cs" />
     <Compile Include="Script\ScriptManager.cs" />
@@ -1073,23 +1101,11 @@
     <Compile Include="UserControls\FolderBrowserButton.Designer.cs">
       <DependentUpon>FolderBrowserButton.cs</DependentUpon>
     </Compile>
-    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Branches.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="BranchTreePanel\RepoObjectsTree.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="BranchTreePanel\RepoObjectsTree.Designer.cs">
       <DependentUpon>RepoObjectsTree.cs</DependentUpon>
-    </Compile>
-    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Remotes.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Tags.cs">
-      <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="UserControls\WarningToolStripItem.cs">
       <SubType>Component</SubType>
@@ -1098,6 +1114,9 @@
     <Compile Include="WebBrowserEmulationMode.cs" />
     <Compile Include="WindowPositionList.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\WordWrapper.cs" />
+    <Compile Include="WindowsJumpListManager.cs" />
+    <Compile Include="WindowsThumbnailToolbarButton.cs" />
+    <Compile Include="WindowsThumbnailToolbarButtons.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="CommandsDialogs\AboutBox.resx">

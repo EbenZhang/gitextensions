@@ -88,7 +88,6 @@ namespace GitCommands
     public sealed class GitModule : IGitModule, IGitRevisionProvider
     {
         private const char LineSeparator = '\n';
-        public static readonly char ActiveBranchIndicator = '*';
 
         private static readonly Regex AnsiCodePattern = new Regex(@"\u001B[\u0040-\u005F].*?[\u0040-\u007E]", RegexOptions.Compiled);
         private static readonly Regex CpEncodingPattern = new Regex("cp\\d+", RegexOptions.Compiled);
@@ -100,9 +99,9 @@ namespace GitCommands
         private readonly IRevisionDiffProvider _revisionDiffProvider = new RevisionDiffProvider();
 
         public static readonly string NoNewLineAtTheEnd = "\\ No newline at end of file";
-        private const string DiffCommandWithStandardArgs = " -c diff.submodule=short -c diff.noprefix=false diff --no-color ";
+        private const string DiffCommandWithStandardArgs = "-c diff.submodule=short -c diff.noprefix=false diff --no-color ";
 
-        public GitModule(string workingdir)
+        public GitModule([CanBeNull] string workingdir)
         {
             _superprojectInit = false;
             WorkingDir = (workingdir ?? "").EnsureTrailingPathSeparator();
@@ -485,17 +484,17 @@ namespace GitCommands
             }
         }
 
-        [NotNull]
-        public static string FindGitWorkingDir([CanBeNull] string startDir)
+        /// <summary>
+        /// Searches from <paramref name="startDir"/> and up through the directory
+        /// hierarchy for a valid git working directory. If found, the path is returned,
+        /// otherwise <c>null</c>.
+        /// </summary>
+        [CanBeNull]
+        public static string TryFindGitWorkingDir([CanBeNull] string startDir)
         {
-            if (string.IsNullOrEmpty(startDir))
-            {
-                return "";
-            }
+            var dir = startDir?.Trim();
 
-            var dir = startDir.Trim();
-
-            do
+            while (!string.IsNullOrWhiteSpace(dir))
             {
                 if (IsValidGitWorkingDir(dir))
                 {
@@ -504,23 +503,14 @@ namespace GitCommands
 
                 dir = PathUtil.GetDirectoryName(dir);
             }
-            while (!string.IsNullOrEmpty(dir));
 
-            return startDir;
+            return null;
         }
 
         [NotNull]
         private static Process StartProccess([NotNull] string fileName, [NotNull] string arguments, [NotNull] string workingDir, bool showConsole)
         {
             EnvironmentConfiguration.SetEnvironmentVariables();
-
-            string quotedCmd = fileName;
-            if (quotedCmd.IndexOf(' ') != -1)
-            {
-                quotedCmd = quotedCmd.Quote();
-            }
-
-            var executionStartTimestamp = DateTime.Now;
 
             var startInfo = new ProcessStartInfo
             {
@@ -534,12 +524,12 @@ namespace GitCommands
                 startInfo.CreateNoWindow = true;
             }
 
+            var startCmd = AppSettings.GitLog.Log(fileName, arguments);
             var startProcess = Process.Start(startInfo);
 
             startProcess.Exited += (sender, args) =>
             {
-                var executionEndTimestamp = DateTime.Now;
-                AppSettings.GitLog.Log(quotedCmd + " " + arguments, executionStartTimestamp, executionEndTimestamp);
+                startCmd.LogEnd();
             };
 
             return startProcess;
@@ -1194,7 +1184,7 @@ namespace GitCommands
             return message.ToString();
         }
 
-        public GitRevision GetRevision(string commit, bool shortFormat = false)
+        public GitRevision GetRevision(string commit, bool shortFormat = false, bool loadRefs = false)
         {
             const string formatString =
                 /* Hash           */ "%H%n" +
@@ -1205,15 +1195,20 @@ namespace GitCommands
                 /* Author Date    */ "%at%n" +
                 /* Committer Name */ "%cN%n" +
                 /* Committer EMail*/ "%cE%n" +
-                /* Committer Date */ "%ct%n";
-            const string messageFormat = "%e%n%B%nNotes:%n%-N";
-            string cmd = "log -n1 --format=format:" + formatString + (shortFormat ? "%e%n%s" : messageFormat) + " " + commit;
-            var revInfo = RunCacheableCmd(AppSettings.GitCommand, cmd, LosslessEncoding);
+                /* Committer Date */ "%ct%n" +
+                /* Encoding       */ "%e%n";
+
+            var format = formatString + (shortFormat ? "%s" : "%B%nNotes:%n%-N");
+
+            var revInfo = RunCacheableCmd(AppSettings.GitCommand, $"log -n1 --format=format:{format} {commit}", LosslessEncoding);
+
+            // TODO improve parsing to reduce temporary string (see similar code in RevisionGraph)
             string[] lines = revInfo.Split('\n');
+
             var revision = new GitRevision(lines[0])
             {
-                TreeGuid = lines[1],
-                ParentGuids = lines[2].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries),
+                TreeGuid = ObjectId.Parse(lines[1]),
+                ParentGuids = lines[2].Split(' '),
                 Author = ReEncodeStringFromLossless(lines[3]),
                 AuthorEmail = ReEncodeStringFromLossless(lines[4]),
                 Committer = ReEncodeStringFromLossless(lines[6]),
@@ -1222,6 +1217,7 @@ namespace GitCommands
                 CommitDate = DateTimeUtils.ParseUnixTime(lines[8]),
                 MessageEncoding = lines[9]
             };
+
             if (shortFormat)
             {
                 revision.Subject = ReEncodeCommitMessage(lines[10], revision.MessageEncoding);
@@ -1233,6 +1229,13 @@ namespace GitCommands
                 // commit message is not reencoded by git when format is given
                 revision.Body = ReEncodeCommitMessage(message, revision.MessageEncoding);
                 revision.Subject = revision.Body.Substring(0, revision.Body.IndexOfAny(new[] { '\r', '\n' }));
+            }
+
+            if (loadRefs)
+            {
+                revision.Refs = GetRefs(tags: true, branches: true)
+                    .Where(r => r.Guid == revision.Guid)
+                    .ToList();
             }
 
             return revision;
@@ -1250,7 +1253,7 @@ namespace GitCommands
             var parentsRevisions = new GitRevision[parents.Length];
             for (int i = 0; i < parents.Length; i++)
             {
-                parentsRevisions[i] = GetRevision(parents[i], true);
+                parentsRevisions[i] = GetRevision(parents[i], shortFormat: true);
             }
 
             return parentsRevisions;
@@ -2427,18 +2430,20 @@ namespace GitCommands
 
             // shows untracked files
             string untrackedTreeHash = RunGitCmd("log " + stashName + "^3 --pretty=format:\"%T\" --max-count=1");
-            if (GitRevision.Sha1HashRegex.IsMatch(untrackedTreeHash))
+
+            if (ObjectId.TryParse(untrackedTreeHash, out var treeId))
             {
-                var files = GetTreeFiles(untrackedTreeHash, true);
+                var files = GetTreeFiles(treeId, full: true);
+
                 resultCollection.AddRange(files);
             }
 
             return resultCollection;
         }
 
-        public IReadOnlyList<GitItemStatus> GetTreeFiles(string treeGuid, bool full)
+        public IReadOnlyList<GitItemStatus> GetTreeFiles(ObjectId treeGuid, bool full)
         {
-            var tree = GetTree(treeGuid, full);
+            var tree = GetTree(treeGuid.ToString(), full);
 
             var list = tree
                 .Select(file => new GitItemStatus
@@ -2810,11 +2815,17 @@ namespace GitCommands
             }
         }
 
-        public IReadOnlyList<IGitRef> GetRefs(bool tags = true, bool branches = true)
+        public IReadOnlyList<IGitRef> GetRefs(bool tags = true, bool branches = true, GitRefsOrder order = GitRefsOrder.ByLastAccessDate)
         {
             var refList = GetRefList();
 
-            return ParseRefs(refList);
+            var refs = ParseRefs(refList);
+            if (order == GitRefsOrder.Alphabetically)
+            {
+                refs = refs.OrderBy(b => b.Name).ToList();
+            }
+
+            return refs;
 
             string GetRefList()
             {
@@ -2955,18 +2966,6 @@ namespace GitCommands
             gitRefs.AddRange(headByRemote.Values);
 
             return gitRefs;
-        }
-
-        /// <summary>Gets the branch names, with the active branch, if applicable, listed first.
-        /// The active branch will be indicated by a "*", so ensure to Trim before processing.</summary>
-        public IEnumerable<string> GetBranchNames()
-        {
-            return RunGitCmd("branch", SystemEncoding)
-                .Split(LineSeparator)
-                .Where(branch => !string.IsNullOrWhiteSpace(branch)) // first is ""
-                .OrderByDescending(branch => branch.Contains(ActiveBranchIndicator)) // * for current branch
-                .ThenBy(r => r)
-                .Select(line => line.Trim());
         }
 
         /// <summary>
@@ -3146,7 +3145,7 @@ namespace GitCommands
             {
                 // Catch all parser errors, and ignore them all!
                 // We should never get here...
-                AppSettings.GitLog.Log("Error parsing output from command: " + args + "\n\nPlease report a bug!", DateTime.Now, DateTime.Now);
+                AppSettings.GitLog.Log("Error parsing output from command: " + args + "\n\nPlease report a bug!");
 
                 return new GitBlame(Array.Empty<GitBlameLine>());
             }
@@ -3447,16 +3446,24 @@ namespace GitCommands
             return "";
         }
 
-        public string RevParse(string revisionExpression)
+        [CanBeNull]
+        public ObjectId RevParse(string revisionExpression)
         {
-            string revparseCommand = string.Format("rev-parse \"{0}~0\"", revisionExpression);
-            var result = RunGitCmdResult(revparseCommand);
-            return result.ExitCode == 0 ? result.StdOutput.Split('\n')[0] : "";
+            var result = RunGitCmdResult($"rev-parse \"{revisionExpression}~0\"");
+
+            return result.ExitCode == 0 && ObjectId.TryParse(result.StdOutput, offset: 0, out var objectId)
+                ? objectId
+                : null;
         }
 
-        public string GetMergeBase(string a, string b)
+        [CanBeNull]
+        public ObjectId GetMergeBase(string a, string b)
         {
-            return RunGitCmd("merge-base " + a + " " + b).TrimEnd();
+            var output = RunGitCmd($"merge-base {a} {b}");
+
+            return ObjectId.TryParse(output, offset: 0, out var objectId)
+                ? objectId
+                : null;
         }
 
         public SubmoduleStatus CheckSubmoduleStatus(string commit, string oldCommit, CommitData data, CommitData olddata, bool loaddata = false)
@@ -3471,7 +3478,7 @@ namespace GitCommands
                 return SubmoduleStatus.Unknown;
             }
 
-            string baseCommit = GetMergeBase(commit, oldCommit);
+            string baseCommit = GetMergeBase(commit, oldCommit).ToString();
             if (baseCommit == oldCommit)
             {
                 return SubmoduleStatus.FastForward;
@@ -3550,7 +3557,7 @@ namespace GitCommands
         /// </summary>
         /// <param name="branchName">Branch name to test.</param>
         /// <returns>Well formed branch name.</returns>
-        [NotNull]
+        [CanBeNull]
         private string FormatBranchName([NotNull] string branchName)
         {
             if (branchName == null)
@@ -3559,9 +3566,10 @@ namespace GitCommands
             }
 
             string fullBranchName = GitRefName.GetFullBranchName(branchName);
-            if (string.IsNullOrEmpty(RevParse(fullBranchName)))
+
+            if (RevParse(fullBranchName) == null)
             {
-                fullBranchName = branchName;
+                return branchName;
             }
 
             return fullBranchName;
@@ -3699,37 +3707,10 @@ namespace GitCommands
         // characters could be replaced by replacement character while reencoding to LogOutputEncoding
         public string ReEncodeCommitMessage(string s, [CanBeNull] string toEncodingName)
         {
-            bool isABug = !GitCommandHelpers.VersionInUse.LogFormatRecodesCommitMessage;
-
             Encoding encoding;
             try
             {
-                if (isABug)
-                {
-                    if (toEncodingName.IsNullOrEmpty())
-                    {
-                        encoding = Encoding.UTF8;
-                    }
-                    else if (toEncodingName.Equals(LosslessEncoding.HeaderName, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        // no recoding is needed
-                        encoding = null;
-                    }
-                    else if (CpEncodingPattern.IsMatch(toEncodingName))
-                    {
-                        // Encodings written as e.g. "cp1251", which is not a supported encoding string
-                        encoding = Encoding.GetEncoding(int.Parse(toEncodingName.Substring(2)));
-                    }
-                    else
-                    {
-                        encoding = Encoding.GetEncoding(toEncodingName);
-                    }
-                }
-                else
-                {
-                    // bug is fixed in Git v1.8.4, Git recodes commit message to LogOutputEncoding
-                    encoding = LogOutputEncoding;
-                }
+                encoding = GetEncodingByGitName(toEncodingName);
             }
             catch (Exception)
             {
@@ -3737,6 +3718,38 @@ namespace GitCommands
             }
 
             return ReEncodeStringFromLossless(s, encoding);
+        }
+
+        public Encoding GetEncodingByGitName(string encodingName)
+        {
+            bool isABug = !GitCommandHelpers.VersionInUse.LogFormatRecodesCommitMessage;
+
+            if (isABug)
+            {
+                if (encodingName.IsNullOrEmpty())
+                {
+                    return Encoding.UTF8;
+                }
+                else if (encodingName.Equals(LosslessEncoding.HeaderName, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    // no recoding is needed
+                    return null;
+                }
+                else if (CpEncodingPattern.IsMatch(encodingName))
+                {
+                    // Encodings written as e.g. "cp1251", which is not a supported encoding string
+                    return Encoding.GetEncoding(int.Parse(encodingName.Substring(2)));
+                }
+                else
+                {
+                    return Encoding.GetEncoding(encodingName);
+                }
+            }
+            else
+            {
+                // bug is fixed in Git v1.8.4, Git recodes commit message to LogOutputEncoding
+                return LogOutputEncoding;
+            }
         }
 
         /// <summary>
@@ -3834,6 +3847,7 @@ namespace GitCommands
                 }).ToList();
         }
 
+        [CanBeNull]
         public string GetCombinedDiffContent(GitRevision revisionOfMergeCommit, string filePath, string extraArgs, Encoding encoding)
         {
             var args = new ArgumentBuilder
@@ -3857,7 +3871,7 @@ namespace GitCommands
 
             var patches = PatchProcessor.CreatePatchesFromString(patch, encoding).ToList();
 
-            return GetPatch(patches, filePath, filePath).Text;
+            return GetPatch(patches, filePath, filePath)?.Text;
         }
 
         public bool HasLfsSupport()

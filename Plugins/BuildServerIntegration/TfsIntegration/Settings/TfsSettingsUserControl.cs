@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Windows.Forms;
 using GitUIPluginInterfaces;
@@ -8,7 +9,7 @@ using ResourceManager;
 namespace TfsIntegration.Settings
 {
     [Export(typeof(IBuildServerSettingsUserControl))]
-    [BuildServerSettingsUserControlMetadata("Team Foundation Server")]
+    [BuildServerSettingsUserControlMetadata(TfsAdapter.PluginName)]
     [PartCreationPolicy(CreationPolicy.NonShared)]
     public partial class TfsSettingsUserControl : GitExtensionsControl, IBuildServerSettingsUserControl
     {
@@ -22,7 +23,7 @@ namespace TfsIntegration.Settings
             Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
         }
 
-        public void Initialize(string defaultProjectName)
+        public void Initialize(string defaultProjectName, IEnumerable<string> remotes)
         {
             _defaultProjectName = defaultProjectName;
         }

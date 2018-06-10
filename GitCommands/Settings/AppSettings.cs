@@ -10,7 +10,10 @@ using System.Text;
 using System.Windows.Forms;
 using GitCommands.Logging;
 using GitCommands.Settings;
+using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 using Microsoft.Win32;
+using StringSetting = GitCommands.Settings.StringSetting;
 
 namespace GitCommands
 {
@@ -51,7 +54,7 @@ namespace GitCommands
                 }
                 else
                 {
-                    // Make applicationdatapath version independent
+                    // Make ApplicationDataPath version independent
                     return Application.UserAppDataPath.Replace(Application.ProductVersion, string.Empty);
                 }
             });
@@ -1463,9 +1466,9 @@ namespace GitCommands
             set => SetBool("UseConsoleEmulatorForCommands", value);
         }
 
-        public static BranchOrdering BranchOrderingCriteria
+        public static GitRefsOrder BranchOrderingCriteria
         {
-            get => GetEnum("BranchOrderingCriteria", BranchOrdering.ByLastAccessDate);
+            get => GetEnum("BranchOrderingCriteria", GitRefsOrder.ByLastAccessDate);
             set => SetEnum("BranchOrderingCriteria", value);
         }
 
@@ -1696,7 +1699,7 @@ namespace GitCommands
 
     public class AppSettingsPath : SettingsPath
     {
-        public AppSettingsPath(string pathName) : base(null, pathName)
+        public AppSettingsPath([NotNull] string pathName) : base(null, pathName)
         {
         }
 

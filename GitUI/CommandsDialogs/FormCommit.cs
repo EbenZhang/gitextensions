@@ -18,6 +18,7 @@ using GitUI.HelperDialogs;
 using GitUI.Hotkey;
 using GitUI.Script;
 using GitUI.SpellChecker;
+using GitUIPluginInterfaces;
 using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 using Timer = System.Windows.Forms.Timer;
@@ -346,7 +347,8 @@ namespace GitUI.CommandsDialogs
             UnStageSelectedFile = 8,
             ShowHistory = 9,
             ToggleSelectionFilter = 10,
-            StageAll = 11
+            StageAll = 11,
+            OpenWithDifftool = 12
         }
 
         private bool AddToGitIgnore()
@@ -512,6 +514,7 @@ namespace GitUI.CommandsDialogs
                 case Commands.ShowHistory: return StartFileHistoryDialog();
                 case Commands.ToggleSelectionFilter: return ToggleSelectionFilter();
                 case Commands.StageAll: return StageAllFiles();
+                case Commands.OpenWithDifftool: SelectedDiff.OpenWithDifftool?.Invoke(); return true;
                 default: return base.ExecuteCommand(cmd);
             }
         }
@@ -769,8 +772,7 @@ namespace GitUI.CommandsDialogs
 
         private void UpdateMergeHead()
         {
-            var mergeHead = Module.RevParse("MERGE_HEAD");
-            IsMergeCommit = GitRevision.IsFullSha1Hash(mergeHead);
+            IsMergeCommit = Module.RevParse("MERGE_HEAD") != null;
         }
 
         private void InitializedStaged()
@@ -978,7 +980,7 @@ namespace GitUI.CommandsDialogs
             }
             else if (item.IsTracked)
             {
-                SelectedDiff.ViewCurrentChanges(item, staged);
+                SelectedDiff.ViewCurrentChanges(item, staged, () => (staged ? stagedOpenDifftoolToolStripMenuItem9 : openWithDifftoolToolStripMenuItem).PerformClick());
             }
             else
             {

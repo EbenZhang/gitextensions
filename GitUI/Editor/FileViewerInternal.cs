@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using GitCommands;
 using GitUI.Editor.Diff;
 using ICSharpCode.TextEditor;
 using ICSharpCode.TextEditor.Document;
@@ -13,10 +15,15 @@ namespace GitUI.Editor
         private readonly FindAndReplaceForm _findAndReplaceForm = new FindAndReplaceForm();
         private readonly DiffViewerLineNumberCtrl _lineNumbersControl;
         private DiffHighlightService _diffHighlightService = DiffHighlightService.Instance;
+        private readonly Func<GitModule> _moduleProvider;
         private bool _isGotoLineUIApplicable = true;
 
-        public FileViewerInternal()
+        public Action OpenWithDifftool { get; private set; }
+
+        public FileViewerInternal(Func<GitModule> moduleProvider)
         {
+            _moduleProvider = moduleProvider;
+
             InitializeComponent();
             Translate();
 
@@ -28,13 +35,11 @@ namespace GitUI.Editor
             TextEditor.ActiveTextAreaControl.TextArea.MouseLeave += TextArea_MouseLeave;
             TextEditor.ActiveTextAreaControl.TextArea.MouseDown += TextAreaMouseDown;
             TextEditor.ActiveTextAreaControl.TextArea.KeyUp += TextArea_KeyUp;
-            TextEditor.KeyDown += BlameFileKeyUp;
-            TextEditor.ActiveTextAreaControl.TextArea.KeyDown += BlameFileKeyUp;
             TextEditor.ActiveTextAreaControl.TextArea.DoubleClick += ActiveTextAreaControlDoubleClick;
 
             _lineNumbersControl = new DiffViewerLineNumberCtrl(TextEditor.ActiveTextAreaControl.TextArea);
 
-            VRulerPosition = GitCommands.AppSettings.DiffVerticalRulerPosition;
+            VRulerPosition = AppSettings.DiffVerticalRulerPosition;
         }
 
         private void TextArea_KeyUp(object sender, KeyEventArgs e)
@@ -75,28 +80,22 @@ namespace GitUI.Editor
             DoubleClick?.Invoke(sender, e);
         }
 
-        private async void BlameFileKeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.Modifiers == Keys.Control && e.KeyCode == Keys.F)
-            {
-                Find();
-            }
-
-            if (e.Modifiers == Keys.Shift && e.KeyCode == Keys.F3)
-            {
-                await _findAndReplaceForm.FindNextAsync(true, true, "Text not found");
-            }
-            else if (e.KeyCode == Keys.F3)
-            {
-                await _findAndReplaceForm.FindNextAsync(true, false, "Text not found");
-            }
-
-            VScrollBar_ValueChanged(this, e);
-        }
-
         public void Find()
         {
             _findAndReplaceForm.ShowFor(TextEditor, false);
+            VScrollBar_ValueChanged(this, null);
+        }
+
+        public async Task FindNextAsync(bool searchForwardOrOpenWithDifftool)
+        {
+            if (searchForwardOrOpenWithDifftool && OpenWithDifftool != null && string.IsNullOrEmpty(_findAndReplaceForm.LookFor))
+            {
+                OpenWithDifftool.Invoke();
+                return;
+            }
+
+            await _findAndReplaceForm.FindNextAsync(viaF3: true, !searchForwardOrOpenWithDifftool, "Text not found");
+            VScrollBar_ValueChanged(this, null);
         }
 
         private void TextAreaMouseDown(object sender, MouseEventArgs e)
@@ -137,8 +136,9 @@ namespace GitUI.Editor
             set => TextEditor.ShowLineNumbers = value;
         }
 
-        public void SetText(string text, bool isDiff = false)
+        public void SetText(string text, Action openWithDifftool, bool isDiff)
         {
+            OpenWithDifftool = openWithDifftool;
             _lineNumbersControl.Clear(isDiff);
 
             if (isDiff)
@@ -180,7 +180,21 @@ namespace GitUI.Editor
 
         public void SetHighlightingForFile(string filename)
         {
-            IHighlightingStrategy highlightingStrategy = HighlightingManager.Manager.FindHighlighterForFile(filename);
+            IHighlightingStrategy highlightingStrategy;
+
+            if (filename.EndsWith("git-rebase-todo"))
+            {
+                highlightingStrategy = new RebaseTodoHighlightingStrategy(_moduleProvider());
+            }
+            else if (filename.EndsWith("COMMIT_EDITMSG"))
+            {
+                highlightingStrategy = new CommitMessageHighlightingStrategy(_moduleProvider());
+            }
+            else
+            {
+                highlightingStrategy = HighlightingManager.Manager.FindHighlighterForFile(filename);
+            }
+
             if (highlightingStrategy != null)
             {
                 TextEditor.Document.HighlightingStrategy = highlightingStrategy;

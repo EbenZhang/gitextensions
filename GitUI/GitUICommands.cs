@@ -29,7 +29,7 @@ namespace GitUI
         public ILockableNotifier RepoChangedNotifier { get; }
         public IBrowseRepo BrowseRepo { get; set; }
 
-        public GitUICommands(GitModule module)
+        public GitUICommands([NotNull] GitModule module)
         {
             Module = module;
             _commitTemplateManager = new CommitTemplateManager(module);
@@ -42,7 +42,7 @@ namespace GitUI
             _fildFilePredicateProvider = new FindFilePredicateProvider();
         }
 
-        public GitUICommands(string workingDir)
+        public GitUICommands([CanBeNull] string workingDir)
             : this(new GitModule(workingDir))
         {
         }
@@ -1066,9 +1066,9 @@ namespace GitUI
             return StartSettingsDialog(owner, CommandsDialogs.SettingsDialog.Pages.GitConfigSettingsPage.GetPageReference());
         }
 
-        public bool StartBrowseDialog(IWin32Window owner = null, string filter = "", string selectedCommit = null)
+        public bool StartBrowseDialog(IWin32Window owner = null, string filter = "", string selectedCommit = null, bool startWithDashboard = false)
         {
-            var form = new FormBrowse(this, filter, selectedCommit);
+            var form = new FormBrowse(this, filter, selectedCommit, startWithDashboard);
 
             if (Application.MessageLoop)
             {
@@ -1124,11 +1124,11 @@ namespace GitUI
             }
         }
 
-        public FormDiff ShowFormDiff(bool firstParentIsValid, string baseCommitSha,
-            string headCommitSha, string baseCommitDisplayStr, string headCommitDisplayStr)
+        public FormDiff ShowFormDiff(bool firstParentIsValid, ObjectId baseCommitSha,
+            ObjectId headCommitSha, string baseCommitDisplayStr, string headCommitDisplayStr)
         {
-            var diffForm = new FormDiff(this, firstParentIsValid, baseCommitSha,
-                headCommitSha, baseCommitDisplayStr, headCommitDisplayStr);
+            var diffForm = new FormDiff(this, firstParentIsValid, baseCommitSha.ToString(),
+                headCommitSha.ToString(), baseCommitDisplayStr, headCommitDisplayStr);
             diffForm.Show();
             diffForm.ShowInTaskbar = true;
 
@@ -1675,7 +1675,7 @@ namespace GitUI
 
         private static Dictionary<string, string> InitializeArguments(string[] args)
         {
-            Dictionary<string, string> arguments = new Dictionary<string, string>();
+            var arguments = new Dictionary<string, string>();
 
             for (int i = 2; i < args.Length; i++)
             {

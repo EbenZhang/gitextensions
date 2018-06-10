@@ -26,6 +26,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <CodeAnalysisRuleSet>..\..\GitExtensions.ruleset</CodeAnalysisRuleSet>
     <DocumentationFile>bin\Debug\GitUIPluginInterfaces.xml</DocumentationFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -37,6 +38,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <CodeAnalysisRuleSet>..\..\GitExtensions.ruleset</CodeAnalysisRuleSet>
     <DocumentationFile>bin\Release\GitUIPluginInterfaces.xml</DocumentationFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -51,6 +53,7 @@
     <Compile Include="..\..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="GitRefsOrder.cs" />
     <Compile Include="BuildServerIntegration\BuildDurationFormatter.cs" />
     <Compile Include="BuildServerIntegration\BuildInfo.cs" />
     <Compile Include="BuildServerIntegration\BuildServerAdapterMetadataAttribute.cs" />
@@ -75,6 +78,7 @@
     <Compile Include="IGitRemoteCommand.cs" />
     <Compile Include="ILockableNotifier.cs" />
     <Compile Include="ISettingsValueGetter.cs" />
+    <Compile Include="ObjectId.cs" />
     <Compile Include="Settings\BoolSetting.cs" />
     <Compile Include="ISetting.cs" />
     <Compile Include="ISettingsSource.cs" />

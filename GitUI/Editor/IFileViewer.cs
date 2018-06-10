@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 
@@ -29,10 +30,11 @@ namespace GitUI.Editor
 
         void EnableScrollBars(bool enable);
         void Find();
+        Task FindNextAsync(bool searchForwardOrOpenWithDifftool);
 
         string GetText();
-        void SetText([NotNull] string text, bool isDiff = false);
-        void SetHighlighting(string syntax);
+        void SetText([NotNull] string text, [CanBeNull] Action openWithDifftool, bool isDiff = false);
+        void SetHighlighting([NotNull] string syntax);
         void SetHighlightingForFile(string filename);
         void HighlightLine(int line, Color color);
         void HighlightLines(int startLine, int endLine, Color color);
@@ -41,6 +43,7 @@ namespace GitUI.Editor
         int GetSelectionPosition();
         int GetSelectionLength();
         void AddPatchHighlighting();
+        Action OpenWithDifftool { get;  }
         int ScrollPos { get; set; }
 
         bool ShowLineNumbers { get; set; }
@@ -65,6 +68,7 @@ namespace GitUI.Editor
         /// Code-behind goto line function is always availabe, so we can goto next diff section.
         /// </summary>
         bool IsGotoLineUIApplicable();
+
         Font Font { get; set; }
 
         void SetFileLoader(GetNextFileFnc fileLoader);

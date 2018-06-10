@@ -29,9 +29,6 @@ namespace GitUI
         private readonly TranslationString _diffWithParent = new TranslationString("Diff with:");
         public readonly TranslationString CombinedDiff = new TranslationString("Combined Diff");
 
-        // Artificial commit for the combined diff, similar to GitRevision.UnstagedGuid
-        public readonly string CombinedDiffGuid = "2222222222222222222222222222222222222222";
-
         private IDisposable _selectedIndexChangeSubscription;
         private static readonly TimeSpan SelectedIndexChangeThrottleDuration = TimeSpan.FromMilliseconds(50);
 
@@ -894,7 +891,7 @@ namespace GitUI
                 if (revision != null)
                 {
                     string groupName;
-                    if (revision.Guid == CombinedDiffGuid)
+                    if (revision.Guid == GitRevision.CombinedDiffGuid)
                     {
                         groupName = CombinedDiff.Text;
                     }
@@ -926,6 +923,11 @@ namespace GitUI
                             // we need to put filename in list-item text -> then horizontal scrollbar
                             // will have proper width (by the longest filename, and not all path)
                             text = PathFormatter.FormatTextForFileNameOnly(item.Name, item.OldName);
+                            if (!_filter.IsMatch(text))
+                            {
+                                continue;
+                            }
+
                             text = AppendItemSubmoduleStatus(text, item);
                         }
 
@@ -1125,31 +1127,20 @@ namespace GitUI
         public void SetDiffs(GitRevision selectedRev = null, GitRevision parentRev = null, IReadOnlyList<GitItemStatus> items = null)
         {
             Revision = selectedRev;
-
-            if (parentRev == null)
-            {
-                parentRev = new GitRevision("");
-            }
-
-            IGitItemsWithParents dictionary = items == null
+            GitItemStatusesWithParents = items == null
                 ? null
-                : new GitItemsWithParents { { parentRev, items } };
-
-            GitItemStatusesWithParents = dictionary;
+                : new GitItemsWithParents
+                {
+                    { parentRev ?? new GitRevision(""), items }
+                };
         }
 
         public void SetDiffs(IReadOnlyList<GitRevision> revisions)
         {
-            if (revisions == null || revisions.Count == 0)
-            {
-                Revision = null;
-            }
-            else
-            {
-                Revision = revisions[0];
-            }
+            Revision = revisions?.FirstOrDefault();
 
             var dictionary = new GitItemsWithParents();
+
             if (Revision != null)
             {
                 GitRevision[] parentRevs;
@@ -1167,7 +1158,7 @@ namespace GitUI
                 {
                     // No parent, will set "" as parent
                     var rev = new GitRevision("");
-                    dictionary.Add(rev, Module.GetTreeFiles(Revision.TreeGuid, true));
+                    dictionary.Add(rev, Module.GetTreeFiles(Revision.TreeGuid, full: true));
                 }
                 else
                 {
@@ -1191,7 +1182,7 @@ namespace GitUI
                         if (conflicts.Any())
                         {
                             // Create an artificial commit
-                            var rev = new GitRevision(CombinedDiffGuid);
+                            var rev = new GitRevision(GitRevision.CombinedDiffGuid);
                             dictionary.Add(rev, conflicts);
                         }
                     }

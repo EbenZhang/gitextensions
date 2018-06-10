@@ -10,147 +10,88 @@ namespace GitUI.RevisionGridClasses
     {
         private sealed class Graph
         {
-            #region Delegates
-
-            public delegate void GraphUpdatedHandler(object sender);
-
-            #endregion
-
-            public readonly List<Node> AddedNodes = new List<Node>();
+            public event Action Updated;
 
             private readonly List<Junction> _junctions = new List<Junction>();
-            public readonly Dictionary<string, Node> Nodes = new Dictionary<string, Node>();
             private readonly Lanes _lanes;
-            private int _filterNodeCount;
-
-            private bool _isFilter;
-            private int _nodeCount;
             private int _processedNodes;
+
+            public List<Node> AddedNodes { get; } = new List<Node>();
+            public Dictionary<string, Node> Nodes { get; } = new Dictionary<string, Node>();
+            public int Count { get; private set; }
 
             public Graph()
             {
                 _lanes = new Lanes(this);
             }
 
-            public bool IsFilter
-            {
-                get { return _isFilter; }
-                set
-                {
-                    _isFilter = value;
-                    _lanes.Clear();
-                    foreach (Node n in Nodes.Values)
-                    {
-                        n.InLane = int.MaxValue;
-                    }
-
-                    foreach (Junction j in _junctions)
-                    {
-                        j.CurrentState = Junction.State.Unprocessed;
-                    }
-
-                    // We need to signal the DvcsGraph object that it needs to
-                    // redraw everything.
-                    Updated?.Invoke(this);
-                }
-            }
-
-            public int Count
-            {
-                get
-                {
-                    if (IsFilter)
-                    {
-                        return _filterNodeCount;
-                    }
-
-                    return _nodeCount;
-                }
-            }
-
             public ILaneRow this[int col] => _lanes[col];
 
             public int CachedCount => _lanes.CachedCount;
 
-            public void Filter(string id)
+            public void HighlightBranch(string startId)
             {
-                Node node = Nodes[id];
+                ClearHighlights();
+                WalkBranchAndHighlightReachableNodes();
+                return;
 
-                if (!node.IsFiltered)
+                void ClearHighlights()
                 {
-                    _filterNodeCount++;
-                    node.IsFiltered = true;
-                }
-
-                // Clear the filtered lane data.
-                // TODO: We could be smart and only clear items after Node[id]. The check
-                // below isn't valid, since it could be either the filtered or unfiltered
-                // lane...
-                ////if (node.InLane != int.MaxValue)
-                ////{
-                ////   filteredLanes.Clear();
-                ////}
-            }
-
-            public void ClearHighlightBranch()
-            {
-                foreach (Node node in Nodes.Values)
-                {
-                    foreach (Junction junction in node.Ancestors)
+                    foreach (var node in Nodes.Values)
                     {
-                        junction.HighLight = false;
+                        foreach (var junction in node.Ancestors)
+                        {
+                            junction.HighLight = false;
+                        }
                     }
                 }
-            }
 
-            public void HighlightBranch(string id)
-            {
-                ClearHighlightBranch();
-                HighlightBranchRecursive(id);
-            }
-
-            public bool IsRevisionRelative(string guid)
-            {
-                if (Nodes.TryGetValue(guid, out var startNode))
+                void WalkBranchAndHighlightReachableNodes()
                 {
-                    return startNode.Ancestors.Any(a => a.IsRelative);
-                }
+                    var stack = new Stack<string>();
+                    stack.Push(startId);
 
-                return false;
-            }
-
-            public void HighlightBranchRecursive(string id)
-            {
-                if (Nodes.TryGetValue(id, out var startNode))
-                {
-                    foreach (Junction junction in startNode.Ancestors)
+                    while (stack.Count != 0)
                     {
-                        if (junction.HighLight)
+                        var id = stack.Pop();
+
+                        if (!Nodes.TryGetValue(id, out var node))
                         {
                             continue;
                         }
 
-                        junction.HighLight = true;
+                        foreach (var junction in node.Ancestors)
+                        {
+                            if (!junction.HighLight)
+                            {
+                                junction.HighLight = true;
 
-                        HighlightBranchRecursive(junction.Oldest.Id);
+                                stack.Push(junction.Oldest.Id);
+                            }
+                        }
                     }
                 }
             }
 
-            public event GraphUpdatedHandler Updated;
-
-            public void Add(string id, string[] parentIds, DataType type, GitRevision data)
+            public bool IsRevisionRelative(string guid)
             {
+                return Nodes.TryGetValue(guid, out var startNode)
+                    && startNode.Ancestors.Any(a => a.IsRelative);
+            }
+
+            public void Add(GitRevision revision, DataTypes types)
+            {
+                var parentIds = revision.ParentGuids;
+
                 // If we haven't seen this node yet, create a new junction.
-                if (!GetNode(id, out var node) && (parentIds == null || parentIds.Length == 0))
+                if (!GetNode(revision.Guid, out var node) && (parentIds == null || parentIds.Count == 0))
                 {
-                    var newJunction = new Junction(node, node);
-                    _junctions.Add(newJunction);
+                    _junctions.Add(new Junction(node, node));
                 }
 
-                _nodeCount++;
-                node.Data = data;
-                node.DataType = type;
+                Count++;
+                node.Data = revision;
+                node.DataTypes = types;
                 node.Index = AddedNodes.Count;
                 AddedNodes.Add(node);
 
@@ -174,7 +115,7 @@ namespace GitUI.RevisionGridClasses
                         // and is about to start a new branch. This will also mean that the last
                         // revisions are non-relative. Make sure a new junction is added and this
                         // is the start of a new branch (and color!)
-                        && (type & DataType.Active) != DataType.Active)
+                        && !types.HasFlag(DataTypes.Active))
                     {
                         // The node isn't a junction point. Just the parent to the node's
                         // (only) ancestor junction.
@@ -183,47 +124,42 @@ namespace GitUI.RevisionGridClasses
                     else if (node.Ancestors.Count == 1 && node.Ancestors[0].Youngest != node)
                     {
                         // The node is in the middle of a junction. We need to split it.
-                        Junction splitNode = node.Ancestors[0].Split(node);
-                        _junctions.Add(splitNode);
+                        _junctions.Add(node.Ancestors[0].SplitIntoJunctionWith(node));
 
                         // The node is a junction point. We are a new junction
-                        var junction = new Junction(node, parent);
-                        _junctions.Add(junction);
+                        _junctions.Add(new Junction(node, parent));
                     }
                     else if (parent.Descendants.Count == 1 && parent.Descendants[0].Oldest != parent)
                     {
                         // The parent is in the middle of a junction. We need to split it.
-                        Junction splitNode = parent.Descendants[0].Split(parent);
-                        _junctions.Add(splitNode);
+                        _junctions.Add(parent.Descendants[0].SplitIntoJunctionWith(parent));
 
                         // The node is a junction point. We are a new junction
-                        var junction = new Junction(node, parent);
-                        _junctions.Add(junction);
+                        _junctions.Add(new Junction(node, parent));
                     }
                     else
                     {
                         // The node is a junction point. We are a new junction
-                        var junction = new Junction(node, parent);
-                        _junctions.Add(junction);
+                        _junctions.Add(new Junction(node, parent));
                     }
                 }
 
-                bool isRelative = (type & DataType.Active) == DataType.Active;
+                bool isRelative = types.HasFlag(DataTypes.Active);
                 if (!isRelative && node.Descendants.Any(d => d.IsRelative))
                 {
                     isRelative = true;
                 }
 
                 bool isRebuild = false;
-                foreach (Junction d in node.Ancestors)
+                foreach (var ancestor in node.Ancestors)
                 {
-                    d.IsRelative = isRelative || d.IsRelative;
+                    ancestor.IsRelative = isRelative || ancestor.IsRelative;
 
                     // Uh, oh, we've already processed this lane. We'll have to update some rows.
-                    var parent = d.TryGetParent(node);
+                    var parent = ancestor.TryGetParent(node);
                     if (parent != null && parent.InLane != int.MaxValue)
                     {
-                        int resetTo = d.Oldest.Descendants.Aggregate(d.Oldest.InLane, (current, dd) => Math.Min(current, dd.Youngest.InLane));
+                        int resetTo = ancestor.Oldest.Descendants.Aggregate(ancestor.Oldest.InLane, (current, dd) => Math.Min(current, dd.Youngest.InLane));
                         Debug.WriteLine("We have to start over at lane {0} because of {1}", resetTo, node);
                         isRebuild = true;
                         break;
@@ -239,7 +175,7 @@ namespace GitUI.RevisionGridClasses
                     _lanes.CacheTo(lastLane);
 
                     // We need to signal the DvcsGraph object that it needs to redraw everything.
-                    Updated?.Invoke(this);
+                    Updated?.Invoke();
                 }
                 else
                 {
@@ -253,74 +189,70 @@ namespace GitUI.RevisionGridClasses
                 _junctions.Clear();
                 Nodes.Clear();
                 _lanes.Clear();
-                _nodeCount = 0;
-                _filterNodeCount = 0;
+                Count = 0;
             }
 
             public void ProcessNode(Node node)
             {
-                if (_isFilter)
-                {
-                    return;
-                }
-
                 for (int i = _processedNodes; i < AddedNodes.Count; i++)
                 {
-                    if (AddedNodes[i] == node)
+                    if (AddedNodes[i] != node)
                     {
-                        bool isChanged = false;
-                        while (i > _processedNodes)
-                        {
-                            // This only happens if we weren't in topo order
-                            if (Debugger.IsAttached)
-                            {
-                                Debugger.Break();
-                            }
-
-                            Node temp = AddedNodes[i];
-                            AddedNodes[i] = AddedNodes[i - 1];
-                            AddedNodes[i - 1] = temp;
-                            i--;
-                            isChanged = true;
-                        }
-
-                        // Signal that these rows have changed
-                        if (isChanged)
-                        {
-                            Updated?.Invoke(this);
-                        }
-
-                        _processedNodes++;
-                        break;
+                        continue;
                     }
+
+                    bool isChanged = false;
+
+                    while (i > _processedNodes)
+                    {
+                        // This only happens if we weren't in topo order
+                        if (Debugger.IsAttached)
+                        {
+                            Debugger.Break();
+                        }
+
+                        AddedNodes.Swap(i - 1, i);
+                        i--;
+                        isChanged = true;
+                    }
+
+                    // Signal that these rows have changed
+                    if (isChanged)
+                    {
+                        Updated?.Invoke();
+                    }
+
+                    _processedNodes++;
+                    break;
                 }
             }
 
             public void Prune()
             {
-                Node[] nodesToRemove = Nodes.Values.Where(n => n.Data == null).ToArray();
+                var nodesToRemove = Nodes.Values.Where(n => n.Data == null).ToList();
 
                 // Remove all nodes that don't have a value associated with them.
-                foreach (Node n in nodesToRemove)
+                foreach (var node in nodesToRemove)
                 {
-                    Nodes.Remove(n.Id);
+                    Nodes.Remove(node.Id);
 
                     // This guy should have been at the end of some junctions
-                    foreach (Junction j in n.Descendants)
+                    foreach (Junction j in node.Descendants)
                     {
-                        j.Remove(n);
+                        j.Remove(node);
                     }
                 }
             }
 
             public IEnumerable<Node> GetRefs()
             {
-                var nodes = new List<Node>();
-                foreach (Junction j in _junctions)
+                var nodes = new List<Node>(capacity: _junctions.Count);
+
+                foreach (var junction in _junctions)
                 {
-                    if (j.Youngest.Descendants.Count == 0 && !nodes.Contains(j.Youngest))
+                    if (junction.Youngest.Descendants.Count == 0 && !nodes.Contains(junction.Youngest))
                     {
-                        nodes.Add(j.Youngest);
+                        nodes.Add(junction.Youngest);
                     }
                 }
 
@@ -354,18 +286,18 @@ namespace GitUI.RevisionGridClasses
                 var l = new Queue<Node>();
                 var s = new Queue<Node>();
                 var p = new Queue<Node>();
-                foreach (Node h in GetRefs())
+                foreach (var refNode in GetRefs())
                 {
-                    foreach (Junction aj in h.Ancestors)
+                    foreach (var junction in refNode.Ancestors)
                     {
-                        if (!s.Contains(aj.Oldest))
+                        if (!s.Contains(junction.Oldest))
                         {
-                            s.Enqueue(aj.Oldest);
+                            s.Enqueue(junction.Oldest);
                         }
 
-                        if (!s.Contains(aj.Youngest))
+                        if (!s.Contains(junction.Youngest))
                         {
-                            s.Enqueue(aj.Youngest);
+                            s.Enqueue(junction.Youngest);
                         }
                     }
                 }
@@ -451,22 +383,26 @@ namespace GitUI.RevisionGridClasses
 
             public struct LaneInfo
             {
-                private List<Junction> _junctions;
-
-                public LaneInfo(int connectLane, Junction junction)
-                {
-                    ConnectLane = connectLane;
-                    _junctions = new List<Junction>(1) { junction };
-                }
+                private readonly List<Junction> _junctions;
 
                 public int ConnectLane { get; set; }
+
+                public LaneInfo(int connectLane, Junction junction)
+                    : this(connectLane, new List<Junction> { junction })
+                {
+                }
+
+                private LaneInfo(int connectLane, List<Junction> junctions)
+                {
+                    ConnectLane = connectLane;
+                    _junctions = junctions;
+                }
 
                 public IEnumerable<Junction> Junctions => _junctions;
 
                 public LaneInfo Clone()
                 {
-                    var other = new LaneInfo { ConnectLane = ConnectLane, _junctions = new List<Junction>(_junctions) };
-                    return other;
+                    return new LaneInfo(ConnectLane, new List<Junction>(_junctions));
                 }
 
                 public void UnionWith(LaneInfo other)
