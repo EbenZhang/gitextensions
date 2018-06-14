@@ -3478,7 +3478,13 @@ namespace GitCommands
                 return SubmoduleStatus.Unknown;
             }
 
-            string baseCommit = GetMergeBase(commit, oldCommit).ToString();
+            ObjectId baseOid = GetMergeBase(commit, oldCommit);
+            if (baseOid == null)
+            {
+                return SubmoduleStatus.Unknown;
+            }
+
+            string baseCommit = baseOid.ToString();
             if (baseCommit == oldCommit)
             {
                 return SubmoduleStatus.FastForward;
