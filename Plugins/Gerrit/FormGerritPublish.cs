@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using GitUI.Properties;
 using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 using ResourceManager;
 
 namespace Gerrit
@@ -25,7 +27,9 @@ namespace Gerrit
             : base(uiCommand)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
+
+            Publish.Image = Images.Push;
         }
 
         private void PublishClick(object sender, EventArgs e)
@@ -38,21 +42,15 @@ namespace Gerrit
 
         private static string PushCmd(string remote, string toBranch)
         {
-            remote = remote.ToPosixPath();
-
-            toBranch = GitRefName.GetFullBranchName(toBranch);
-
-            const string fromBranch = "HEAD";
-
-            toBranch = toBranch?.Replace(" ", "");
-
-            var sprogressOption = "";
-            if (GitCommandHelpers.VersionInUse.PushCanAskForProgress)
+            var args = new ArgumentBuilder
             {
-                sprogressOption = "--progress ";
-            }
+                "push",
+                { GitCommandHelpers.VersionInUse.PushCanAskForProgress, "--progress" },
+                remote.ToPosixPath().Trim().Quote(),
+                $"HEAD:{GitRefName.GetFullBranchName(toBranch)?.Replace(" ", "")}"
+            };
 
-            return string.Format("push {0}\"{1}\" {2}:{3}", sprogressOption, remote.Trim(), fromBranch, toBranch);
+            return args.ToString();
         }
 
         private bool PublishChange(IWin32Window owner)
@@ -114,28 +112,12 @@ namespace Gerrit
                 {
                     if (hadNewChanges)
                     {
-                        change = line;
-                        const string remotePrefix = "remote:";
-
-                        if (change.StartsWith(remotePrefix))
-                        {
-                            change = change.Substring(remotePrefix.Length);
-                        }
-
-                        int escapePos = change.LastIndexOf((char)27);
-                        if (escapePos != -1)
-                        {
-                            change = change.Substring(0, escapePos);
-                        }
-
-                        change = change.Trim();
-
-                        int spacePos = change.IndexOf(' ');
-                        if (spacePos != -1)
-                        {
-                            change = change.Substring(0, spacePos);
-                        }
-
+                        const char esc = (char)27;
+                        change = line
+                            .RemovePrefix("remote:")
+                            .SubstringUntilLast(esc)
+                            .Trim()
+                            .SubstringUntil(' ');
                         break;
                     }
                     else if (line.Contains("New Changes"))
@@ -153,6 +135,7 @@ namespace Gerrit
             return true;
         }
 
+        [CanBeNull]
         private string GetTopic(string targetBranch)
         {
             string branchName = GetBranchName(targetBranch);
@@ -188,7 +171,7 @@ namespace Gerrit
 
         private void FormGerritPublishLoad(object sender, EventArgs e)
         {
-            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemotes(true);
+            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemoteNames();
 
             _currentBranchRemote = Settings.DefaultRemote;
 
@@ -216,7 +199,7 @@ namespace Gerrit
         private void AddRemoteClick(object sender, EventArgs e)
         {
             UICommands.StartRemotesDialog();
-            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemotes(true);
+            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemoteNames();
         }
     }
 }

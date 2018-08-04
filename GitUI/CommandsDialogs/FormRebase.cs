@@ -37,7 +37,7 @@ namespace GitUI.CommandsDialogs
             : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
             helpImageDisplayUserControl1.Visible = !AppSettings.DontShowHelpImages;
             helpImageDisplayUserControl1.IsOnHoverShowImage2NoticeText = _hoverShowImageLabelText.Text;
             if (AppSettings.AlwaysShowAdvOpt)
@@ -265,7 +265,7 @@ namespace GitUI.CommandsDialogs
             }
         }
 
-        private void SolveMergeconflictsClick(object sender, EventArgs e)
+        private void SolveMergeConflictsClick(object sender, EventArgs e)
         {
             MergetoolClick(sender, e);
         }
@@ -289,7 +289,7 @@ namespace GitUI.CommandsDialogs
             {
                 if (chooseForm.ShowDialog(this) == DialogResult.OK && chooseForm.SelectedRevision != null)
                 {
-                    txtFrom.Text = chooseForm.SelectedRevision.Guid.Substring(0, 8);
+                    txtFrom.Text = chooseForm.SelectedRevision.ObjectId.ToShortString(8);
                 }
             }
         }

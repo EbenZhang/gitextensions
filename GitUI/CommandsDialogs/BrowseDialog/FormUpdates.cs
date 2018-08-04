@@ -11,6 +11,7 @@ using Git.hub;
 using GitCommands;
 using GitCommands.Config;
 using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 using ResourceManager;
 using RestSharp;
 
@@ -30,20 +31,18 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         public IWin32Window OwnerWindow;
         public Version CurrentVersion { get; }
         public bool UpdateFound;
-        public string InstallerPath;
-        private string _releasePageUrl;
-        public string NewVersion;
+        public string InstallerPath = "";
+        private string _releasePageUrl = "";
+        public string NewVersion = "";
 
         public FormUpdates(Version currentVersion)
         {
-            InitializeComponent();
-            Translate();
-            UpdateFound = false;
-            progressBar1.Visible = true;
             CurrentVersion = currentVersion;
-            InstallerPath = "";
-            _releasePageUrl = "";
-            NewVersion = "";
+
+            InitializeComponent();
+            InitializeComplete();
+
+            progressBar1.Visible = true;
             progressBar1.Style = ProgressBarStyle.Marquee;
         }
 
@@ -82,7 +81,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         {
             try
             {
-                Client github = new Client();
+                var github = new Client();
                 Repository gitExtRepo = github.getRepository("EbenZhang", "gitextensions");
                 if (gitExtRepo == null)
                 {
@@ -272,6 +271,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         public ReleaseType ReleaseType;
         public string DownloadPage;
 
+        [CanBeNull]
         public static ReleaseVersion FromSection(IConfigSection section)
         {
             Version ver;
@@ -299,7 +299,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
         public static IEnumerable<ReleaseVersion> Parse(string versionsStr)
         {
-            ConfigFile cfg = new ConfigFile("", true);
+            var cfg = new ConfigFile("", true);
             cfg.LoadFromString(versionsStr);
             var sections = cfg.GetConfigSections("Version");
             sections = sections.Concat(cfg.GetConfigSections("RCVersion"));

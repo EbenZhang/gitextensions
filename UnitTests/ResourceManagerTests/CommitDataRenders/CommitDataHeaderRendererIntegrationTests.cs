@@ -32,31 +32,35 @@ namespace ResourceManagerTests.CommitDataRenders
         {
             var commitGuid = ObjectId.Random();
             var treeGuid = ObjectId.Random();
-            var parentGuid1 = Guid.NewGuid().ToString("N");
-            var parentGuid2 = Guid.NewGuid().ToString("N");
+            var parentId1 = ObjectId.Random();
+            var parentId2 = ObjectId.Random();
             var authorTime = DateTime.UtcNow.AddDays(-3);
             var commitTime = DateTime.UtcNow.AddDays(-2);
 
             _revisionProvider = Substitute.For<IGitRevisionProvider>();
-            _parent1Rev = new GitRevision(guid: parentGuid1) { Subject = "Parent1" };
-            _parent2Rev = new GitRevision(guid: parentGuid2) { Subject = "Parent2" };
-            _revisionProvider.GetRevision(parentGuid1, shortFormat: true).Returns(_parent1Rev);
-            _revisionProvider.GetRevision(parentGuid2, shortFormat: true).Returns(_parent2Rev);
+            _parent1Rev = new GitRevision(parentId1) { Subject = "Parent1" };
+            _parent2Rev = new GitRevision(parentId2) { Subject = "Parent2" };
+            _revisionProvider.GetRevision(parentId1, shortFormat: true).Returns(_parent1Rev);
+            _revisionProvider.GetRevision(parentId2, shortFormat: true).Returns(_parent2Rev);
 
-            var childGuids = new List<string> { "3b6ce324e30ed7fda24483fd56a180c34a262202", "2a8788ff15071a202505a96f80796dbff5750ddf", "8e66fa8095a86138a7c7fb22318d2f819669831e" };
-            _child1Rev = new GitRevision(guid: childGuids[0]) { Subject = "Child1" };
-            _child2Rev = new GitRevision(guid: childGuids[1]) { Subject = "Child2" };
-            _child3Rev = new GitRevision(guid: childGuids[2]) { Subject = "Child3" };
-            _revisionProvider.GetRevision(childGuids[0], shortFormat: true).Returns(_child1Rev);
-            _revisionProvider.GetRevision(childGuids[1], shortFormat: true).Returns(_child2Rev);
-            _revisionProvider.GetRevision(childGuids[2], shortFormat: true).Returns(_child3Rev);
+            var childIds = new[]
+            {
+                ObjectId.Parse("3b6ce324e30ed7fda24483fd56a180c34a262202"),
+                ObjectId.Parse("2a8788ff15071a202505a96f80796dbff5750ddf"),
+                ObjectId.Parse("8e66fa8095a86138a7c7fb22318d2f819669831e")
+            };
+            _child1Rev = new GitRevision(childIds[0]) { Subject = "Child1" };
+            _child2Rev = new GitRevision(childIds[1]) { Subject = "Child2" };
+            _child3Rev = new GitRevision(childIds[2]) { Subject = "Child3" };
+            _revisionProvider.GetRevision(childIds[0], shortFormat: true).Returns(_child1Rev);
+            _revisionProvider.GetRevision(childIds[1], shortFormat: true).Returns(_child2Rev);
+            _revisionProvider.GetRevision(childIds[2], shortFormat: true).Returns(_child3Rev);
 
             _data = new CommitData(commitGuid, treeGuid,
-                new ReadOnlyCollection<string>(new List<string> { parentGuid1, parentGuid2 }),
+                new ReadOnlyCollection<ObjectId>(new List<ObjectId> { parentId1, parentId2 }),
                 "John Doe (Acme Inc) <John.Doe@test.com>", authorTime,
                 "Jane Doe <Jane.Doe@test.com>", commitTime,
-                "\tI made a really neato change.\n\nNotes (p4notes):\n\tP4@547123");
-            _data.ChildrenGuids = childGuids;
+                "\tI made a really neat change.\n\nNotes (p4notes):\n\tP4@547123") { ChildIds = childIds };
 
             _rendererTabs = new CommitDataHeaderRenderer(new TabbedHeaderLabelFormatter(), new DateFormatter(), new TabbedHeaderRenderStyleProvider(), new LinkFactory());
             _rendererSpaces = new CommitDataHeaderRenderer(new MonospacedHeaderLabelFormatter(), new DateFormatter(), new MonospacedHeaderRenderStyleProvider(), new LinkFactory());
@@ -69,14 +73,14 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Author date:	3 days ago (" + LocalizationHelpers.GetFullDateString(_data.AuthorDate) + ")" + Environment.NewLine +
                                  "Committer:		<a href='mailto:Jane.Doe@test.com'>Jane Doe &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
                                  "Commit date:	2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
-                                 "Commit hash:	" + _data.Guid + Environment.NewLine +
+                                 "Commit hash:	" + _data.ObjectId + Environment.NewLine +
                                  "Children:		" +
-                                   "<a href='gitext://gotocommit/" + _data.ChildrenGuids[0] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[0]) + "</a>" + Environment.NewLine +
-                                   "<a href='gitext://gotocommit/" + _data.ChildrenGuids[1] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[1]) + "</a>" + Environment.NewLine +
-                                   "<a href='gitext://gotocommit/" + _data.ChildrenGuids[2] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[2]) + "</a>" + Environment.NewLine +
-                                 "Parent(s):		" +
-                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[0] + "'>" + GitRevision.ToShortSha(_data.ParentGuids[0]) + "</a>" + _parent1Rev.Subject + Environment.NewLine +
-                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[1] + "'>" + GitRevision.ToShortSha(_data.ParentGuids[1]) + "</a>" + _parent2Rev.Subject;
+                                   "<a href='gitext://gotocommit/" + _data.ChildIds[0] + "'>" + _data.ChildIds[0].ToShortString() + "</a>" + Environment.NewLine +
+                                   "<a href='gitext://gotocommit/" + _data.ChildIds[1] + "'>" + _data.ChildIds[1].ToShortString() + "</a>" + Environment.NewLine +
+                                   "<a href='gitext://gotocommit/" + _data.ChildIds[2] + "'>" + _data.ChildIds[2].ToShortString() + "</a>" + Environment.NewLine +
+                                 "Parents:		" +
+                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[0] + "'>" + _data.ParentGuids[0].ToShortString() + "</a>" + _parent1Rev.Subject + Environment.NewLine +
+                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[1] + "'>" + _data.ParentGuids[1].ToShortString() + "</a>" + _parent2Rev.Subject;
 
             var result = _rendererTabs.Render(_data, true, _revisionProvider);
 
@@ -90,14 +94,14 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Author date:	3 days ago (" + LocalizationHelpers.GetFullDateString(_data.AuthorDate) + ")" + Environment.NewLine +
                                  "Committer:		<a href='mailto:Jane.Doe@test.com'>Jane Doe &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
                                  "Commit date:	2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
-                                 "Commit hash:	" + _data.Guid + Environment.NewLine +
+                                 "Commit hash:	" + _data.ObjectId + Environment.NewLine +
                                  "Children:		" +
-                                   GitRevision.ToShortSha(_data.ChildrenGuids[0]) + " " +
-                                   GitRevision.ToShortSha(_data.ChildrenGuids[1]) + " " +
-                                   GitRevision.ToShortSha(_data.ChildrenGuids[2]) + Environment.NewLine +
-                                 "Parent(s):		" +
-                                   GitRevision.ToShortSha(_data.ParentGuids[0]) + " " +
-                                   GitRevision.ToShortSha(_data.ParentGuids[1]);
+                                   _data.ChildIds[0].ToShortString() + " " +
+                                   _data.ChildIds[1].ToShortString() + " " +
+                                   _data.ChildIds[2].ToShortString() + Environment.NewLine +
+                                 "Parents:		" +
+                                   _data.ParentGuids[0].ToShortString() + " " +
+                                   _data.ParentGuids[1].ToShortString();
 
             var result = _rendererTabs.Render(_data, false, _revisionProvider);
 
@@ -111,14 +115,14 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Author date: 3 days ago (" + LocalizationHelpers.GetFullDateString(_data.AuthorDate) + ")" + Environment.NewLine +
                                  "Committer:   <a href='mailto:Jane.Doe@test.com'>Jane Doe &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
                                  "Commit date: 2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
-                                 "Commit hash: " + _data.Guid + Environment.NewLine +
+                                 "Commit hash: " + _data.ObjectId + Environment.NewLine +
                                  "Children:    " +
-                                   "<a href='gitext://gotocommit/" + _data.ChildrenGuids[0] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[0]) + "</a> " +
-                                   "<a href='gitext://gotocommit/" + _data.ChildrenGuids[1] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[1]) + "</a> " +
-                                   "<a href='gitext://gotocommit/" + _data.ChildrenGuids[2] + "'>" + GitRevision.ToShortSha(_data.ChildrenGuids[2]) + "</a>" + Environment.NewLine +
-                                 "Parent(s):   " +
-                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[0] + "'>" + GitRevision.ToShortSha(_data.ParentGuids[0]) + "</a> " +
-                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[1] + "'>" + GitRevision.ToShortSha(_data.ParentGuids[1]) + "</a>";
+                                   "<a href='gitext://gotocommit/" + _data.ChildIds[0] + "'>" + _data.ChildIds[0].ToShortString() + "</a> " +
+                                   "<a href='gitext://gotocommit/" + _data.ChildIds[1] + "'>" + _data.ChildIds[1].ToShortString() + "</a> " +
+                                   "<a href='gitext://gotocommit/" + _data.ChildIds[2] + "'>" + _data.ChildIds[2].ToShortString() + "</a>" + Environment.NewLine +
+                                 "Parents:     " +
+                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[0] + "'>" + _data.ParentGuids[0].ToShortString() + "</a> " +
+                                   "<a href='gitext://gotocommit/" + _data.ParentGuids[1] + "'>" + _data.ParentGuids[1].ToShortString() + "</a>";
 
             var result = _rendererSpaces.Render(_data, true, _revisionProvider);
 
@@ -132,14 +136,14 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Author date: 3 days ago (" + LocalizationHelpers.GetFullDateString(_data.AuthorDate) + ")" + Environment.NewLine +
                                  "Committer:   <a href='mailto:Jane.Doe@test.com'>Jane Doe &lt;Jane.Doe@test.com&gt;</a>" + Environment.NewLine +
                                  "Commit date: 2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
-                                 "Commit hash: " + _data.Guid + Environment.NewLine +
+                                 "Commit hash: " + _data.ObjectId + Environment.NewLine +
                                  "Children:    " +
-                                   GitRevision.ToShortSha(_data.ChildrenGuids[0]) + " " +
-                                   GitRevision.ToShortSha(_data.ChildrenGuids[1]) + " " +
-                                   GitRevision.ToShortSha(_data.ChildrenGuids[2]) + Environment.NewLine +
-                                 "Parent(s):   " +
-                                   GitRevision.ToShortSha(_data.ParentGuids[0]) + " " +
-                                   GitRevision.ToShortSha(_data.ParentGuids[1]);
+                                   _data.ChildIds[0].ToShortString() + " " +
+                                   _data.ChildIds[1].ToShortString() + " " +
+                                   _data.ChildIds[2].ToShortString() + Environment.NewLine +
+                                 "Parents:     " +
+                                   _data.ParentGuids[0].ToShortString() + " " +
+                                   _data.ParentGuids[1].ToShortString();
 
             var result = _rendererSpaces.Render(_data, false, _revisionProvider);
 
@@ -153,7 +157,7 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Author date:	3 days ago (" + LocalizationHelpers.GetFullDateString(_data.AuthorDate) + ")" + Environment.NewLine +
                                  "Committer:		Jane Doe <Jane.Doe@test.com>" + Environment.NewLine +
                                  "Commit date:	2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
-                                 "Commit hash:	" + _data.Guid;
+                                 "Commit hash:	" + _data.ObjectId;
 
             var result = _rendererTabs.RenderPlain(_data);
 
@@ -167,7 +171,7 @@ namespace ResourceManagerTests.CommitDataRenders
                                  "Author date: 3 days ago (" + LocalizationHelpers.GetFullDateString(_data.AuthorDate) + ")" + Environment.NewLine +
                                  "Committer:   Jane Doe <Jane.Doe@test.com>" + Environment.NewLine +
                                  "Commit date: 2 days ago (" + LocalizationHelpers.GetFullDateString(_data.CommitDate) + ")" + Environment.NewLine +
-                                 "Commit hash: " + _data.Guid;
+                                 "Commit hash: " + _data.ObjectId;
 
             var result = _rendererSpaces.RenderPlain(_data);
 

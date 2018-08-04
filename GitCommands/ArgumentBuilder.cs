@@ -27,7 +27,7 @@ namespace GitCommands
     /// <code>
     /// var args = new ArgumentBuilder
     /// {
-    ///     "commit",                   // adds the string unnconditionally
+    ///     "commit",                   // adds the string unconditionally
     ///     { isAmend, "--amend" },     // adds the option only if isAmend == true
     ///     { isUp, "--up", "--down" }, // selects the option based on the value of isUp
     /// };
@@ -36,6 +36,8 @@ namespace GitCommands
     public sealed class ArgumentBuilder : IEnumerable
     {
         private readonly StringBuilder _command = new StringBuilder(capacity: 16);
+
+        public bool IsEmpty => _command.Length == 0;
 
         /// <summary>
         /// Adds <paramref name="s"/> to the argument list.

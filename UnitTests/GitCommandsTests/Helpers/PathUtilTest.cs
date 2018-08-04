@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
 using GitCommands;
@@ -181,6 +182,76 @@ namespace GitCommandsTests.Helpers
             {
                 // I am not able to figure out any invalid (giving exception) path under mono
             }
+        }
+
+        [Test]
+        public void GetDisplayPath()
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            Assert.AreEqual(@"~\SomePath", PathUtil.GetDisplayPath(Path.Combine(home, "SomePath")));
+            Assert.AreEqual("c:\\SomePath", PathUtil.GetDisplayPath("c:\\SomePath"));
+        }
+
+        [Test]
+        public void TryGetExactPathName()
+        {
+            var paths = new[]
+            {
+                @"C:\Users\Public\desktop.ini",
+                @"C:\pagefile.sys",
+                @"C:\Windows\System32\cmd.exe",
+                @"C:\Users\Default\NTUSER.DAT",
+                @"C:\Program Files (x86)\Microsoft.NET\Primary Interop Assemblies",
+                @"C:\Program Files (x86)",
+                @"Does not exist",
+                @"\\" + Environment.MachineName.ToLower() + @"\c$\Windows\System32",
+                @"..",
+            };
+
+            var expectedExactPaths = new Dictionary<string, string>()
+            {
+                { @"..", Path.GetDirectoryName(Environment.CurrentDirectory) },
+            };
+
+            foreach (var path in paths)
+            {
+                var lowercasePath = path.ToLower();
+                var expected = File.Exists(lowercasePath) || Directory.Exists(lowercasePath);
+                var actual = PathUtil.TryGetExactPath(lowercasePath, out string exactPath);
+
+                Assert.AreEqual(expected, actual);
+
+                if (actual)
+                {
+                    if (expectedExactPaths.TryGetValue(path, out var expectedExactPath))
+                    {
+                        Assert.AreEqual(expectedExactPath, exactPath);
+                    }
+                    else
+                    {
+                        Assert.AreEqual(path, exactPath);
+                    }
+                }
+                else
+                {
+                    Assert.IsNull(exactPath);
+                }
+            }
+        }
+
+        [Test]
+        public void GetFileExtension()
+        {
+            Assert.AreEqual("txt", PathUtil.GetFileExtension("foo.txt"));
+            Assert.AreEqual("txt", PathUtil.GetFileExtension("foo.txt.txt"));
+            Assert.AreEqual("txt", PathUtil.GetFileExtension(".txt"));
+            Assert.AreEqual("", PathUtil.GetFileExtension("foo."));
+            Assert.AreEqual("", PathUtil.GetFileExtension("."));
+            Assert.AreEqual("", PathUtil.GetFileExtension(".."));
+            Assert.AreEqual("", PathUtil.GetFileExtension("..."));
+            Assert.Null(PathUtil.GetFileExtension("foo"));
+            Assert.Null(PathUtil.GetFileExtension(""));
         }
     }
 }

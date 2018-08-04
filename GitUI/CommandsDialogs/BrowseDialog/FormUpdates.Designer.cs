@@ -33,7 +33,6 @@
             this.closeButton = new System.Windows.Forms.Button();
             this.UpdateLabel = new System.Windows.Forms.Label();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
-            this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.linkChangeLog = new System.Windows.Forms.LinkLabel();
             this.btnInstallNow = new System.Windows.Forms.Button();
             this.SuspendLayout();
@@ -64,11 +63,6 @@
             this.progressBar1.Size = new System.Drawing.Size(424, 23);
             this.progressBar1.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
             this.progressBar1.TabIndex = 3;
-            // 
-            // contextMenuStrip1
-            // 
-            this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(61, 4);
             // 
             // linkChangeLog
             // 
@@ -105,7 +99,6 @@
             this.Controls.Add(this.UpdateLabel);
             this.Controls.Add(this.closeButton);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "FormUpdates";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Check for update";
@@ -120,7 +113,6 @@
         private System.Windows.Forms.Button closeButton;
         private System.Windows.Forms.Label UpdateLabel;
         private System.Windows.Forms.ProgressBar progressBar1;
-        private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.LinkLabel linkChangeLog;
         private System.Windows.Forms.Button btnInstallNow;
     }

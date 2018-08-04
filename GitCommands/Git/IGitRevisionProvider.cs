@@ -1,8 +1,11 @@
+using GitUIPluginInterfaces;
+using JetBrains.Annotations;
+
 namespace GitCommands.Git
 {
     public interface IGitRevisionProvider
     {
-        GitRevision GetRevision(string commit, bool shortFormat = false, bool loadRefs = false);
-        bool IsExistingCommitHash(string sha1Fragment, out string fullSha1);
+        GitRevision GetRevision([CanBeNull] ObjectId commit = null,
+            bool shortFormat = false, bool loadRefs = false);
     }
 }
