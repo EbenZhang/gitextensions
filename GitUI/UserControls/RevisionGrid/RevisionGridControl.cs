@@ -1227,18 +1227,12 @@ namespace GitUI
             }
         }
 
+        [ContractAnnotation("=>false,spi:null")]
+        [ContractAnnotation("=>true,spi:notnull")]
         internal bool TryGetSuperProjectInfo(out SuperProjectInfo spi)
         {
-            if (_superprojectCurrentCheckout.Task.IsCompleted)
-            {
-                spi = default;
-                return false;
-            }
-
-#pragma warning disable VSTHRD002 // Avoid problematic synchronous waits
-            spi = _superprojectCurrentCheckout.Task.Result;
-#pragma warning restore VSTHRD002
-            return true;
+            spi = _superprojectCurrentCheckout.Task.CompletedOrDefault();
+            return spi != null;
         }
 
         private void OnGridViewDoubleClick(object sender, MouseEventArgs e)
@@ -1878,7 +1872,7 @@ namespace GitUI
                 return;
             }
 
-            FormProcess.ShowDialog(this, Module, GitCommandHelpers.ContinueBisectCmd(bisectOption, LatestSelectedRevision.Guid), false);
+            FormProcess.ShowDialog(this, Module, GitCommandHelpers.ContinueBisectCmd(bisectOption, LatestSelectedRevision.ObjectId), false);
             RefreshRevisions();
         }
 
@@ -1919,11 +1913,6 @@ namespace GitUI
             void AddOwnScripts()
             {
                 var scripts = ScriptManager.GetScripts();
-
-                if (scripts == null)
-                {
-                    return;
-                }
 
                 var lastIndex = mainContextMenu.Items.Count;
 

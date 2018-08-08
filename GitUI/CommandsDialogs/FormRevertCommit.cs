@@ -13,6 +13,12 @@ namespace GitUI.CommandsDialogs
 
         private bool _isMerge;
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormRevertCommit()
+        {
+            InitializeComponent();
+        }
+
         public FormRevertCommit(GitUICommands commands, GitRevision revision)
             : base(commands)
         {
@@ -68,7 +74,7 @@ namespace GitUI.CommandsDialogs
                 }
             }
 
-            FormProcess.ShowDialog(this, GitCommandHelpers.RevertCmd(Revision.Guid, AutoCommit.Checked, parentIndex));
+            FormProcess.ShowDialog(this, GitCommandHelpers.RevertCmd(Revision.ObjectId, AutoCommit.Checked, parentIndex));
             MergeConflictHandler.HandleMergeConflicts(UICommands, this, AutoCommit.Checked);
             DialogResult = DialogResult.OK;
             Close();

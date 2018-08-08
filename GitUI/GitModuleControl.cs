@@ -9,6 +9,17 @@ using ResourceManager;
 
 namespace GitUI
 {
+    public sealed class GitUICommandsSourceEventArgs : EventArgs
+    {
+        public GitUICommandsSourceEventArgs([NotNull] IGitUICommandsSource gitUiCommandsSource)
+        {
+            GitUICommandsSource = gitUiCommandsSource;
+        }
+
+        [NotNull]
+        public IGitUICommandsSource GitUICommandsSource { get; }
+    }
+
     /// <summary>
     /// Base class for a <see cref="UserControl"/> requiring <see cref="GitModule"/> and <see cref="GitUICommands"/>.
     /// </summary>
@@ -18,7 +29,10 @@ namespace GitUI
 
         private int _isDisposed;
 
-        /// <summary>Occurs after the <see cref="UICommandsSource"/> is changed.</summary>
+        /// <summary>
+        /// Occurs after the <see cref="UICommandsSource"/> is set.
+        /// Will only occur once, as the source cannot change after being set.
+        /// </summary>
         [Browsable(false)]
         public event EventHandler<GitUICommandsSourceEventArgs> UICommandsSourceSet;
 
@@ -33,7 +47,7 @@ namespace GitUI
         /// </remarks>
         /// <exception cref="InvalidOperationException">Unable to initialise the source as
         /// no ancestor of type <see cref="IGitUICommandsSource"/> was found.</exception>
-        [CanBeNull]
+        [NotNull]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public IGitUICommandsSource UICommandsSource
@@ -54,6 +68,7 @@ namespace GitUI
                     }
                 }
 
+                // ReSharper disable once AssignNullToNotNullAttribute
                 return _uiCommandsSource;
             }
             set
@@ -64,14 +79,14 @@ namespace GitUI
                 }
 
                 _uiCommandsSource = value ?? throw new ArgumentException($"Can not assign null value to {nameof(UICommandsSource)}.");
-                OnUICommandsSourceChanged(_uiCommandsSource);
+                OnUICommandsSourceSet(_uiCommandsSource);
             }
         }
 
         /// <summary>Gets the <see cref="UICommandsSource"/>'s <see cref="GitUICommands"/> reference.</summary>
-        [CanBeNull]
+        [NotNull]
         [Browsable(false)]
-        public GitUICommands UICommands => UICommandsSource?.UICommands;
+        public GitUICommands UICommands => UICommandsSource.UICommands;
 
         /// <summary>
         /// Gets the UI commands, if they've initialised.
@@ -91,10 +106,10 @@ namespace GitUI
         }
 
         /// <summary>Gets the <see cref="UICommands"/>' <see cref="GitModule"/> reference.</summary>
-        [CanBeNull]
+        [NotNull]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
-        public GitModule Module => UICommands?.Module;
+        public GitModule Module => UICommands.Module;
 
         protected GitModuleControl()
         {
@@ -138,7 +153,7 @@ namespace GitUI
         }
 
         /// <summary>Raises the <see cref="UICommandsSourceSet"/> event.</summary>
-        protected virtual void OnUICommandsSourceChanged(IGitUICommandsSource source)
+        protected virtual void OnUICommandsSourceSet([NotNull] IGitUICommandsSource source)
         {
             UICommandsSourceSet?.Invoke(this, new GitUICommandsSourceEventArgs(source));
         }

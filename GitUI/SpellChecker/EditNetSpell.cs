@@ -195,7 +195,7 @@ namespace GitUI.SpellChecker
             set => TextBox.SelectedText = value;
         }
 
-        protected RepoDistSettings Settings => Module?.EffectiveSettings ?? AppSettings.SettingsContainer;
+        protected RepoDistSettings Settings => Module.EffectiveSettings ?? AppSettings.SettingsContainer;
 
         public void SelectAll()
         {
@@ -551,9 +551,9 @@ namespace GitUI.SpellChecker
         private void DicToolStripMenuItemClick(object sender, EventArgs e)
         {
             // if a Module is available, then always change the "repository local" setting
-            // it will set a dictionary only for this Module (repository) localy
+            // it will set a dictionary only for this Module (repository) locally
 
-            var settings = Module?.LocalSettings ?? Settings;
+            var settings = Module.LocalSettings ?? Settings;
 
             settings.Dictionary = ((ToolStripItem)sender).Text;
             LoadDictionary();
@@ -711,7 +711,7 @@ namespace GitUI.SpellChecker
             if (!ContainsFocus && string.IsNullOrEmpty(TextBox.Text) && TextBoxFont != null)
             {
                 _isWatermarkShowing = true;
-                TextBox.Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Italic);
+                TextBox.Font = new Font(TextBox.Font, FontStyle.Italic);
                 TextBox.ForeColor = SystemColors.InactiveCaption;
                 TextBox.Text = WatermarkText;
             }

@@ -115,17 +115,15 @@ namespace GitUI.CommandsDialogs
 
         private UpdateTargets _selectedRevisionUpdatedTargets = UpdateTargets.None;
 
-        /// <summary>
-        /// For VS designer
-        /// </summary>
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormBrowse()
         {
             InitializeComponent();
             InitializeComplete();
         }
 
-        public FormBrowse([CanBeNull] GitUICommands commands, string filter, ObjectId selectCommit = null, bool startWithDashboard = false)
-            : base(true, commands)
+        public FormBrowse([NotNull] GitUICommands commands, string filter, ObjectId selectCommit = null, bool startWithDashboard = false)
+            : base(commands)
         {
             _startWithDashboard = startWithDashboard;
 
@@ -157,12 +155,6 @@ namespace GitUI.CommandsDialogs
             if (!AppSettings.ShowGpgInformation.ValueOrDefault)
             {
                 CommitInfoTabControl.RemoveIfExists(GpgInfoTabPage);
-            }
-
-            if (commands != null)
-            {
-                RevisionGrid.UICommandsSource = this;
-                repoObjectsTree.UICommandsSource = this;
             }
 
             ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
@@ -201,8 +193,7 @@ namespace GitUI.CommandsDialogs
 
                 var repoStateVisualiser = new RepoStateVisualiser();
 
-                _gitStatusMonitor = new GitStatusMonitor();
-                _gitStatusMonitor.Init(this);
+                _gitStatusMonitor = new GitStatusMonitor(this);
 
                 _gitStatusMonitor.GitStatusMonitorStateChanged += (s, e) =>
                 {
@@ -301,14 +292,12 @@ namespace GitUI.CommandsDialogs
                 oldCommands.BrowseRepo = null;
                 UICommands.BrowseRepo = this;
             };
-            if (commands != null)
-            {
-                RefreshPullIcon();
-                UICommands.PostRepositoryChanged += UICommands_PostRepositoryChanged;
-                UICommands.BrowseRepo = this;
-                _controller = new FormBrowseController(new GitGpgController(() => Module));
-                _commitDataManager = new CommitDataManager(() => Module);
-            }
+
+            RefreshPullIcon();
+            UICommands.PostRepositoryChanged += UICommands_PostRepositoryChanged;
+            UICommands.BrowseRepo = this;
+            _controller = new FormBrowseController(new GitGpgController(() => Module));
+            _commitDataManager = new CommitDataManager(() => Module);
 
             var repositoryDescriptionProvider = new RepositoryDescriptionProvider(new GitDirectoryResolver());
             _appTitleGenerator = new AppTitleGenerator(repositoryDescriptionProvider);
@@ -390,6 +379,7 @@ namespace GitUI.CommandsDialogs
 
             if (_startWithDashboard)
             {
+                base.OnLoad(e);
                 return;
             }
 
@@ -595,7 +585,7 @@ namespace GitUI.CommandsDialogs
                 _repositoryHostsToolStripMenuItem.Text = PluginRegistry.GitHosters[0].Description;
             }
 
-            UpdatePluginMenu(Module?.IsValidGitWorkingDir() ?? false);
+            UpdatePluginMenu(Module.IsValidGitWorkingDir());
         }
 
         private void UnregisterPlugins()
@@ -727,7 +717,7 @@ namespace GitUI.CommandsDialogs
 
                 RefreshWorkingDirComboText();
                 var branchName = !string.IsNullOrEmpty(branchSelect.Text) ? branchSelect.Text : _noBranchTitle.Text;
-                Text = _appTitleGenerator.Generate(Module?.WorkingDir, validBrowseDir, branchName);
+                Text = _appTitleGenerator.Generate(Module.WorkingDir, validBrowseDir, branchName);
 
                 OnActivate();
 
@@ -1079,13 +1069,32 @@ namespace GitUI.CommandsDialogs
 
         private void FillFileTree()
         {
+            var revision = RevisionGrid.GetSelectedRevisions().FirstOrDefault();
+
+            // Don't show the "File Tree" tab for artificial commits
+            var showFileTreeTab = revision?.IsArtificial != true;
+
+            if (showFileTreeTab)
+            {
+                if (TreeTabPage.Parent == null)
+                {
+                    var index = CommitInfoTabControl.TabPages.IndexOf(DiffTabPage);
+                    Debug.Assert(index != -1, "TabControl should contain diff tab page");
+                    CommitInfoTabControl.TabPages.Insert(index + 1, TreeTabPage);
+                }
+            }
+            else
+            {
+                TreeTabPage.Parent = null;
+            }
+
             if (CommitInfoTabControl.SelectedTab != TreeTabPage || _selectedRevisionUpdatedTargets.HasFlag(UpdateTargets.FileTree))
             {
                 return;
             }
 
             _selectedRevisionUpdatedTargets |= UpdateTargets.FileTree;
-            fileTree.LoadRevision(RevisionGrid.GetSelectedRevisions().FirstOrDefault());
+            fileTree.LoadRevision(revision);
         }
 
         private void FillDiff()
@@ -2583,11 +2592,6 @@ namespace GitUI.CommandsDialogs
                 // Second task: Populate toolbar menu on UI thread.  Note further tasks are created by
                 // CreateSubmoduleMenuItem to update images with submodule status.
                 await this.SwitchToMainThreadAsync(cancelToken);
-
-                if (result == null)
-                {
-                    return;
-                }
 
                 RemoveSubmoduleButtons();
 

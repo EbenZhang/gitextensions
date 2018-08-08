@@ -280,7 +280,7 @@
     <Compile Include="CommandsDialogs\SettingsDialog\Pages\FormBrowseRepoSettingsPage.Designer.cs">
       <DependentUpon>FormBrowseRepoSettingsPage.cs</DependentUpon>
     </Compile>
-    <Compile Include="ControlUtil.cs" />
+    <Compile Include="FontUtil.cs" />
     <Compile Include="Editor\GitHighlightingStrategyBase.cs" />
     <Compile Include="Editor\RebaseTodoHighlightingStrategy.cs" />
     <Compile Include="FindFilePredicateProvider.cs" />
@@ -371,6 +371,8 @@
     <Compile Include="SpellChecker\SpellCheckerHelper.cs" />
     <Compile Include="SpellChecker\WordAtCursorExtractor.cs" />
     <Compile Include="TaskbarProgress.cs" />
+    <Compile Include="UserControls\RevisionGrid\Graph\JunctionColorProvider.cs" />
+    <Compile Include="UserControls\RevisionGrid\Graph\JunctionStyler.cs" />
     <Compile Include="UserControls\RevisionGrid\Columns\MultilineIndicator.cs" />
     <Compile Include="UserControls\HslColor.cs" />
     <Compile Include="UserControls\RevisionGrid\Graph\ActiveLaneRow.cs" />
@@ -566,9 +568,7 @@
       <DependentUpon>FormVerify.cs</DependentUpon>
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GitModuleControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
+    <Compile Include="GitModuleControl.cs" />
     <Compile Include="GitModuleForm.cs">
       <SubType>Form</SubType>
     </Compile>
