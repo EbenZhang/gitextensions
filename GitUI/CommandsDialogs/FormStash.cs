@@ -8,7 +8,6 @@ using GitCommands;
 using GitCommands.Git;
 using GitCommands.Patches;
 using GitExtUtils.GitUI;
-using GitUI.Properties;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
@@ -192,7 +191,7 @@ namespace GitUI.CommandsDialogs
 
         private void StashClick(object sender, EventArgs e)
         {
-            if (chkIncludeUntrackedFiles.Checked && !GitCommandHelpers.VersionInUse.StashUntrackedFilesSupported)
+            if (chkIncludeUntrackedFiles.Checked && !GitVersion.Current.StashUntrackedFilesSupported)
             {
                 if (MessageBox.Show(_stashUntrackedFilesNotSupported.Text, _stashUntrackedFilesNotSupportedCaption.Text, MessageBoxButtons.OKCancel) == DialogResult.Cancel)
                 {
@@ -210,7 +209,7 @@ namespace GitUI.CommandsDialogs
 
         private void StashSelectedFiles_Click(object sender, EventArgs e)
         {
-            if (chkIncludeUntrackedFiles.Checked && !GitCommandHelpers.VersionInUse.StashUntrackedFilesSupported)
+            if (chkIncludeUntrackedFiles.Checked && !GitVersion.Current.StashUntrackedFilesSupported)
             {
                 if (MessageBox.Show(_stashUntrackedFilesNotSupported.Text, _stashUntrackedFilesNotSupportedCaption.Text, MessageBoxButtons.OKCancel) == DialogResult.Cancel)
                 {

@@ -127,12 +127,12 @@ namespace GitUI.CommandsDialogs
             _branch = Module.GetSelectedBranch();
             BindRemotesDropDown(defaultRemote);
 
-            Merge.Checked = AppSettings.FormPullAction == AppSettings.PullAction.Merge;
-            Rebase.Checked = AppSettings.FormPullAction == AppSettings.PullAction.Rebase;
-            Fetch.Checked = AppSettings.FormPullAction == AppSettings.PullAction.Fetch;
+            Merge.Checked = AppSettings.DefaultPullAction == AppSettings.PullAction.Merge;
+            Rebase.Checked = AppSettings.DefaultPullAction == AppSettings.PullAction.Rebase;
+            Fetch.Checked = AppSettings.DefaultPullAction == AppSettings.PullAction.Fetch;
             localBranch.Enabled = Fetch.Checked;
             AutoStash.Checked = AppSettings.AutoStash;
-            Prune.Enabled = AppSettings.FormPullAction == AppSettings.PullAction.Merge || AppSettings.FormPullAction == AppSettings.PullAction.Fetch;
+            Prune.Enabled = AppSettings.DefaultPullAction == AppSettings.PullAction.Merge || AppSettings.DefaultPullAction == AppSettings.PullAction.Fetch;
 
             ErrorOccurred = false;
 
@@ -204,7 +204,7 @@ namespace GitUI.CommandsDialogs
 
         private void MergetoolClick(object sender, EventArgs e)
         {
-            Module.RunExternalCmdShowConsole(AppSettings.GitCommand, "mergetool");
+            Module.RunMergeTool();
 
             if (MessageBox.Show(this, _allMergeConflictSolvedQuestion.Text, _allMergeConflictSolvedQuestionCaption.Text,
                                 MessageBoxButtons.YesNo) != DialogResult.Yes)
@@ -285,8 +285,6 @@ namespace GitUI.CommandsDialogs
             {
                 return DialogResult.No;
             }
-
-            UpdateSettingsDuringPull();
 
             DialogResult dr = ShouldRebaseMergeCommit();
             if (dr != DialogResult.Yes)
@@ -397,26 +395,6 @@ namespace GitUI.CommandsDialogs
                 }
 
                 return true;
-            }
-
-            void UpdateSettingsDuringPull()
-            {
-                if (Merge.Checked)
-                {
-                    AppSettings.FormPullAction = AppSettings.PullAction.Merge;
-                }
-
-                if (Rebase.Checked)
-                {
-                    AppSettings.FormPullAction = AppSettings.PullAction.Rebase;
-                }
-
-                if (Fetch.Checked)
-                {
-                    AppSettings.FormPullAction = AppSettings.PullAction.Fetch;
-                }
-
-                AppSettings.AutoStash = AutoStash.Checked;
             }
 
             string CalculateSource()

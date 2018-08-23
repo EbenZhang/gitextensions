@@ -110,7 +110,7 @@ namespace GitCommands
             // cache it for the duration of the loop.
             var logOutputEncoding = module.LogOutputEncoding;
 
-            using (var process = module.RunGitCmdDetached(arguments.ToString(), GitModule.LosslessEncoding))
+            using (var process = module.RunGitCmdDetached(arguments, redirectOutput: true, outputEncoding: GitModule.LosslessEncoding))
             {
                 token.ThrowIfCancellationRequested();
 
@@ -158,9 +158,8 @@ namespace GitCommands
 
             ArgumentBuilder BuildArguments()
             {
-                return new ArgumentBuilder
+                return new GitArgumentBuilder("log")
                 {
-                    "log",
                     "-z",
                     $"--pretty=format:\"{fullFormat}\"",
                     { AppSettings.OrderRevisionByDate, "--date-order", "--topo-order" },

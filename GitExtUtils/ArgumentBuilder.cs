@@ -19,9 +19,8 @@ namespace GitCommands
     /// <para>This class has been designed to work with C# collection initialiser syntax which makes
     /// its use quite ergonomic. See the example for more information.</para>
     ///
-    /// <para>The type accepts strings, however conversion from other types (eg. <see cref="ForcePushOptions"/>
-    /// enum) is achieved via extension methods on <see cref="ArgumentBuilderExtensions"/> by adding a
-    /// method named <c>Add</c> that accepts the required type.</para>
+    /// <para>The type accepts strings, however conversion from other types is achieved via extension
+    /// methods by adding a method named <c>Add</c> that accepts the required type.</para>
     /// </remarks>
     /// <example>
     /// <code>
@@ -33,11 +32,11 @@ namespace GitCommands
     /// };
     /// </code>
     /// </example>
-    public sealed class ArgumentBuilder : IEnumerable
+    public class ArgumentBuilder : IEnumerable
     {
-        private readonly StringBuilder _command = new StringBuilder(capacity: 16);
+        private readonly StringBuilder _arguments = new StringBuilder(capacity: 16);
 
-        public bool IsEmpty => _command.Length == 0;
+        public bool IsEmpty => _arguments.Length == 0;
 
         /// <summary>
         /// Adds <paramref name="s"/> to the argument list.
@@ -54,12 +53,12 @@ namespace GitCommands
                 return;
             }
 
-            if (_command.Length != 0)
+            if (_arguments.Length != 0)
             {
-                _command.Append(' ');
+                _arguments.Append(' ');
             }
 
-            _command.Append(s);
+            _arguments.Append(s);
         }
 
         /// <summary>
@@ -67,7 +66,7 @@ namespace GitCommands
         /// </summary>
         public override string ToString()
         {
-            return _command.ToString();
+            return _arguments.ToString();
         }
 
         /// <summary>

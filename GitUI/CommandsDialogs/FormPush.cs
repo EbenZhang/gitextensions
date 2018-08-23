@@ -100,7 +100,7 @@ namespace GitUI.CommandsDialogs
 
             InitializeComplete();
 
-            if (!GitCommandHelpers.VersionInUse.SupportPushForceWithLease)
+            if (!GitVersion.Current.SupportPushForceWithLease)
             {
                 ckForceWithLease.Visible = false;
                 ForcePushTags.DataBindings.Add("Checked", ForcePushBranches, "Checked",
@@ -121,11 +121,11 @@ namespace GitUI.CommandsDialogs
             void Init()
             {
                 _gitRefs = Module.GetRefs();
-                if (GitCommandHelpers.VersionInUse.SupportPushWithRecursiveSubmodulesCheck)
+                if (GitVersion.Current.SupportPushWithRecursiveSubmodulesCheck)
                 {
                     RecursiveSubmodules.Enabled = true;
                     RecursiveSubmodules.SelectedIndex = AppSettings.RecursiveSubmodules;
-                    if (!GitCommandHelpers.VersionInUse.SupportPushWithRecursiveSubmodulesOnDemand)
+                    if (!GitVersion.Current.SupportPushWithRecursiveSubmodulesOnDemand)
                     {
                         RecursiveSubmodules.Items.RemoveAt(2);
                     }
@@ -358,7 +358,7 @@ namespace GitUI.CommandsDialogs
 
                 if (ForcePushBranches.Checked)
                 {
-                    if (GitCommandHelpers.VersionInUse.SupportPushForceWithLease)
+                    if (GitVersion.Current.SupportPushForceWithLease)
                     {
                         var choice = MessageBox.Show(owner,
                                                      _useForceWithLeaseInstead.Text,
@@ -470,7 +470,7 @@ namespace GitUI.CommandsDialogs
 
         private bool IsRebasingMergeCommit()
         {
-            if (AppSettings.FormPullAction == AppSettings.PullAction.Rebase &&
+            if (AppSettings.DefaultPullAction == AppSettings.PullAction.Rebase &&
                 _candidateForRebasingMergeCommit &&
                 _selectedBranch == _currentBranchName &&
                 _selectedRemote == _currentBranchRemote)
@@ -512,7 +512,7 @@ namespace GitUI.CommandsDialogs
                     bool cancel = false;
                     string destination = _NO_TRANSLATE_Remotes.Text;
                     string buttons = _pullRepositoryButtons.Text;
-                    switch (Module.LastPullAction)
+                    switch (AppSettings.DefaultPullAction)
                     {
                         case AppSettings.PullAction.Fetch:
                         case AppSettings.PullAction.FetchAll:
@@ -551,18 +551,18 @@ namespace GitUI.CommandsDialogs
 
                             break;
                         case 1:
-                            AppSettings.FormPullAction = AppSettings.PullAction.Rebase;
+                            AppSettings.DefaultPullAction = AppSettings.PullAction.Rebase;
                             if (rememberDecision)
                             {
-                                AppSettings.AutoPullOnPushRejectedAction = AppSettings.FormPullAction;
+                                AppSettings.AutoPullOnPushRejectedAction = AppSettings.DefaultPullAction;
                             }
 
                             break;
                         case 2:
-                            AppSettings.FormPullAction = AppSettings.PullAction.Merge;
+                            AppSettings.DefaultPullAction = AppSettings.PullAction.Merge;
                             if (rememberDecision)
                             {
-                                AppSettings.AutoPullOnPushRejectedAction = AppSettings.FormPullAction;
+                                AppSettings.AutoPullOnPushRejectedAction = AppSettings.DefaultPullAction;
                             }
 
                             break;
@@ -591,7 +591,7 @@ namespace GitUI.CommandsDialogs
                     {
                         Trace.Assert(form.ProcessArguments.StartsWith("push "), "Arguments should start with 'push' command");
 
-                        string forceArg = GitCommandHelpers.VersionInUse.SupportPushForceWithLease ? " --force-with-lease" : " -f";
+                        string forceArg = GitVersion.Current.SupportPushForceWithLease ? " --force-with-lease" : " -f";
                         form.ProcessArguments = form.ProcessArguments.Insert("push".Length, forceArg);
                     }
 
@@ -604,17 +604,13 @@ namespace GitUI.CommandsDialogs
                     return false;
                 }
 
-                if (AppSettings.AutoPullOnPushRejectedAction == AppSettings.PullAction.Default)
+                if (AppSettings.AutoPullOnPushRejectedAction == AppSettings.PullAction.Default &&
+                    AppSettings.DefaultPullAction == AppSettings.PullAction.None)
                 {
-                    if (Module.LastPullAction == AppSettings.PullAction.None)
-                    {
-                        return false;
-                    }
-
-                    Module.LastPullActionToFormPullAction();
+                    return false;
                 }
 
-                if (AppSettings.FormPullAction == AppSettings.PullAction.Fetch)
+                if (AppSettings.DefaultPullAction == AppSettings.PullAction.Fetch)
                 {
                     form.AppendOutput(Environment.NewLine +
                         "Can not perform auto pull, when merge option is set to fetch.");

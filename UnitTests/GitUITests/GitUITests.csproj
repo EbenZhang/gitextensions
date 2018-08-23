@@ -58,7 +58,6 @@
     <Compile Include="Avatars\AvatarPersistentCacheTests.cs" />
     <Compile Include="Avatars\AvatarTestBase.cs" />
     <Compile Include="Avatars\BackupAvatarProviderTests.cs" />
-    <Compile Include="Avatars\MruCacheTests.cs" />
     <Compile Include="CancellationTokenSequenceTests.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormInitTests.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormCommitTests.cs" />
@@ -73,6 +72,7 @@
     <Compile Include="LinqExtensionsTests.cs" />
     <Compile Include="SpellChecker\WordAtCursorExtractorTests.cs" />
     <Compile Include="SplitterManagerTest.cs" />
+    <Compile Include="StringBuilderExtensionsTests.cs" />
     <Compile Include="ThreadHelperTests.cs" />
     <Compile Include="TranslationTest.cs" />
     <Compile Include="UITest.cs" />

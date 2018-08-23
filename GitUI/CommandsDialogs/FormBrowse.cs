@@ -341,12 +341,12 @@ namespace GitUI.CommandsDialogs
 
             void ManageWorktreeSupport()
             {
-                if (!GitCommandHelpers.VersionInUse.SupportWorktree)
+                if (!GitVersion.Current.SupportWorktree)
                 {
                     createWorktreeToolStripMenuItem.Enabled = false;
                 }
 
-                if (!GitCommandHelpers.VersionInUse.SupportWorktreeList)
+                if (!GitVersion.Current.SupportWorktreeList)
                 {
                     manageWorktreeToolStripMenuItem.Enabled = false;
                 }
@@ -624,7 +624,7 @@ namespace GitUI.CommandsDialogs
                 if (AppSettings.LastUpdateCheck.AddDays(7) < DateTime.Now)
                 {
                     AppSettings.LastUpdateCheck = DateTime.Now;
-                    var updateForm = new FormUpdates(Module.AppVersion);
+                    var updateForm = new FormUpdates(AppSettings.AppVersion);
                     updateForm.SearchForUpdatesAndShow(Owner, false);
                 }
 
@@ -1211,11 +1211,11 @@ namespace GitUI.CommandsDialogs
             bool isSilent;
             if (sender == toolStripButtonPull || sender == pullToolStripMenuItem)
             {
-                if (Module.LastPullAction == AppSettings.PullAction.None)
+                if (AppSettings.DefaultPullAction == AppSettings.PullAction.None)
                 {
                     isSilent = (ModifierKeys & Keys.Shift) != 0;
                 }
-                else if (Module.LastPullAction == AppSettings.PullAction.FetchAll)
+                else if (AppSettings.DefaultPullAction == AppSettings.PullAction.FetchAll)
                 {
                     fetchAllToolStripMenuItem_Click(sender, e);
                     return;
@@ -1223,14 +1223,11 @@ namespace GitUI.CommandsDialogs
                 else
                 {
                     isSilent = sender == toolStripButtonPull;
-                    Module.LastPullActionToFormPullAction();
                 }
             }
             else
             {
                 isSilent = sender != pullToolStripMenuItem1;
-
-                Module.LastPullActionToFormPullAction();
             }
 
             if (isSilent)
@@ -1486,12 +1483,12 @@ namespace GitUI.CommandsDialogs
 
         private void StartAuthenticationAgentToolStripMenuItemClick(object sender, EventArgs e)
         {
-            Module.RunExternalCmdDetached(AppSettings.Pageant, "");
+            new Executable(AppSettings.Pageant, Module.WorkingDir).Start();
         }
 
         private void GenerateOrImportKeyToolStripMenuItemClick(object sender, EventArgs e)
         {
-            Module.RunExternalCmdDetached(AppSettings.Puttygen, "");
+            new Executable(AppSettings.Puttygen, Module.WorkingDir).Start();
         }
 
         private void CommitInfoTabControl_SelectedIndexChanged(object sender, EventArgs e)
@@ -2167,20 +2164,12 @@ namespace GitUI.CommandsDialogs
 
         private void DoPullAction(Action action)
         {
-            var actLastPullAction = Module.LastPullAction;
             try
             {
                 action();
             }
             finally
             {
-                if (!AppSettings.SetNextPullActionAsDefault)
-                {
-                    Module.LastPullAction = actLastPullAction;
-                    Module.LastPullActionToFormPullAction();
-                }
-
-                AppSettings.SetNextPullActionAsDefault = false;
                 RefreshPullIcon();
             }
         }
@@ -2189,7 +2178,7 @@ namespace GitUI.CommandsDialogs
         {
             DoPullAction(() =>
             {
-                Module.LastPullAction = AppSettings.PullAction.Merge;
+                AppSettings.DefaultPullAction = AppSettings.PullAction.Merge;
                 PullToolStripMenuItemClick(sender, e);
             });
         }
@@ -2198,7 +2187,7 @@ namespace GitUI.CommandsDialogs
         {
             DoPullAction(() =>
             {
-                Module.LastPullAction = AppSettings.PullAction.Rebase;
+                AppSettings.DefaultPullAction = AppSettings.PullAction.Rebase;
                 PullToolStripMenuItemClick(sender, e);
             });
         }
@@ -2207,7 +2196,7 @@ namespace GitUI.CommandsDialogs
         {
             DoPullAction(() =>
             {
-                Module.LastPullAction = AppSettings.PullAction.Fetch;
+                AppSettings.DefaultPullAction = AppSettings.PullAction.Fetch;
                 PullToolStripMenuItemClick(sender, e);
             });
         }
@@ -2216,23 +2205,15 @@ namespace GitUI.CommandsDialogs
         {
             if (AppSettings.SetNextPullActionAsDefault)
             {
-                Module.LastPullAction = AppSettings.PullAction.None;
+                AppSettings.DefaultPullAction = AppSettings.PullAction.None;
             }
 
             PullToolStripMenuItemClick(sender, e);
-
-            // restore AppSettings.FormPullAction value
-            if (!AppSettings.SetNextPullActionAsDefault)
-            {
-                Module.LastPullActionToFormPullAction();
-            }
-
-            AppSettings.SetNextPullActionAsDefault = false;
         }
 
         private void RefreshPullIcon()
         {
-            switch (Module.LastPullAction)
+            switch (AppSettings.DefaultPullAction)
             {
                 case AppSettings.PullAction.Fetch:
                     toolStripButtonPull.Image = Images.PullFetch;
@@ -2265,20 +2246,12 @@ namespace GitUI.CommandsDialogs
         {
             if (AppSettings.SetNextPullActionAsDefault)
             {
-                Module.LastPullAction = AppSettings.PullAction.FetchAll;
+                AppSettings.DefaultPullAction = AppSettings.PullAction.FetchAll;
             }
 
             RefreshPullIcon();
 
             UICommands.StartPullDialogAndPullImmediately(this, fetchAll: true);
-
-            // restore AppSettings.FormPullAction value
-            if (!AppSettings.SetNextPullActionAsDefault)
-            {
-                Module.LastPullActionToFormPullAction();
-            }
-
-            AppSettings.SetNextPullActionAsDefault = false;
         }
 
         private void branchSelect_MouseUp(object sender, MouseEventArgs e)
@@ -2678,7 +2651,7 @@ namespace GitUI.CommandsDialogs
 
         private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var updateForm = new FormUpdates(Module.AppVersion);
+            var updateForm = new FormUpdates(AppSettings.AppVersion);
             updateForm.SearchForUpdatesAndShow(Owner, true);
         }
 
