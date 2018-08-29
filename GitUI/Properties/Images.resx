@@ -486,9 +486,6 @@
   <data name="LayoutSidebarLeft" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Icons\LayoutSidebarLeft.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="LayoutSidebarRight" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Icons\LayoutSidebarRight.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="LayoutFooter" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Icons\LayoutFooter.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -776,5 +773,47 @@
   </data>
   <data name="GitExtensionsLogo256" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\..\Logo\git-extensions-logo-256px.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="LayoutSidebarTopLeft" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\LayoutSidebarTopLeft.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="LayoutSidebarTopRight" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\LayoutSidebarTopRight.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="LayoutFooterTab" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\LayoutFooterTab.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="GitLogo16" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\GitLogo16.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="AdvancedSettings" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\AdvancedSettings.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="GeneralSettings" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\GeneralSettings.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Appearance" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\Appearance.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Plugin" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\Plugin.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ShellExtensions" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\ShellExtensions.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Hotkey" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\Hotkey.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Link" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\Link.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Integration" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\Integration.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Font" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\Font.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Colors" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Icons\Colors.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>
