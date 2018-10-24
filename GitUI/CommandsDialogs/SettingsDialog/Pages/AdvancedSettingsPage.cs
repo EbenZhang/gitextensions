@@ -28,13 +28,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             chkUseLocalChangesAction.Checked = AppSettings.UseDefaultCheckoutBranchAction;
             chkDontSHowHelpImages.Checked = AppSettings.DontShowHelpImages;
             chkAlwaysShowAdvOpt.Checked = AppSettings.AlwaysShowAdvOpt;
+            chkCheckForUpdates.Checked = AppSettings.CheckForUpdates;
             chkCheckForRCVersions.Checked = AppSettings.CheckForReleaseCandidates;
             chkConsoleEmulator.Checked = AppSettings.UseConsoleEmulatorForCommands;
             chkAutoNormaliseBranchName.Checked = AppSettings.AutoNormaliseBranchName;
             cboAutoNormaliseSymbol.Enabled = chkAutoNormaliseBranchName.Checked;
             cboAutoNormaliseSymbol.SelectedValue = AppSettings.AutoNormaliseSymbol;
             chkCommitAndPushForcedWhenAmend.Checked = AppSettings.CommitAndPushForcedWhenAmend;
-            chkRebaseConfirmation.Checked = AppSettings.SkipRebaseDialog;
         }
 
         protected override void PageToSettings()
@@ -43,12 +43,12 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             AppSettings.UseDefaultCheckoutBranchAction = chkUseLocalChangesAction.Checked;
             AppSettings.DontShowHelpImages = chkDontSHowHelpImages.Checked;
             AppSettings.AlwaysShowAdvOpt = chkAlwaysShowAdvOpt.Checked;
+            AppSettings.CheckForUpdates = chkCheckForUpdates.Checked;
             AppSettings.CheckForReleaseCandidates = chkCheckForRCVersions.Checked;
             AppSettings.UseConsoleEmulatorForCommands = chkConsoleEmulator.Checked;
             AppSettings.AutoNormaliseBranchName = chkAutoNormaliseBranchName.Checked;
             AppSettings.AutoNormaliseSymbol = (string)cboAutoNormaliseSymbol.SelectedValue;
             AppSettings.CommitAndPushForcedWhenAmend = chkCommitAndPushForcedWhenAmend.Checked;
-            AppSettings.SkipRebaseDialog = chkRebaseConfirmation.Checked;
         }
 
         public static SettingsPageReference GetPageReference()

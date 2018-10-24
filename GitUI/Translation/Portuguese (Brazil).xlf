@@ -1542,7 +1542,7 @@ Quer abri-lo?</target>
   </file>
   <file datatype="plaintext" original="FileViewer" source-language="en" target-language="pt-BR">
     <body>
-      <trans-unit id="DecreaseNumberOfLines.ToolTipText">
+      <trans-unit id="decreaseNumberOfLines.ToolTipText">
         <source>Decrease number of visible lines</source>
         <target>Diminuir o número de linhas visíveis</target>
         
@@ -2497,13 +2497,13 @@ revisão com que comparar:</target>
         
       </trans-unit>
       <trans-unit id="_pullFetch.Text">
-        <source>Pull - fetch</source>
-        <target>Pull - fetch</target>
+        <source>Fetch</source>
+        <target>Fetch</target>
         
       </trans-unit>
       <trans-unit id="_pullFetchAll.Text">
-        <source>Pull - fetch all</source>
-        <target>Pull - fetch tudo</target>
+        <source>Fetch all</source>
+        <target>Fetch tudo</target>
         
       </trans-unit>
       <trans-unit id="_pullMerge.Text">

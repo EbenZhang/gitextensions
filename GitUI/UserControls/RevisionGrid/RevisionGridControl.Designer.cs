@@ -68,6 +68,7 @@ namespace GitUI
             this.editCommitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rebaseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rebaseInteractivelyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator10 = new System.Windows.Forms.ToolStripSeparator();
             this.rebaseWithAdvOptionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this._gridView)).BeginInit();
             this.mainContextMenu.SuspendLayout();
@@ -207,6 +208,7 @@ namespace GitUI
             this.rebaseOnToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.rebaseToolStripMenuItem,
             this.rebaseInteractivelyToolStripMenuItem,
+            this.toolStripSeparator10,
             this.rebaseWithAdvOptionsToolStripMenuItem});
             this.rebaseOnToolStripMenuItem.Image = global::GitUI.Properties.Images.Rebase;
             this.rebaseOnToolStripMenuItem.Name = "rebaseOnToolStripMenuItem";
@@ -299,6 +301,7 @@ namespace GitUI
             // 
             // compareToolStripMenuItem
             // 
+            this.compareToolStripMenuItem.Image = global::GitUI.Properties.Images.Diff;
             this.compareToolStripMenuItem.Name = "compareToolStripMenuItem";
             this.compareToolStripMenuItem.Size = new System.Drawing.Size(230, 22);
             this.compareToolStripMenuItem.Text = "Compare";
@@ -404,24 +407,28 @@ namespace GitUI
             // 
             // navigateToolStripMenuItem
             // 
+            this.navigateToolStripMenuItem.Image = global::GitUI.Properties.Images.GotoCommit;
             this.navigateToolStripMenuItem.Name = "navigateToolStripMenuItem";
             this.navigateToolStripMenuItem.Size = new System.Drawing.Size(223, 22);
             this.navigateToolStripMenuItem.Text = "Navigate";
             // 
             // viewToolStripMenuItem
             // 
+            this.viewToolStripMenuItem.Image = global::GitUI.Properties.Images.AdvancedSettings;
             this.viewToolStripMenuItem.Name = "viewToolStripMenuItem";
             this.viewToolStripMenuItem.Size = new System.Drawing.Size(223, 22);
             this.viewToolStripMenuItem.Text = "View";
             // 
             // runScriptToolStripMenuItem
             // 
+            this.runScriptToolStripMenuItem.Image = global::GitUI.Properties.Images.Console;
             this.runScriptToolStripMenuItem.Name = "runScriptToolStripMenuItem";
             this.runScriptToolStripMenuItem.Size = new System.Drawing.Size(223, 22);
             this.runScriptToolStripMenuItem.Text = "Run script";
             // 
             // openBuildReportToolStripMenuItem
             // 
+            this.openBuildReportToolStripMenuItem.Image = global::GitUI.Properties.Images.Integration;
             this.openBuildReportToolStripMenuItem.Name = "openBuildReportToolStripMenuItem";
             this.openBuildReportToolStripMenuItem.Size = new System.Drawing.Size(301, 26);
             this.openBuildReportToolStripMenuItem.Text = "Open build report in the browser";
@@ -465,9 +472,14 @@ namespace GitUI
             this.rebaseInteractivelyToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
             this.rebaseInteractivelyToolStripMenuItem.Text = "Selected commit interactively";
             this.rebaseInteractivelyToolStripMenuItem.Click += new System.EventHandler(this.OnRebaseInteractivelyClicked);
-            //
+            // 
+            // toolStripSeparator10
+            // 
+            this.toolStripSeparator10.Name = "toolStripSeparator10";
+            this.toolStripSeparator10.Size = new System.Drawing.Size(195, 6);
+            // 
             // rebaseWithAdvOptionsToolStripMenuItem
-            //
+            // 
             this.rebaseWithAdvOptionsToolStripMenuItem.Name = "rebaseWithAdvOptionsToolStripMenuItem";
             this.rebaseWithAdvOptionsToolStripMenuItem.Size = new System.Drawing.Size(307, 22);
             this.rebaseWithAdvOptionsToolStripMenuItem.Text = "Selected commit with advanced options...";
@@ -537,5 +549,6 @@ namespace GitUI
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator5;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator8;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator9;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator10;
     }
 }

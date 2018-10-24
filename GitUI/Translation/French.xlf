@@ -1569,7 +1569,7 @@ Voulez-vous l'ouvrir?</target>
   </file>
   <file datatype="plaintext" original="FileViewer" source-language="en" target-language="fr">
     <body>
-      <trans-unit id="DecreaseNumberOfLines.ToolTipText">
+      <trans-unit id="decreaseNumberOfLines.ToolTipText">
         <source>Decrease number of visible lines</source>
         <target>Diminuer le nombre de lignes visibles</target>
         
@@ -2530,12 +2530,12 @@ compare with first:</source>
         
       </trans-unit>
       <trans-unit id="_pullFetch.Text">
-        <source>Pull - fetch</source>
+        <source>Fetch</source>
         <target>Récupérer (fetch)</target>
         
       </trans-unit>
       <trans-unit id="_pullFetchAll.Text">
-        <source>Pull - fetch all</source>
+        <source>Fetch all</source>
         <target>Récupérer depuis tous les dépôts distants (fetch --all)</target>
         
       </trans-unit>

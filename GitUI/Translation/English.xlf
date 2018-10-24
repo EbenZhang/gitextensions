@@ -48,6 +48,10 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
         <source>Auto normalise branch name</source>
         <target />
       </trans-unit>
+      <trans-unit id="chkCheckForUpdates.Text">
+        <source>Check for updates weekly</source>
+        <target />
+      </trans-unit>
       <trans-unit id="chkCheckForRCVersions.Text">
         <source>Check for release candidate versions</source>
         <target />
@@ -1163,8 +1167,8 @@ Please make sure git (Git for Windows or cygwin) is installed or set the correct
   </file>
   <file datatype="plaintext" original="FileViewer" source-language="en">
     <body>
-      <trans-unit id="DecreaseNumberOfLines.ToolTipText">
-        <source>Decrease number of visible lines</source>
+      <trans-unit id="decreaseNumberOfLines.ToolTipText">
+        <source>Decrease the number of lines of context</source>
         <target />
       </trans-unit>
       <trans-unit id="cherrypickSelectedLinesToolStripMenuItem.Text">
@@ -1188,7 +1192,7 @@ Please make sure git (Git for Windows or cygwin) is installed or set the correct
         <target />
       </trans-unit>
       <trans-unit id="descreaseNumberOfLinesToolStripMenuItem.Text">
-        <source>Decrease number of lines visible</source>
+        <source>Decrease the number of lines of context</source>
         <target />
       </trans-unit>
       <trans-unit id="findToolStripMenuItem.Text">
@@ -1216,11 +1220,11 @@ Please make sure git (Git for Windows or cygwin) is installed or set the correct
         <target />
       </trans-unit>
       <trans-unit id="increaseNumberOfLines.ToolTipText">
-        <source>Increase number of visible lines</source>
+        <source>Increase the number of lines of context</source>
         <target />
       </trans-unit>
       <trans-unit id="increaseNumberOfLinesToolStripMenuItem.Text">
-        <source>Increase number of lines visible</source>
+        <source>Increase the number of lines of context</source>
         <target />
       </trans-unit>
       <trans-unit id="nextChangeButton.ToolTipText">
@@ -1941,11 +1945,11 @@ compare with first:</source>
         <target />
       </trans-unit>
       <trans-unit id="_pullFetch.Text">
-        <source>Pull - fetch</source>
+        <source>Fetch</source>
         <target />
       </trans-unit>
       <trans-unit id="_pullFetchAll.Text">
-        <source>Pull - fetch all</source>
+        <source>Fetch all</source>
         <target />
       </trans-unit>
       <trans-unit id="_pullMerge.Text">
@@ -2314,8 +2318,8 @@ Do you want to remove it from the recent repositories list?</source>
         <source>Solve merge conflicts...</source>
         <target />
       </trans-unit>
-      <trans-unit id="setNextPullActionAsDefaultToolStripMenuItem.Text">
-        <source>Set the next selection as default</source>
+      <trans-unit id="setDefaultPullButtonActionToolStripMenuItem.Text">
+        <source>Set default Pull button action</source>
         <target />
       </trans-unit>
       <trans-unit id="settingsToolStripMenuItem.Text">
@@ -7877,7 +7881,7 @@ See the changes in the commit form.</source>
         <target />
       </trans-unit>
       <trans-unit id="fileTreeOpenContainingFolderToolStripMenuItem.Text">
-        <source>Reveal in Explorer</source>
+        <source>Open containing folder</source>
         <target />
       </trans-unit>
       <trans-unit id="findToolStripMenuItem.Text">
@@ -8764,11 +8768,11 @@ When OpenSSH is used, command line dialogs are shown!
   <file datatype="plaintext" original="Strings" source-language="en">
     <body>
       <trans-unit id="_authorDateText.Text">
-        <source>Author date</source>
+        <source>{0:Author date|Author dates}</source>
         <target />
       </trans-unit>
       <trans-unit id="_authorText.Text">
-        <source>Author</source>
+        <source>{0:Author|Authors}</source>
         <target />
       </trans-unit>
       <trans-unit id="_childrenText.Text">
@@ -8776,11 +8780,11 @@ When OpenSSH is used, command line dialogs are shown!
         <target />
       </trans-unit>
       <trans-unit id="_commitDateText.Text">
-        <source>Commit date</source>
+        <source>{0:Commit date|Commits dates}</source>
         <target />
       </trans-unit>
       <trans-unit id="_commitHashText.Text">
-        <source>Commit hash</source>
+        <source>{0:Commit hash|Commits hashs}</source>
         <target />
       </trans-unit>
       <trans-unit id="_committerText.Text">
@@ -8812,7 +8816,7 @@ When OpenSSH is used, command line dialogs are shown!
         <target />
       </trans-unit>
       <trans-unit id="_messageText.Text">
-        <source>Message</source>
+        <source>{0:Message|Messages}</source>
         <target />
       </trans-unit>
       <trans-unit id="_minutesAgo.Text">

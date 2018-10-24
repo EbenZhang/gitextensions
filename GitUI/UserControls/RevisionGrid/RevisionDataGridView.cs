@@ -35,7 +35,7 @@ namespace GitUI.UserControls.RevisionGrid
 
         private readonly List<ColumnProvider> _columnProviders = new List<ColumnProvider>();
         private readonly AutoResetEvent _backgroundEvent = new AutoResetEvent(false);
-        private readonly Thread _backgroundThread;
+        private Thread _backgroundThread;
         private volatile bool _shouldRun = LicenseManager.UsageMode != LicenseUsageMode.Designtime;
         private int _backgroundScrollTo;
 
@@ -45,6 +45,7 @@ namespace GitUI.UserControls.RevisionGrid
 
         private Font _normalFont;
         private Font _boldFont;
+        private Font _monospaceFont;
 
         public bool UpdatingVisibleRows { get; private set; }
 
@@ -58,6 +59,7 @@ namespace GitUI.UserControls.RevisionGrid
             _backgroundThread.Start();
 
             NormalFont = AppSettings.Font;
+            _monospaceFont = AppSettings.MonospaceFont;
 
             InitializeComponent();
 
@@ -155,10 +157,7 @@ namespace GitUI.UserControls.RevisionGrid
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2002:DoNotLockOnObjectsWithWeakIdentity", Justification = "It looks like such lock was made intentionally but it is better to rewrite this")]
         protected override void Dispose(bool disposing)
         {
-            lock (_backgroundEvent)
-            {
-                _shouldRun = false;
-            }
+            _shouldRun = false;
 
             if (disposing)
             {
@@ -176,6 +175,17 @@ namespace GitUI.UserControls.RevisionGrid
                 _normalFont = value;
                 _boldFont = new Font(value, FontStyle.Bold);
             }
+        }
+
+        // Contains the object Id's that will be selected as soon as they are loaded.
+        public HashSet<ObjectId> ToBeSelectedObjectIds { get; set; } = new HashSet<ObjectId>();
+
+        // The ToBeSelectedObjectId's should be converted to indexes. This queue is then used to select the correct index. This is used cross-threads.
+        private ConcurrentQueue<int> ToBeSelectedRowIndexes { get; set; } = new ConcurrentQueue<int>();
+
+        public bool HasSelection()
+        {
+            return ToBeSelectedObjectIds.Any() || ToBeSelectedRowIndexes.Any() || SelectedRows.Count > 0;
         }
 
         [CanBeNull]
@@ -215,44 +225,40 @@ namespace GitUI.UserControls.RevisionGrid
                     return;
                 }
 
-                lock (_backgroundEvent)
-                lock (_graphModel)
+                if (value == null)
                 {
-                    if (value == null)
-                    {
-                        // Setting CurrentCell to null internally calls ClearSelection
-                        CurrentCell = null;
-                        return;
-                    }
+                    // Setting CurrentCell to null internally calls ClearSelection
+                    CurrentCell = null;
+                    return;
+                }
 
-                    DataGridViewCell currentCell = null;
+                DataGridViewCell currentCell = null;
 
-                    foreach (var guid in value)
+                foreach (var guid in value)
+                {
+                    if (TryGetRevisionIndex(guid) is int index &&
+                        index >= 0 &&
+                        index < Rows.Count)
                     {
-                        if (TryGetRevisionIndex(guid) is int index &&
-                            index >= 0 &&
-                            index < Rows.Count)
+                        Rows[index].Selected = true;
+
+                        if (currentCell == null)
                         {
-                            Rows[index].Selected = true;
-
-                            if (currentCell == null)
-                            {
-                                // Set the current cell to the first item. We use cell
-                                // 1 because cell 0 could be hidden if they've chosen to
-                                // not see the graph
-                                currentCell = Rows[index].Cells[1];
-                            }
+                            // Set the current cell to the first item. We use cell
+                            // 1 because cell 0 could be hidden if they've chosen to
+                            // not see the graph
+                            currentCell = Rows[index].Cells[1];
                         }
                     }
-
-                    // Only clear selection if we have a current cell
-                    if (currentCell != null)
-                    {
-                        ClearSelection();
-                    }
-
-                    CurrentCell = currentCell;
                 }
+
+                // Only clear selection if we have a current cell
+                if (currentCell != null)
+                {
+                    ClearSelection();
+                }
+
+                CurrentCell = currentCell;
             }
         }
 
@@ -311,7 +317,7 @@ namespace GitUI.UserControls.RevisionGrid
                 var backBrush = GetBackground(e.State, e.RowIndex);
                 var foreColor = GetForeground(e.State, e.RowIndex);
 
-                provider.OnCellPainting(e, revision, _rowHeight, (backBrush, foreColor, _normalFont, _boldFont));
+                provider.OnCellPainting(e, revision, _rowHeight, new CellStyle(backBrush, foreColor, _normalFont, _boldFont, _monospaceFont));
 
                 e.Handled = true;
             }
@@ -319,9 +325,11 @@ namespace GitUI.UserControls.RevisionGrid
 
         public void Add(GitRevision revision, RevisionNodeFlags types = RevisionNodeFlags.None)
         {
-            lock (_graphModel)
+            _graphModel.Add(revision, types);
+
+            if (ToBeSelectedObjectIds.Remove(revision.ObjectId))
             {
-                _graphModel.Add(revision, types);
+                ToBeSelectedRowIndexes.Enqueue(_graphModel.Count - 1);
             }
 
             UpdateVisibleRowRange();
@@ -330,27 +338,34 @@ namespace GitUI.UserControls.RevisionGrid
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2002:DoNotLockOnObjectsWithWeakIdentity", Justification = "It looks like such lock was made intentionally but it is better to rewrite this")]
         public void Clear()
         {
-            lock (_backgroundThread)
-            {
-                _backgroundScrollTo = 0;
-            }
+            _backgroundScrollTo = 0;
 
+            // Force the background thread to be killed, we need to be sure no background processes are running. Not the best practice, but safe.
+            _backgroundThread.Abort();
+
+            // Set rowcount to 0 first, to ensure it is not possible to select or redraw, since we are about te delete the data
+            SetRowCount(0);
+            _graphDataCount = 0;
+            _revisionByRowIndex.Clear();
+            _isRelativeByIndex.Clear();
+            ToBeSelectedRowIndexes = new ConcurrentQueue<int>();
+
+            // The graphdata is stored in one of the columnproviders, clear this last
             foreach (var columnProvider in _columnProviders)
             {
                 columnProvider.Clear();
             }
 
-            lock (_graphModel)
-            {
-                SetRowCount(0);
-                _graphDataCount = 0;
-                _revisionByRowIndex.Clear();
-                _isRelativeByIndex.Clear();
+            // Redraw
+            UpdateVisibleRowRange();
+            Invalidate(invalidateChildren: true);
 
-                ////// Redraw
-                UpdateVisibleRowRange();
-                Invalidate(invalidateChildren: true);
-            }
+            _backgroundThread = new Thread(BackgroundThreadEntry)
+            {
+                IsBackground = true,
+                Name = "RevisionDataGridView.backgroundThread"
+            };
+            _backgroundThread.Start();
         }
 
         public bool RowIsRelative(int rowIndex)
@@ -359,22 +374,19 @@ namespace GitUI.UserControls.RevisionGrid
 
             bool IsRelative(int index)
             {
-                lock (_graphModel)
+                var laneRow = _graphModel.GetLaneRow(index);
+
+                if (laneRow == null)
                 {
-                    var laneRow = _graphModel.GetLaneRow(index);
-
-                    if (laneRow == null)
-                    {
-                        return false;
-                    }
-
-                    if (laneRow.Node.Ancestors.Count > 0)
-                    {
-                        return laneRow.Node.Ancestors[0].IsRelative;
-                    }
-
-                    return true;
+                    return false;
                 }
+
+                if (laneRow.Node.Ancestors.Count > 0)
+                {
+                    return laneRow.Node.Ancestors[0].IsRelative;
+                }
+
+                return true;
             }
         }
 
@@ -385,23 +397,17 @@ namespace GitUI.UserControls.RevisionGrid
 
             GitRevision Create(int row)
             {
-                lock (_graphModel)
-                {
-                    return _graphModel.GetLaneRow(row)?.Node.Revision;
-                }
+                return _graphModel.GetLaneRow(row)?.Node.Revision;
             }
         }
 
         public void Prune()
         {
-            lock (_graphModel)
-            {
-                _graphModel.Prune();
-                _revisionByRowIndex.Clear();
-                _isRelativeByIndex.Clear();
+            _graphModel.Prune();
+            _revisionByRowIndex.Clear();
+            _isRelativeByIndex.Clear();
 
-                SetRowCount(_graphModel.Count);
-            }
+            SetRowCount(_graphModel.Count);
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2002:DoNotLockOnObjectsWithWeakIdentity", Justification = "It looks like such lock was made intentionally but it is better to rewrite this")]
@@ -421,32 +427,48 @@ namespace GitUI.UserControls.RevisionGrid
                 return;
             }
 
-            lock (_backgroundThread)
-            {
-                UpdatingVisibleRows = true;
+            UpdatingVisibleRows = true;
 
-                try
+            try
+            {
+                if (CurrentCell == null)
                 {
-                    if (CurrentCell == null)
+                    RowCount = count;
+                    CurrentCell = null;
+                }
+                else
+                {
+                    RowCount = count;
+                }
+
+                if (ToBeSelectedRowIndexes.TryPeek(out int toBeSelectedRowIndex) &&
+                    count > toBeSelectedRowIndex)
+                {
+                    try
                     {
-                        RowCount = count;
-                        CurrentCell = null;
+                        ToBeSelectedRowIndexes.TryDequeue(out _);
+                        Rows[toBeSelectedRowIndex].Selected = true;
+                        if (CurrentCell == null)
+                        {
+                            CurrentCell = Rows[toBeSelectedRowIndex].Cells[1];
+                        }
                     }
-                    else
+                    catch (ArgumentOutOfRangeException)
                     {
-                        RowCount = count;
+                        // Not worth crashing for. Ignore exception.
                     }
                 }
-                finally
-                {
-                    UpdatingVisibleRows = false;
-                }
+            }
+            finally
+            {
+                UpdatingVisibleRows = false;
             }
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2002:DoNotLockOnObjectsWithWeakIdentity", Justification = "It looks like such lock was made intentionally but it is better to rewrite this")]
         private void BackgroundThreadEntry()
         {
+            bool keepRunning = false;
             while (_shouldRun)
             {
                 if (!_shouldRun)
@@ -454,8 +476,10 @@ namespace GitUI.UserControls.RevisionGrid
                     return;
                 }
 
-                if (_backgroundEvent.WaitOne(500))
+                if (keepRunning || _backgroundEvent.WaitOne(200))
                 {
+                    keepRunning = false;
+
                     if (!_shouldRun)
                     {
                         return;
@@ -463,28 +487,29 @@ namespace GitUI.UserControls.RevisionGrid
 
                     if (AppSettings.ShowRevisionGridGraphColumn)
                     {
-                        lock (_backgroundEvent)
-                        {
-                            int scrollTo;
-                            lock (_backgroundThread)
-                            {
-                                scrollTo = _backgroundScrollTo;
-                            }
+                        int scrollTo = _backgroundScrollTo;
 
-                            int curCount;
-                            lock (_graphModel)
-                            {
-                                curCount = _graphDataCount;
-                                _graphDataCount = _graphModel.CachedCount;
-                            }
+                        int curCount = _graphDataCount;
+                        _graphDataCount = _graphModel.CachedCount;
 
-                            UpdateGraph(curCount, scrollTo);
-                        }
+                        UpdateGraph(curCount, Math.Min(curCount + 150, scrollTo));
+                        keepRunning = curCount < scrollTo;
                     }
                     else
                     {
-                        // Graph is not visible, so sleep a little while to prevent wasting time do nothing... do not cache, the graph is invisible
-                        Thread.Sleep(10);
+                        UpdateGraph(_graphModel.Count, _graphModel.Count);
+                    }
+
+                    if (!keepRunning)
+                    {
+                        this.InvokeAsync(NotifyProvidersVisibleRowRangeChanged).FileAndForget();
+                    }
+                }
+                else
+                {
+                    if (RowCount < _graphModel.Count)
+                    {
+                        this.InvokeAsync(() => { SetRowCount(_graphModel.Count); }).FileAndForget();
                     }
                 }
             }
@@ -495,41 +520,27 @@ namespace GitUI.UserControls.RevisionGrid
 
                 while (rowIndex < toIndex)
                 {
-                    lock (_graphModel)
+                    // Cache the next item
+                    if (!_graphModel.CacheTo(rowIndex))
                     {
-                        // Cache the next item
-                        if (!_graphModel.CacheTo(rowIndex))
-                        {
-                            Debug.WriteLine("Cached item FAILED {0}", rowIndex);
-                            lock (_backgroundThread)
-                            {
-                                _backgroundScrollTo = rowIndex;
-                            }
+                        Debug.WriteLine("Cached item FAILED {0}", rowIndex);
+                        _backgroundScrollTo = rowIndex;
 
-                            break;
-                        }
-
-                        // Update the row (if needed)
-                        if (rowIndex == Math.Min(toIndex, _visibleRowRange.ToIndex) - 1)
-                        {
-                            this.InvokeAsync(UpdateRow, rowIndex).FileAndForget();
-                        }
-
-                        rowIndex = _graphModel.CachedCount;
-                        _graphDataCount = rowIndex;
+                        break;
                     }
+
+                    rowIndex = _graphModel.CachedCount;
+                    _graphDataCount = rowIndex;
                 }
 
+                this.InvokeAsync(UpdateRow, rowIndex).FileAndForget();
                 return;
 
                 void UpdateRow(int row)
                 {
                     if (RowCount < _graphModel.Count)
                     {
-                        lock (_graphModel)
-                        {
-                            SetRowCount(_graphModel.Count);
-                        }
+                        SetRowCount(_graphModel.Count);
                     }
 
                     // We only need to invalidate if the row is visible
@@ -552,41 +563,44 @@ namespace GitUI.UserControls.RevisionGrid
         private void UpdateVisibleRowRange()
         {
             var oldRange = _visibleRowRange;
-            var fromIndex = FirstDisplayedCell?.RowIndex ?? 0;
-            var toIndex = _rowHeight > 0 ? fromIndex + (Height / _rowHeight) : fromIndex;
+            var fromIndex = Math.Max(0, FirstDisplayedScrollingRowIndex);
+            var toIndex = _rowHeight > 0 ? fromIndex + (Height / _rowHeight) + 5/*Add 5 for rounding*/ : fromIndex;
+
+            if (fromIndex >= _graphModel.Count)
+            {
+                fromIndex = _graphModel.Count - 1;
+            }
 
             if (toIndex >= _graphModel.Count)
             {
-                toIndex = _graphModel.Count;
+                toIndex = _graphModel.Count - 1;
             }
 
-            _visibleRowRange = new VisibleRowRange(fromIndex, toIndex);
-
-            if (oldRange == _visibleRowRange)
+            if (toIndex > 0)
             {
-                return;
-            }
+                _visibleRowRange = new VisibleRowRange(fromIndex, toIndex);
 
-            this.InvokeAsync(NotifyProvidersVisibleRowRangeChanged).FileAndForget();
-
-            var targetBottom = Math.Min(
-                toIndex + 250,
-                _graphModel.Count);
-
-            if (_backgroundScrollTo < targetBottom)
-            {
-                _backgroundScrollTo = targetBottom;
-                _backgroundEvent.Set();
-            }
-
-            return;
-
-            void NotifyProvidersVisibleRowRangeChanged()
-            {
-                foreach (var provider in _columnProviders)
+                if (oldRange == _visibleRowRange)
                 {
-                    provider.OnVisibleRowsChanged(_visibleRowRange);
+                    return;
                 }
+
+                // We always want to set _backgroundScrollTo. Because we want the backgroundthread to stop working when we scroll up
+                if (_backgroundScrollTo != toIndex)
+                {
+                    _backgroundScrollTo = toIndex;
+                    _backgroundEvent.Set();
+                }
+
+                this.InvokeAsync(NotifyProvidersVisibleRowRangeChanged).FileAndForget();
+            }
+        }
+
+        private void NotifyProvidersVisibleRowRangeChanged()
+        {
+            foreach (var provider in _columnProviders)
+            {
+                provider.OnVisibleRowsChanged(_visibleRowRange);
             }
         }
 

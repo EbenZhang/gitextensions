@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 using System.Windows.Forms;
 using GitCommands;
 using GitExtUtils.GitUI;
@@ -22,15 +21,16 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                 HeaderText = "Date",
                 ReadOnly = true,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
-                Width = DpiUtil.Scale(130)
+                Width = DpiUtil.Scale(130),
+                MinimumWidth = DpiUtil.Scale(25)
             };
         }
 
         public override void Refresh(int rowHeight, in VisibleRowRange range) => Column.Visible = AppSettings.ShowDateColumn;
 
-        public override void OnCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, int rowHeight, in (Brush backBrush, Color foreColor, Font normalFont, Font boldFont) style)
+        public override void OnCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, int rowHeight, in CellStyle style)
         {
-            _grid.DrawColumnText(e, e.FormattedValue.ToString(), style.normalFont, style.foreColor, e.CellBounds);
+            _grid.DrawColumnText(e, e.FormattedValue.ToString(), style.NormalFont, style.ForeColor, e.CellBounds);
         }
 
         public override void OnCellFormatting(DataGridViewCellFormattingEventArgs e, GitRevision revision)

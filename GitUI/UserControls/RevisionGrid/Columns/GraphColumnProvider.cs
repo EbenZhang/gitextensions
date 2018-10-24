@@ -49,7 +49,8 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
                 ReadOnly = true,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
-                Resizable = DataGridViewTriState.False
+                Resizable = DataGridViewTriState.False,
+                MinimumWidth = DpiUtil.Scale(5)
             };
         }
 
@@ -72,7 +73,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
             set { _revisionGraphDrawStyle = value; }
         }
 
-        public override void OnCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, int rowHeight, in (Brush backBrush, Color foreColor, Font normalFont, Font boldFont) style)
+        public override void OnCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, int rowHeight, in CellStyle style)
         {
             if (AppSettings.ShowRevisionGridGraphColumn &&
                 e.State.HasFlag(DataGridViewElementStates.Visible) &&
@@ -424,7 +425,6 @@ namespace GitUI.UserControls.RevisionGrid.Columns
             lock (_graphModel)
             {
                 _graphModel.Clear();
-                ////_graphDataCount = 0;
                 _cacheHead = -1;
                 _cacheHeadRow = 0;
                 ClearDrawCache();
@@ -469,7 +469,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                 return;
             }
 
-            int laneCount = 1;
+            int laneCount = 0;
             lock (_graphModel)
             {
                 foreach (var index in range)
@@ -492,7 +492,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                     ? 1
                     : MaxLanes;
 
-            laneCount = Math.Min(Math.Max(1, laneCount), maxLanes);
+            laneCount = Math.Min(laneCount, maxLanes);
             var columnWidth = (_laneWidth * laneCount) + ColumnLeftMargin;
             if (Column.Width != columnWidth && columnWidth > Column.MinimumWidth)
             {

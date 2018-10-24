@@ -48,6 +48,7 @@ namespace GitUI.CommitInfo
         private readonly IExternalLinkRevisionParser _externalLinkRevisionParser;
         private readonly IGitRemoteManager _gitRemoteManager;
         private readonly GitDescribeProvider _gitDescribeProvider;
+        private readonly CancellationTokenSequence _asyncLoadCancellation = new CancellationTokenSequence();
 
         private GitRevision _revision;
         private IReadOnlyList<ObjectId> _children;
@@ -95,7 +96,7 @@ namespace GitUI.CommitInfo
             _RevisionHeader.SelectionTabs = _commitDataHeaderRenderer.GetTabStops().ToArray();
 
             Hotkeys = HotkeySettingsManager.LoadHotkeys(FormBrowse.HotkeySettingsName);
-            addNoteToolStripMenuItem.ShortcutKeyDisplayString = GetShortcutKeys((int)FormBrowse.Commands.AddNotes).ToShortcutKeyDisplayString();
+            addNoteToolStripMenuItem.ShortcutKeyDisplayString = GetShortcutKeys((int)FormBrowse.Command.AddNotes).ToShortcutKeyDisplayString();
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -203,6 +204,8 @@ namespace GitUI.CommitInfo
 
             void StartAsyncDataLoad()
             {
+                var cancellationToken = _asyncLoadCancellation.Next();
+
                 ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadLinksForRevisionAsync(_revision)).FileAndForget();
 
                 if (_sortedRefs == null)
@@ -245,9 +248,10 @@ namespace GitUI.CommitInfo
                     }
 
                     await TaskScheduler.Default;
-                    _linksInfo = GetLinksForRevision();
+                    var linksInfo = GetLinksForRevision();
 
-                    await this.SwitchToMainThreadAsync();
+                    await this.SwitchToMainThreadAsync(cancellationToken);
+                    _linksInfo = linksInfo;
                     UpdateRevisionInfo();
 
                     return;
@@ -282,16 +286,17 @@ namespace GitUI.CommitInfo
                     await TaskScheduler.Default.SwitchTo(alwaysYield: true);
                     _sortedRefs = Module.GetSortedRefs().ToList();
 
-                    await this.SwitchToMainThreadAsync();
+                    await this.SwitchToMainThreadAsync(cancellationToken);
                     UpdateRevisionInfo();
                 }
 
                 async Task LoadAnnotatedTagInfoAsync(IReadOnlyList<IGitRef> refs)
                 {
                     await TaskScheduler.Default.SwitchTo(alwaysYield: true);
-                    _annotatedTagsMessages = GetAnnotatedTagsMessages();
+                    var annotatedTagsMessages = GetAnnotatedTagsMessages();
 
-                    await this.SwitchToMainThreadAsync();
+                    await this.SwitchToMainThreadAsync(cancellationToken);
+                    _annotatedTagsMessages = annotatedTagsMessages;
                     UpdateRevisionInfo();
 
                     return;
@@ -350,9 +355,10 @@ namespace GitUI.CommitInfo
                 async Task LoadTagInfoAsync(ObjectId objectId)
                 {
                     await TaskScheduler.Default.SwitchTo(alwaysYield: true);
-                    _tags = Module.GetAllTagsWhichContainGivenCommit(objectId).ToList();
+                    var tags = Module.GetAllTagsWhichContainGivenCommit(objectId).ToList();
 
-                    await this.SwitchToMainThreadAsync();
+                    await this.SwitchToMainThreadAsync(cancellationToken);
+                    _tags = tags;
                     UpdateRevisionInfo();
                 }
 
@@ -367,18 +373,20 @@ namespace GitUI.CommitInfo
                     // Include remote branches if requested
                     bool getRemote = AppSettings.CommitInfoShowContainedInBranchesRemote ||
                                      AppSettings.CommitInfoShowContainedInBranchesRemoteIfNoLocal;
-                    _branches = Module.GetAllBranchesWhichContainGivenCommit(revision, getLocal, getRemote).ToList();
+                    var branches = Module.GetAllBranchesWhichContainGivenCommit(revision, getLocal, getRemote).ToList();
 
-                    await this.SwitchToMainThreadAsync();
+                    await this.SwitchToMainThreadAsync(cancellationToken);
+                    _branches = branches;
                     UpdateRevisionInfo();
                 }
 
                 async Task LoadDescribeInfoAsync(ObjectId commitId)
                 {
                     await TaskScheduler.Default;
-                    _gitDescribeInfo = GetDescribeInfoForRevision();
+                    var info = GetDescribeInfoForRevision();
 
-                    await this.SwitchToMainThreadAsync();
+                    await this.SwitchToMainThreadAsync(cancellationToken);
+                    _gitDescribeInfo = info;
                     UpdateRevisionInfo();
 
                     return;
@@ -628,7 +636,7 @@ namespace GitUI.CommitInfo
 
         private void copyCommitInfoToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var commitInfo = $"{_RevisionHeader.GetPlaintText()}{Environment.NewLine}{RevisionInfo.GetPlaintText()}";
+            var commitInfo = $"{_RevisionHeader.GetPlainText()}{Environment.NewLine}{RevisionInfo.GetPlainText()}";
             Clipboard.SetText(commitInfo);
         }
 
@@ -671,6 +679,19 @@ namespace GitUI.CommitInfo
             {
                 CommandClick?.Invoke(this, new CommandEventArgs(command, null));
             }
+        }
+
+        private void RichTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            var rtb = sender as RichTextBox;
+            if (rtb == null || !e.Control || e.KeyCode != Keys.C)
+            {
+                return;
+            }
+
+            // Override RichTextBox Ctrl-c handling to copy plain text
+            Clipboard.SetText(rtb.GetSelectionPlainText());
+            e.Handled = true;
         }
 
         private void _RevisionHeader_ContentsResized(object sender, ContentsResizedEventArgs e)

@@ -162,8 +162,8 @@ namespace GitCommands
                 {
                     "-z",
                     $"--pretty=format:\"{fullFormat}\"",
-                    { AppSettings.OrderRevisionByDate, "--date-order", "--topo-order" },
                     { AppSettings.ShowReflogReferences, "--reflog" },
+                    { AppSettings.OrderRevisionByDate, "--date-order", "--topo-order" },
                     {
                         refFilterOptions.HasFlag(RefFilterOptions.All),
                         "--all",

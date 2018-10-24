@@ -25,11 +25,12 @@ namespace GitUI.UserControls.RevisionGrid.Columns
 
             Column = new DataGridViewTextBoxColumn
             {
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
                 HeaderText = "Message",
                 ReadOnly = true,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
-                Width = DpiUtil.Scale(500)
+                Width = DpiUtil.Scale(500),
+                MinimumWidth = DpiUtil.Scale(25)
             };
         }
 
@@ -37,7 +38,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
         private readonly Image _bisectBadImage = DpiUtil.Scale(Images.BisectBad);
         private readonly Image _fixupAndSquashImage = DpiUtil.Scale(Images.FixupAndSquashMessageMarker);
 
-        public override void OnCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, int rowHeight, in (Brush backBrush, Color foreColor, Font normalFont, Font boldFont) style)
+        public override void OnCellPainting(DataGridViewCellPaintingEventArgs e, GitRevision revision, int rowHeight, in CellStyle style)
         {
             var isRowSelected = e.State.HasFlag(DataGridViewElementStates.Selected);
 
@@ -49,7 +50,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
 
             var offset = ColumnLeftMargin;
 
-            var normalFont = style.normalFont;
+            var normalFont = style.NormalFont;
 
             #region Draw super project references (for submodules)
 
@@ -136,7 +137,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                             : RefArrowType.None;
 
                     var font = gitRef.IsSelected
-                        ? style.boldFont
+                        ? style.BoldFont
                         : normalFont;
 
                     var superprojectRef = superprojectRefs.FirstOrDefault(superGitRef => gitRef.CompleteName == superGitRef.CompleteName);
@@ -170,7 +171,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                     : gitRef.IsSelectedHeadMergeSource
                         ? RefArrowType.NotFilled
                         : RefArrowType.None;
-                var font = gitRef.IsSelected ? style.boldFont : normalFont;
+                var font = gitRef.IsSelected ? style.BoldFont : normalFont;
 
                 RevisionGridRefRenderer.DrawRef(isRowSelected, font, ref offset, gitRefName, headColor, arrowType, messageBounds, e.Graphics, dashedLine: true);
             }
@@ -210,7 +211,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
 
                 // Draw the summary text
                 var bounds = messageBounds.ReduceLeft(offset);
-                _grid.DrawColumnText(e, text, hasSelectedRef ? style.boldFont : normalFont, style.foreColor, bounds);
+                _grid.DrawColumnText(e, text, hasSelectedRef ? style.BoldFont : normalFont, style.ForeColor, bounds);
 
                 // Draw the multi-line indicator
                 indicator.Render();

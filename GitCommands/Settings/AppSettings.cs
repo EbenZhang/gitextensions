@@ -686,6 +686,7 @@ namespace GitCommands
             Rebase,
             Fetch,
             FetchAll,
+            FetchPruneAll,
             Default
         }
 
@@ -693,12 +694,6 @@ namespace GitCommands
         {
             get => GetEnum("DefaultPullAction", PullAction.Merge);
             set => SetEnum("DefaultPullAction", value);
-        }
-
-        public static bool SetNextPullActionAsDefault
-        {
-            get => !GetBool("DonSetAsLastPullAction", true);
-            set => SetBool("DonSetAsLastPullAction", !value);
         }
 
         public static string SmtpServer
@@ -729,12 +724,6 @@ namespace GitCommands
         {
             get => GetBool("RebaseAutostash", false);
             set => SetBool("RebaseAutostash", value);
-        }
-
-        public static bool SkipRebaseDialog
-        {
-            get => GetBool("SkipRebaseDialog", false);
-            set => SetBool("SkipRebaseDialog", value);
         }
 
         public static LocalChangesAction CheckoutBranchAction
@@ -815,6 +804,12 @@ namespace GitCommands
             set => SetBool("DontConfirmSecondAbortConfirmation", value);
         }
 
+        public static bool DontConfirmRebase
+        {
+            get => GetBool("DontConfirmRebase", false);
+            set => SetBool("DontConfirmRebase", value);
+        }
+
         public static bool DontConfirmResolveConflicts
         {
             get => GetBool("DontConfirmResolveConflicts", false);
@@ -825,6 +820,12 @@ namespace GitCommands
         {
             get => GetBool("DontConfirmUndoLastCommit", false);
             set => SetBool("DontConfirmUndoLastCommit", value);
+        }
+
+        public static bool DontConfirmFetchAndPruneAll
+        {
+            get => GetBool("DontConfirmFetchAndPruneAll", false);
+            set => SetBool("DontConfirmFetchAndPruneAll", value);
         }
 
         public static bool IncludeUntrackedFilesInAutoStash
@@ -841,7 +842,7 @@ namespace GitCommands
 
         public static bool OrderRevisionByDate
         {
-            get => GetBool("orderrevisionbydate", true);
+            get => GetBool("orderrevisionbydate", false); // Set default value to false. Date order us not needed for most use-cases but the ordering costs a lot of performance.
             set => SetBool("orderrevisionbydate", value);
         }
 
@@ -1211,6 +1212,12 @@ namespace GitCommands
             set => SetFont("commitfont", value);
         }
 
+        public static Font MonospaceFont
+        {
+            get => GetFont("monospacefont", new Font("Consolas", 9));
+            set => SetFont("monospacefont", value);
+        }
+
         public static Font Font
         {
             get => GetFont("font", SystemFonts.MessageBoxFont);
@@ -1495,6 +1502,12 @@ namespace GitCommands
         {
             get => GetDate("LastUpdateCheck", default);
             set => SetDate("LastUpdateCheck", value);
+        }
+
+        public static bool CheckForUpdates
+        {
+            get => GetBool("CheckForUpdates", true);
+            set => SetBool("CheckForUpdates", value);
         }
 
         public static bool CheckForReleaseCandidates

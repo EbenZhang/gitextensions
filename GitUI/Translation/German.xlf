@@ -59,6 +59,11 @@ Die Veröffentlichung dieses Programms erfolgt in der Hoffnung, dass es Ihnen vo
         <target>Branchname automatisch normalisieren</target>
 
       </trans-unit>
+      <trans-unit id="chkCheckForUpdates.Text">
+        <source>Check for updates weekly</source>
+        <target>Wöchentlich nach updates suchen</target>
+
+      </trans-unit>
       <trans-unit id="chkCheckForRCVersions.Text">
         <source>Check for release candidate versions</source>
         <target>Nach Release Candidate Versionen suchen.</target>
@@ -1565,7 +1570,7 @@ Wollen Sie es trotzdem öffnen?</target>
   </file>
   <file datatype="plaintext" original="FileViewer" source-language="en" target-language="de">
     <body>
-      <trans-unit id="DecreaseNumberOfLines.ToolTipText">
+      <trans-unit id="decreaseNumberOfLines.ToolTipText">
         <source>Decrease number of visible lines</source>
         <target>Anzahl sichtbarer Zeilen verringern</target>
 
@@ -2522,13 +2527,13 @@ mit erster zu vergleichen:</target>
 
       </trans-unit>
       <trans-unit id="_pullFetch.Text">
-        <source>Pull - fetch</source>
-        <target>Pull - Fetch</target>
+        <source>Fetch</source>
+        <target>Fetch</target>
 
       </trans-unit>
       <trans-unit id="_pullFetchAll.Text">
-        <source>Pull - fetch all</source>
-        <target>Pull - Fetch All</target>
+        <source>Fetch all</source>
+        <target>Fetch All</target>
 
       </trans-unit>
       <trans-unit id="_pullMerge.Text">

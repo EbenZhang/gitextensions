@@ -64,7 +64,7 @@ namespace GitUI.CommandsDialogs
 
         private readonly TranslationString _notOnBranchMainInstruction = new TranslationString("You are not working on a branch");
         private readonly TranslationString _notOnBranch = new TranslationString("You cannot \"pull\" when git head detached." +
-                                  Environment.NewLine + "" + Environment.NewLine + "Do you want to continue?");
+                                  Environment.NewLine + Environment.NewLine + "Do you want to continue?");
         private readonly TranslationString _notOnBranchButtons = new TranslationString("Checkout branch|Continue");
         private readonly TranslationString _notOnBranchCaption = new TranslationString("Not on a branch");
 
@@ -114,7 +114,7 @@ namespace GitUI.CommandsDialogs
             InitializeComponent();
         }
 
-        public FormPull(GitUICommands commands, string defaultRemoteBranch, string defaultRemote)
+        public FormPull(GitUICommands commands, string defaultRemoteBranch, string defaultRemote, AppSettings.PullAction pullAction)
             : base(commands)
         {
             InitializeComponent();
@@ -127,12 +127,38 @@ namespace GitUI.CommandsDialogs
             _branch = Module.GetSelectedBranch();
             BindRemotesDropDown(defaultRemote);
 
-            Merge.Checked = AppSettings.DefaultPullAction == AppSettings.PullAction.Merge;
-            Rebase.Checked = AppSettings.DefaultPullAction == AppSettings.PullAction.Rebase;
-            Fetch.Checked = AppSettings.DefaultPullAction == AppSettings.PullAction.Fetch;
+            switch (pullAction)
+            {
+                case AppSettings.PullAction.None:
+                    // Treat None as Fetch
+                    goto case AppSettings.PullAction.Fetch;
+                case AppSettings.PullAction.Merge:
+                    Merge.Checked = true;
+                    Prune.Enabled = true;
+                    break;
+                case AppSettings.PullAction.Rebase:
+                    Rebase.Checked = true;
+                    break;
+                case AppSettings.PullAction.Fetch:
+                    Fetch.Checked = true;
+                    Prune.Enabled = true;
+                    break;
+                case AppSettings.PullAction.FetchAll:
+                    Fetch.Checked = true;
+                    _NO_TRANSLATE_Remotes.Text = AllRemotes;
+                    break;
+                case AppSettings.PullAction.FetchPruneAll:
+                    Fetch.Checked = true;
+                    _NO_TRANSLATE_Remotes.Text = AllRemotes;
+                    Prune.Checked = true;
+                    break;
+                case AppSettings.PullAction.Default:
+                    Debug.Assert(false, "pullAction is not a valid action");
+                    break;
+            }
+
             localBranch.Enabled = Fetch.Checked;
             AutoStash.Checked = AppSettings.AutoStash;
-            Prune.Enabled = AppSettings.DefaultPullAction == AppSettings.PullAction.Merge || AppSettings.DefaultPullAction == AppSettings.PullAction.Fetch;
 
             ErrorOccurred = false;
 
@@ -695,7 +721,12 @@ namespace GitUI.CommandsDialogs
             string remoteBranchName = Module.GetSetting(string.Format("branch.{0}.merge", _branch));
             if (!remoteBranchName.IsNullOrEmpty())
             {
-                remoteBranchName = Module.RunGitCmd(string.Format("name-rev --name-only \"{0}\"", remoteBranchName)).Trim();
+                var args = new GitArgumentBuilder("name-rev")
+                {
+                    "--name-only",
+                    remoteBranchName.QuoteNE()
+                };
+                remoteBranchName = Module.RunGitCmd(args).Trim();
             }
 
             return remoteBranchName;
@@ -801,11 +832,6 @@ namespace GitUI.CommandsDialogs
         private bool IsPullAll()
         {
             return _NO_TRANSLATE_Remotes.Text.Equals(AllRemotes, StringComparison.InvariantCultureIgnoreCase);
-        }
-
-        public void SetForFetchAll()
-        {
-            _NO_TRANSLATE_Remotes.Text = AllRemotes;
         }
 
         private void PullFromUrlCheckedChanged(object sender, EventArgs e)

@@ -1,4 +1,9 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -58,20 +63,124 @@ namespace GitUI.UserControls
     internal class ExListView : NativeListView
     {
         private static readonly PropertyInfo ListViewGroupIdProperty;
+        private static readonly PropertyInfo ListViewGroupListProperty;
+        private static readonly PropertyInfo ListViewDefaultGroupProperty;
 
         /// <summary>
-        /// Occurs when the user clicks a <see cref="ListViewGroup"/> within the list view control.
+        /// Occurs when the user presses mouse button in a <see cref="ListViewGroup"/> within the list view control.
         /// </summary>
-        public event EventHandler<ListViewGroupMouseEventArgs> GroupMouseClick;
+        public event EventHandler<ListViewGroupMouseEventArgs> GroupMouseDown;
+
+        /// <summary>
+        /// Occurs when the user releases mouse button in a <see cref="ListViewGroup"/> within the list view control.
+        /// </summary>
+        public event EventHandler<ListViewGroupMouseEventArgs> GroupMouseUp;
 
         static ExListView()
         {
-            ListViewGroupIdProperty = typeof(ListViewGroup).GetProperty("ID", BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic);
+            ListViewGroupIdProperty = typeof(ListViewGroup).GetProperty("ID",
+                BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic);
+
+            ListViewGroupListProperty = typeof(ListViewGroupCollection).GetProperty("List",
+                BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic);
+
+            ListViewDefaultGroupProperty = typeof(ListView).GetProperty("DefaultGroup",
+                BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
         public ExListView()
         {
             DoubleBuffered = true;
+            IsGroupStateSupported = EnvUtils.RunningOnWindows() && Environment.OSVersion.Version.Major >= 6;
+        }
+
+        /// <summary>
+        /// Call this method once after <see cref="ListView.Groups"/> collection was cleared (or created)
+        /// before making any calls to <see cref="ListViewGroupCollection.Insert"/>
+        ///
+        /// <see cref="ListViewGroupCollection.Add(System.Windows.Forms.ListViewGroup)"/> calls must
+        /// not be used after calling this method
+        /// </summary>
+        private void BeginGroupInsertion()
+        {
+            // .NET ListView.Groups.Insert(...) implementation has a bug
+            // It does not count the technical "Default" group from ListView when passing inserted
+            // group index to native Win32 ListView.
+
+            // ListView.Groups.Add(...) implementation on the other hand does count the
+            // technical "Default" group correctly therefore it becomes broken after calling this method
+
+            var defaultGroup = ListViewDefaultGroupProperty.GetValue(this);
+            var list = (ArrayList)ListViewGroupListProperty.GetValue(Groups);
+            if (list.Count > 0 && list[0] == defaultGroup)
+            {
+                throw new InvalidOperationException($"{nameof(BeginGroupInsertion)} was already called");
+            }
+
+            list.Insert(0, defaultGroup);
+            _minGroupInsertionIndex = 1;
+        }
+
+        private void EndGroupInsertion()
+        {
+            var defaultGroup = ListViewDefaultGroupProperty.GetValue(this);
+            var list = (ArrayList)ListViewGroupListProperty.GetValue(Groups);
+
+            if (list.Count == 0 || list[0] != defaultGroup)
+            {
+                throw new InvalidOperationException($"{nameof(BeginGroupInsertion)} was not called before");
+            }
+
+            list.RemoveAt(0);
+            _minGroupInsertionIndex = 0;
+        }
+
+        [Category("Behavior"), DefaultValue(false)]
+        public bool AllowCollapseGroups { get; set; }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        private bool IsGroupStateSupported { get; }
+
+        /// <summary>
+        /// Modifies <see cref="ListView.Groups"/> collection to match supplied one.
+        /// </summary>
+        /// <remarks>
+        /// The order of newly inserted groups is preserved.
+        /// The mutual order of already existing groups is left intact to keep algorithm simpler and non-destructive.
+        /// </remarks>
+        public void SetGroups(IReadOnlyList<ListViewGroup> groups, StringComparer nameComparer)
+        {
+            var groupNames = new HashSet<string>(groups.Select(g => g.Name), nameComparer);
+
+            BeginGroupInsertion();
+
+            try
+            {
+                var toRemove = GetGroups().Where(grp => !groupNames.Contains(grp.Name)).ToArray();
+                foreach (var grp in toRemove)
+                {
+                    Groups.Remove(grp);
+                }
+
+                var existingGroups = GetGroups().ToArray();
+
+                // leave only names to be inserted
+                groupNames.ExceptWith(existingGroups.Select(g => g.Name));
+                for (int i = 0; i < groups.Count; i++)
+                {
+                    if (groupNames.Contains(groups[i].Name))
+                    {
+                        Groups.Insert(i + _minGroupInsertionIndex, groups[i]);
+                    }
+                }
+            }
+            finally
+            {
+                EndGroupInsertion();
+            }
+
+            IEnumerable<ListViewGroup> GetGroups() =>
+                Groups.Cast<ListViewGroup>().Skip(_minGroupInsertionIndex);
         }
 
         #region Win32 Apis
@@ -102,6 +211,10 @@ namespace GitUI.UserControls
             public const int LVM_HITTEST = LVM_FIRST + 18;
             public const int LVM_SETGROUPINFO = LVM_FIRST + 147;
             public const int LVM_SUBITEMHITTEST = LVM_FIRST + 57;
+            public const int LVM_INSERTGROUP = LVM_FIRST + 145;
+
+            public const int NM_FIRST = 0;
+            public const int NM_CUSTOMDRAW = NM_FIRST - 12;
 
             #endregion
 
@@ -215,92 +328,167 @@ namespace GitUI.UserControls
         }
         #endregion
 
+        protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+        {
+            // Prevent flickering horizontal scrollbar when control width is reduced,
+            // by preventing redrawing the control before column width is adjusted to new width in
+            // some event handler e.g. ClientSizeChanged.
+            BeginUpdate();
+            base.SetBoundsCore(x, y, width, height, specified);
+            EndUpdate();
+        }
+
         private bool _isInWmPaintMsg;
 
         protected override void WndProc(ref Message m)
         {
+            var message = m;
+            var groupHitInfo = new Lazy<ListViewGroupHitInfo>(() => GetGroupHitInfo(message));
+
             switch (m.Msg)
             {
+                case NativeMethods.WM_LBUTTONUP when groupHitInfo.Value?.IsCollapseButton == true:
+                    DefWndProc(ref m); // collapse / expand by clicking button in group header
+                    break;
+
+                case NativeMethods.LVM_INSERTGROUP:
+                    base.WndProc(ref m);
+                    HandleAddedGroup(m);
+                    break;
+
                 case NativeMethods.WM_PAINT:
                     _isInWmPaintMsg = true;
                     base.WndProc(ref m);
                     _isInWmPaintMsg = false;
                     break;
-                case NativeMethods.WM_REFLECT_NOTIFY:
-                    var nmhdr = (NativeMethods.NMHDR)m.GetLParam(typeof(NativeMethods.NMHDR));
-                    if (nmhdr.code == -12)
-                    {
-                        // NM_CUSTOMDRAW
-                        if (_isInWmPaintMsg)
-                        {
-                            base.WndProc(ref m);
-                        }
-                    }
-                    else
-                    {
-                        base.WndProc(ref m);
-                    }
 
+                case NativeMethods.WM_REFLECT_NOTIFY when IsCustomDraw(m) && !_isInWmPaintMsg:
+                case NativeMethods.WM_RBUTTONUP when IsGroupMouseEventHandled(groupHitInfo.Value, MouseButtons.Right, isDown: false):
+                case NativeMethods.WM_RBUTTONDOWN when IsGroupMouseEventHandled(groupHitInfo.Value, MouseButtons.Right, isDown: true):
+                case NativeMethods.WM_LBUTTONUP when IsGroupMouseEventHandled(groupHitInfo.Value, MouseButtons.Left, isDown: false):
+                case NativeMethods.WM_LBUTTONDOWN when IsGroupMouseEventHandled(groupHitInfo.Value, MouseButtons.Left, isDown: true):
                     break;
-                case NativeMethods.WM_LBUTTONUP:
-                case NativeMethods.WM_LBUTTONDOWN:
-                    {
-                        if (IsListViewGroupClickHandled((uint)m.LParam, MouseButtons.Left))
-                        {
-                            return;
-                        }
-
-                        base.WndProc(ref m);
-                        break;
-                    }
-
-                case NativeMethods.WM_RBUTTONUP:
-                case NativeMethods.WM_RBUTTONDOWN:
-                    {
-                        if (IsListViewGroupClickHandled((uint)m.LParam, MouseButtons.Right))
-                        {
-                            return;
-                        }
-
-                        base.WndProc(ref m);
-                        break;
-                    }
 
                 default:
                     base.WndProc(ref m);
                     break;
             }
 
-            bool IsListViewGroupClickHandled(uint lparam, MouseButtons button)
+            void HandleAddedGroup(Message msg)
             {
-                var info = new NativeMethods.LVHITTESTINFO
+                if (!IsGroupStateSupported || !AllowCollapseGroups)
                 {
-                    pt = NativeMethods.LParamToPOINT(lparam)
-                };
-
-                var handleRef = new HandleRef(this, Handle);
-                if (NativeMethods.SendMessage(handleRef, NativeMethods.LVM_SUBITEMHITTEST, (IntPtr)(-1), ref info) == new IntPtr(-1))
-                {
-                    return false;
+                    return;
                 }
 
-                if ((info.flags & NativeMethods.LVHITTESTFLAGS.LVHT_EX_GROUP_HEADER) == 0)
+                int groupIndex = GetGroupIndex();
+                if (groupIndex < _minGroupInsertionIndex)
                 {
-                    return false;
+                    return;
                 }
 
-                foreach (ListViewGroup group in Groups)
+                var listViewGroup = Groups[groupIndex];
+                SetGrpState(listViewGroup, ListViewGroupState.Collapsible);
+                Invalidate();
+
+                int GetGroupIndex()
                 {
-                    var groupId = GetGroupId(group);
-                    if (info.iItem == groupId)
+                    // https://docs.microsoft.com/en-us/windows/desktop/controls/lvm-insertgroup
+                    int index = msg.WParam.ToInt32();
+                    if (index == -1)
                     {
-                        GroupMouseClick?.Invoke(this, new ListViewGroupMouseEventArgs(button, group, 1, info.pt.X, info.pt.Y, 0));
-                        return true;
+                        // -1 because addition already happened
+                        return Groups.Count - 1;
                     }
+
+                    return index - 1 + _minGroupInsertionIndex;
                 }
 
-                return false;
+                void SetGrpState(ListViewGroup grp, ListViewGroupState state)
+                {
+                    int groupId = GetGroupId(grp);
+                    if (groupId < 0)
+                    {
+                        groupId = Groups.IndexOf(grp) - _minGroupInsertionIndex;
+                    }
+
+                    var lvgroup = new NativeMethods.LVGROUP();
+                    lvgroup.CbSize = Marshal.SizeOf(lvgroup);
+                    lvgroup.State = state;
+                    lvgroup.Mask = NativeMethods.ListViewGroupMask.State;
+                    lvgroup.IGroupId = groupId;
+
+                    var handleRef = new HandleRef(this, Handle);
+
+                    NativeMethods.SendMessage(handleRef, NativeMethods.LVM_SETGROUPINFO, (IntPtr)groupId, ref lvgroup);
+                }
             }
+
+            bool IsGroupMouseEventHandled(ListViewGroupHitInfo hitInfo, MouseButtons button, bool isDown)
+            {
+                if (hitInfo == null)
+                {
+                    return false;
+                }
+
+                var eventArgs = new ListViewGroupMouseEventArgs(button, hitInfo, 1, 0);
+                if (isDown)
+                {
+                    GroupMouseDown?.Invoke(this, eventArgs);
+                }
+                else
+                {
+                    GroupMouseUp?.Invoke(this, eventArgs);
+                }
+
+                return eventArgs.Handled;
+            }
+
+            bool IsCustomDraw(Message msg)
+            {
+                var nmhdr = (NativeMethods.NMHDR)msg.GetLParam(typeof(NativeMethods.NMHDR));
+                return nmhdr.code == NativeMethods.NM_CUSTOMDRAW;
+            }
+        }
+
+        public ListViewGroupHitInfo GetGroupHitInfo(Point location) =>
+            GetGroupHitInfo((NativeMethods.POINT)location);
+
+        private ListViewGroupHitInfo GetGroupHitInfo(Message msg)
+        {
+            var point = NativeMethods.LParamToPOINT((uint)msg.LParam);
+            return GetGroupHitInfo(point);
+        }
+
+        private ListViewGroupHitInfo GetGroupHitInfo(NativeMethods.POINT location)
+        {
+            var info = new NativeMethods.LVHITTESTINFO
+            {
+                pt = location
+            };
+
+            var handleRef = new HandleRef(this, Handle);
+            if (NativeMethods.SendMessage(handleRef, NativeMethods.LVM_SUBITEMHITTEST, (IntPtr)(-1), ref info) == new IntPtr(-1))
+            {
+                return null;
+            }
+
+            if ((info.flags & NativeMethods.LVHITTESTFLAGS.LVHT_EX_GROUP_HEADER) == 0)
+            {
+                return null;
+            }
+
+            foreach (ListViewGroup group in Groups)
+            {
+                var groupId = GetGroupId(group);
+                if (info.iItem == groupId)
+                {
+                    bool isCollapseButton = (info.flags & NativeMethods.LVHITTESTFLAGS.LVHT_EX_GROUP_COLLAPSE) > 0;
+                    return new ListViewGroupHitInfo(group, isCollapseButton, new Point(location.X, location.Y));
+                }
+            }
+
+            return null;
         }
 
         private static int GetGroupId(ListViewGroup listViewGroup)
@@ -320,37 +508,7 @@ namespace GitUI.UserControls
             return -1;
         }
 
-        public void SetGroupState(ListViewGroupState state)
-        {
-            if (!EnvUtils.RunningOnWindows() || Environment.OSVersion.Version.Major < 6)
-            {
-                // Only Vista and forward
-                // allows collapse of ListViewGroups
-                return;
-            }
-
-            foreach (ListViewGroup lvg in Groups)
-            {
-                SetGrpState(lvg);
-            }
-
-            Refresh();
-            return;
-
-            void SetGrpState(ListViewGroup lstvwgrp)
-            {
-                int groupId = GetGroupId(lstvwgrp);
-                int groupIndex = Groups.IndexOf(lstvwgrp);
-
-                var group = new NativeMethods.LVGROUP();
-                group.CbSize = Marshal.SizeOf(group);
-                group.State = state;
-                group.Mask = NativeMethods.ListViewGroupMask.State;
-
-                var handleRef = new HandleRef(this, Handle);
-                group.IGroupId = groupId > 0 ? groupId : groupIndex;
-                NativeMethods.SendMessage(handleRef, NativeMethods.LVM_SETGROUPINFO, (IntPtr)group.IGroupId, ref group);
-            }
-        }
+        /// <summary> Position in <see cref="ListView.Groups"/> collection after the technical "Default" group </summary>
+        private int _minGroupInsertionIndex;
     }
 }
