@@ -72,7 +72,7 @@ namespace GitUI
         private readonly Lazy<IndexWatcher> _indexWatcher;
         private readonly BuildServerWatcher _buildServerWatcher;
         private readonly Timer _selectionTimer;
-        private readonly GraphColumnProvider _graphColumnProvider;
+        private readonly RevisionGraphColumnProvider _revisionGraphColumnProvider;
         private readonly List<DataGridViewColumn> _resizableColumns;
         private readonly DataGridViewColumn _maximizedColumn;
         private DataGridViewColumn _lastVisibleResizableColumn = null;
@@ -208,8 +208,8 @@ namespace GitUI
 
             _buildServerWatcher = new BuildServerWatcher(this, _gridView, () => Module);
 
-            _graphColumnProvider = new GraphColumnProvider(this, _gridView._graphModel);
-            _gridView.AddColumn(_graphColumnProvider);
+            _revisionGraphColumnProvider = new RevisionGraphColumnProvider(this, _gridView._revisionGraph);
+            _gridView.AddColumn(_revisionGraphColumnProvider);
             _gridView.AddColumn(new MessageColumnProvider(this));
             _gridView.AddColumn(new AvatarColumnProvider(_gridView, AvatarService.Default));
             _gridView.AddColumn(new AuthorNameColumnProvider(this, _authorHighlighting));
@@ -232,10 +232,7 @@ namespace GitUI
                 {
                     _indexWatcher.Value.Dispose();
                 }
-            }
 
-            if (disposing)
-            {
                 components?.Dispose();
             }
 
@@ -590,8 +587,8 @@ namespace GitUI
 
         private void HighlightBranch(ObjectId id)
         {
-            _graphColumnProvider.RevisionGraphDrawStyle = RevisionGraphDrawStyleEnum.HighlightSelected;
-            _graphColumnProvider.HighlightBranch(id);
+            _revisionGraphColumnProvider.RevisionGraphDrawStyle = RevisionGraphDrawStyleEnum.HighlightSelected;
+            _revisionGraphColumnProvider.HighlightBranch(id);
             _gridView.Update();
         }
 
@@ -620,6 +617,7 @@ namespace GitUI
             return description;
         }
 
+        [NotNull]
         public IReadOnlyList<GitRevision> GetSelectedRevisions(SortDirection? direction = null)
         {
             var rows = _gridView
@@ -635,6 +633,7 @@ namespace GitUI
 
             return rows
                 .Select(row => GetRevision(row.Index))
+                .Where(revision => revision != null)
                 .ToList();
         }
 
@@ -643,7 +642,7 @@ namespace GitUI
             var revisions = GetSelectedRevisions();
 
             // Parents to First (A) are only known if A is explicitly selected (there is no explicit search for parents to parents of a single selected revision)
-            return revisions != null && revisions.Count > 1;
+            return revisions.Count > 1;
         }
 
         public IReadOnlyList<ObjectId> GetRevisionChildren(ObjectId objectId)
@@ -730,7 +729,7 @@ namespace GitUI
 
             try
             {
-                _graphColumnProvider.RevisionGraphDrawStyle = RevisionGraphDrawStyleEnum.DrawNonRelativesGray;
+                _revisionGraphColumnProvider.RevisionGraphDrawStyle = RevisionGraphDrawStyleEnum.DrawNonRelativesGray;
 
                 // Apply filter from revision filter dialog
                 _branchFilter = _revisionFilter.GetBranchFilter();
@@ -1129,7 +1128,7 @@ namespace GitUI
                     return exactIndex;
                 }
 
-                if (!objectId.IsArtificial)
+                if (objectId != null && !objectId.IsArtificial)
                 {
                     // Not found, so search for its parents
                     foreach (var parentId in TryGetParents(objectId))
@@ -1151,7 +1150,6 @@ namespace GitUI
         {
             var args = new GitArgumentBuilder("rev-list")
             {
-                { AppSettings.OrderRevisionByDate, "--date-order" },
                 { AppSettings.MaxRevisionGraphCommits > 0, $"--max-count={AppSettings.MaxRevisionGraphCommits}" },
                 objectId
             };
@@ -1359,7 +1357,7 @@ namespace GitUI
         public void ViewSelectedRevisions()
         {
             var selectedRevisions = GetSelectedRevisions();
-            if (selectedRevisions.Any(rev => !rev.IsArtificial))
+            if (selectedRevisions.Any(rev => rev != null && !rev.IsArtificial))
             {
                 Form ProvideForm()
                 {
@@ -1813,12 +1811,6 @@ namespace GitUI
             Refresh();
         }
 
-        internal void ToggleOrderRevisionByDate()
-        {
-            AppSettings.OrderRevisionByDate = !AppSettings.OrderRevisionByDate;
-            ForceRefreshRevisions();
-        }
-
         internal void ToggleShowRemoteBranches()
         {
             AppSettings.ShowRemoteBranches = !AppSettings.ShowRemoteBranches;
@@ -2216,6 +2208,16 @@ namespace GitUI
             }
         }
 
+        private void renameBranchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var item = (ToolStripMenuItem)sender;
+
+            if (item.DropDown != null && item.DropDown.Items.Count == 1)
+            {
+                item.DropDown.Items[0].PerformClick();
+            }
+        }
+
         private void deleteBranchTagToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var item = (ToolStripMenuItem)sender;
@@ -2244,13 +2246,25 @@ namespace GitUI
 
         private void goToMergeBaseCommitToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var selectedRevision = LatestSelectedRevision;
-            if (selectedRevision == null)
+            // Artificial commits are replaced with HEAD
+            // If only one revision is selected, compare to HEAD
+            // => Fill with HEAD to if less than two normal revisions (it is OK to compare HEAD HEAD)
+            var revisions = GetSelectedRevisions().Select(i => i.ObjectId).Where(i => !i.IsArtificial).ToList();
+            bool hasArtificial = GetSelectedRevisions().Any(i => i.IsArtificial);
+            if (revisions.Count == 0 && !hasArtificial)
             {
                 return;
             }
 
-            var mergeBaseCommitId = UICommands.GitModule.RunGitCmd("merge-base HEAD " + selectedRevision.Guid).TrimEnd('\n');
+            var args = new GitArgumentBuilder("merge-base")
+            {
+                { revisions.Count > 2 || (revisions.Count == 2 && hasArtificial), "--octopus" },
+                { revisions.Count < 1, "HEAD" },
+                { revisions.Count < 2, "HEAD" },
+                revisions
+            };
+
+            var mergeBaseCommitId = UICommands.GitModule.RunGitCmd(args).TrimEnd('\n');
             if (string.IsNullOrWhiteSpace(mergeBaseCommitId))
             {
                 MessageBox.Show(_noMergeBaseCommit.Text);
@@ -2617,7 +2631,6 @@ namespace GitUI
                 case Commands.ToggleRevisionGraph: ToggleRevisionGraphColumn(); break;
                 case Commands.RevisionFilter: ShowRevisionFilterDialog(); break;
                 case Commands.ToggleAuthorDateCommitDate: ToggleShowAuthorDate(); break;
-                case Commands.ToggleOrderRevisionsByDate: ToggleOrderRevisionByDate(); break;
                 case Commands.ToggleShowRelativeDate: ToggleShowRelativeDate(null); break;
                 case Commands.ToggleDrawNonRelativesGray: ToggleDrawNonRelativesGray(); break;
                 case Commands.ToggleShowGitNotes: ToggleShowGitNotes(); break;

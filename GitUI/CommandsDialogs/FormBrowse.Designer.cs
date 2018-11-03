@@ -750,6 +750,8 @@ namespace GitUI.CommandsDialogs
             // 
             // RevisionInfo
             // 
+            this.RevisionInfo.AutoSize = true;
+            this.RevisionInfo.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             this.RevisionInfo.BackColor = System.Drawing.SystemColors.Window;
             this.RevisionInfo.Cursor = System.Windows.Forms.Cursors.IBeam;
             this.RevisionInfo.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -759,7 +761,7 @@ namespace GitUI.CommandsDialogs
             this.RevisionInfo.ShowBranchesAsLinks = true;
             this.RevisionInfo.Size = new System.Drawing.Size(646, 264);
             this.RevisionInfo.TabIndex = 0;
-            this.RevisionInfo.CommandClick += new System.EventHandler<GitUI.CommitInfo.CommandEventArgs>(this.RevisionInfo_CommandClick);
+            this.RevisionInfo.CommandClicked += new System.EventHandler<GitUI.CommitInfo.CommandEventArgs>(this.RevisionInfo_CommandClicked);
             // 
             // TreeTabPage
             // 

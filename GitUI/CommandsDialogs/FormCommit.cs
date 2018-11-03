@@ -398,8 +398,6 @@ namespace GitUI.CommandsDialogs
                 Initialize();
             }
 
-            AcceptButton = Commit;
-
             string message;
 
             switch (_commitKind)
@@ -518,6 +516,11 @@ namespace GitUI.CommandsDialogs
         {
             _stageSelectedLinesToolStripMenuItem.Enabled = SelectedDiff.HasAnyPatches() || (_currentItem != null && _currentItem.IsNew);
             _resetSelectedLinesToolStripMenuItem.Enabled = _stageSelectedLinesToolStripMenuItem.Enabled;
+        }
+
+        private void SelectedDiff_TextLoaded(object sender, EventArgs e)
+        {
+            _selectedDiffReloaded = true;
         }
 
         #region Hotkey commands
@@ -1461,7 +1464,7 @@ namespace GitUI.CommandsDialogs
             Staged.ClearSelected();
 
             _currentSelection = Unstaged.SelectedItems.ToList();
-            GitItemStatus item = _currentSelection.LastOrDefault();
+            GitItemStatus item = Unstaged.SelectedItem;
             ShowChanges(item, false);
 
             if (!item.IsSubmodule)
@@ -1718,7 +1721,7 @@ namespace GitUI.CommandsDialogs
 
             Unstaged.ClearSelected();
             _currentSelection = Staged.SelectedItems.ToList();
-            GitItemStatus item = _currentSelection.LastOrDefault();
+            GitItemStatus item = Staged.SelectedItem;
             ShowChanges(item, true);
         }
 
@@ -1855,7 +1858,6 @@ namespace GitUI.CommandsDialogs
 
                 Commit.Enabled = true;
                 Amend.Enabled = true;
-                AcceptButton = Commit;
             }
 
             if (AppSettings.RevisionGraphShowWorkingDirChanges)
@@ -2086,12 +2088,12 @@ namespace GitUI.CommandsDialogs
                 {
                     // When a committemplate is used, skip comments
                     // otherwise: "#" is probably not used for comment but for issue number
-                    if (!line.StartsWith("#") ||
+                    if ((!string.IsNullOrEmpty(line) && !line.StartsWith("#")) ||
                         string.IsNullOrEmpty(_commitTemplate))
                     {
                         if (addNewlineToCommitMessageWhenMissing)
                         {
-                            if (lineNumber == 1 && !string.IsNullOrEmpty(line))
+                            if (lineNumber == 1)
                             {
                                 textWriter.WriteLine();
                             }
