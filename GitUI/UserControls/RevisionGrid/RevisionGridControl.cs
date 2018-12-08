@@ -59,7 +59,7 @@ namespace GitUI
         private readonly TranslationString _rebaseBranchInteractive = new TranslationString("Rebase branch interactively.");
         private readonly TranslationString _areYouSureRebase = new TranslationString("Are you sure you want to rebase? This action will rewrite commit history.");
         private readonly TranslationString _dontShowAgain = new TranslationString("Don't show me this message again.");
-        private readonly TranslationString _noMergeBaseCommit = new TranslationString("There is no merge base commit between these 2 commits.");
+        private readonly TranslationString _noMergeBaseCommit = new TranslationString("There is no common ancestor for the selected commits.");
 
         private readonly FormRevisionFilter _revisionFilter = new FormRevisionFilter();
         private readonly NavigationHistory _navigationHistory = new NavigationHistory();
@@ -75,7 +75,6 @@ namespace GitUI
         private readonly RevisionGraphColumnProvider _revisionGraphColumnProvider;
         private readonly List<DataGridViewColumn> _resizableColumns;
         private readonly DataGridViewColumn _maximizedColumn;
-        private DataGridViewColumn _lastVisibleResizableColumn = null;
 
         private RefFilterOptions _refFilterOptions = RefFilterOptions.All | RefFilterOptions.Boundary;
 
@@ -102,10 +101,6 @@ namespace GitUI
         private JoinableTask<SuperProjectInfo> _superprojectCurrentCheckout;
         private int _latestSelectedRowIndex;
 
-        /// <summary>
-        /// Same as <see cref="CurrentCheckout"/> except <c>null</c> until the associated revision is loaded.
-        /// </summary>
-        [CanBeNull] private ObjectId _filteredCurrentCheckout;
         private bool _settingsLoaded;
 
         // NOTE internal properties aren't serialised by the WinForms designer
@@ -495,10 +490,10 @@ namespace GitUI
                 _resizableColumns.ForEach(column => column.Resizable = DataGridViewTriState.True);
 
                 // suppress the manual resizing of the last visible column because it will be resized when the maximized column is resized
-                _lastVisibleResizableColumn = _gridView.Columns.GetLastColumn(DataGridViewElementStates.Visible | DataGridViewElementStates.Resizable, DataGridViewElementStates.None);
-                if (_lastVisibleResizableColumn != null)
+                var lastVisibleResizableColumn = _gridView.Columns.GetLastColumn(DataGridViewElementStates.Visible | DataGridViewElementStates.Resizable, DataGridViewElementStates.None);
+                if (lastVisibleResizableColumn != null)
                 {
-                    _lastVisibleResizableColumn.Resizable = DataGridViewTriState.False;
+                    lastVisibleResizableColumn.Resizable = DataGridViewTriState.False;
                 }
             }
         }
@@ -725,7 +720,7 @@ namespace GitUI
 
             ShowLoading();
 
-            var revisionCount = 0;
+            var firstRevisionReceived = false;
 
             try
             {
@@ -757,7 +752,6 @@ namespace GitUI
                 }
 
                 CurrentCheckout = newCurrentCheckout;
-                _filteredCurrentCheckout = null;
                 _isRefreshingRevisions = true;
                 base.Refresh();
 
@@ -883,29 +877,21 @@ namespace GitUI
 
             void OnRevisionRead(GitRevision revision)
             {
-                revisionCount++;
-
-                if (revisionCount < 2)
+                if (!firstRevisionReceived)
                 {
+                    firstRevisionReceived = true;
+
                     this.InvokeAsync(() => { ShowLoading(false); }).FileAndForget();
                 }
 
-                if (_filteredCurrentCheckout == null)
-                {
-                    if (revision.ObjectId == CurrentCheckout)
-                    {
-                        _filteredCurrentCheckout = CurrentCheckout;
-                    }
-                }
-
-                var isCurrentCheckout = revision.ObjectId == _filteredCurrentCheckout;
+                var isCurrentCheckout = revision.ObjectId.Equals(CurrentCheckout);
 
                 if (isCurrentCheckout &&
                     ShowUncommittedChangesIfPossible &&
                     AppSettings.RevisionGraphShowWorkingDirChanges &&
                     !Module.IsBareRepository())
                 {
-                    CheckUncommittedChanged(_filteredCurrentCheckout);
+                    CheckUncommittedChanged(revision.ObjectId);
                 }
 
                 var flags = RevisionNodeFlags.None;
@@ -918,6 +904,11 @@ namespace GitUI
                 if (revision.Refs.Count != 0)
                 {
                     flags |= RevisionNodeFlags.HasRef;
+                }
+
+                if (_refFilterOptions.HasFlag(RefFilterOptions.FirstParent))
+                {
+                    flags |= RevisionNodeFlags.OnlyFirstParent;
                 }
 
                 _gridView.Add(revision, flags);
@@ -981,7 +972,7 @@ namespace GitUI
             {
                 _isReadingRevisions = false;
 
-                if (revisionCount == 0 && !FilterIsApplied(inclBranchFilter: true))
+                if (!firstRevisionReceived && !FilterIsApplied(inclBranchFilter: true))
                 {
                     // This has to happen on the UI thread
                     this.InvokeAsync(
@@ -1078,17 +1069,11 @@ namespace GitUI
 
         private void SelectInitialRevision()
         {
-            var filteredCurrentCheckout = _filteredCurrentCheckout;
             var selectedObjectIds = _selectedObjectIds ?? Array.Empty<ObjectId>();
 
             if (selectedObjectIds.Count == 0 && InitialObjectId != null)
             {
                 selectedObjectIds = new ObjectId[] { InitialObjectId };
-            }
-
-            if (selectedObjectIds.Count == 0 && filteredCurrentCheckout != null)
-            {
-                selectedObjectIds = new ObjectId[] { filteredCurrentCheckout };
             }
 
             if (selectedObjectIds.Count == 0)
@@ -1098,11 +1083,6 @@ namespace GitUI
 
             _gridView.ToBeSelectedObjectIds = selectedObjectIds.ToHashSet();
             _selectedObjectIds = null;
-
-            if (filteredCurrentCheckout != null && !_gridView.IsRevisionRelative(filteredCurrentCheckout))
-            {
-                HighlightBranch(filteredCurrentCheckout);
-            }
         }
 
         private void CheckAndRepairInitialRevision()
@@ -1282,18 +1262,26 @@ namespace GitUI
             {
                 case MouseButtons.XButton1: NavigateBackward(); break;
                 case MouseButtons.XButton2: NavigateForward(); break;
-                case MouseButtons.Left when _maximizedColumn != null && _lastVisibleResizableColumn != null:
-                    // make resizing of the maximized column work and restore the settings afterwards
-                    void OnGridViewMouseCaptureChanged(object ignoredSender, EventArgs ignoredArgs)
+                case MouseButtons.Left when _maximizedColumn != null:
+                    // suppress the manual resizing of the last visible column because it will be resized when the maximized column is resized
+                    var lastVisibleResizableColumn = _gridView.Columns.GetLastColumn(DataGridViewElementStates.Visible | DataGridViewElementStates.Resizable, DataGridViewElementStates.None);
+                    if (lastVisibleResizableColumn != null)
                     {
-                        _gridView.MouseCaptureChanged -= OnGridViewMouseCaptureChanged;
-                        _lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                        _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                        lastVisibleResizableColumn.Resizable = DataGridViewTriState.False;
+
+                        // make resizing of the maximized column work and restore the settings afterwards
+                        void OnGridViewMouseCaptureChanged(object ignoredSender, EventArgs ignoredArgs)
+                        {
+                            _gridView.MouseCaptureChanged -= OnGridViewMouseCaptureChanged;
+                            lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                            _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                        }
+
+                        _gridView.MouseCaptureChanged += OnGridViewMouseCaptureChanged;
+                        _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                        lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                     }
 
-                    _gridView.MouseCaptureChanged += OnGridViewMouseCaptureChanged;
-                    _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                    _lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                     break;
             }
         }
@@ -2305,7 +2293,6 @@ namespace GitUI
                 if (_isReadingRevisions || !SetSelectedRevision(revisionGuid))
                 {
                     InitialObjectId = revisionGuid;
-                    _gridView.SelectedObjectIds = null;
                     _selectedObjectIds = null;
                 }
             }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -18,10 +18,11 @@ namespace GitUI.UserControls.RevisionGrid.Columns
     {
         private const int MaxLanes = 40;
 
-        private static readonly int NodeDimension = DpiUtil.Scale(10);
-        private static readonly int LaneWidth = DpiUtil.Scale(16);
         private static readonly int LaneLineWidth = DpiUtil.Scale(2);
+        private static readonly int LaneWidth = DpiUtil.Scale(16);
+        private static readonly int NodeDimension = DpiUtil.Scale(10);
 
+        private readonly LaneInfoProvider _laneInfoProvider;
         private readonly RevisionGridControl _grid;
         private readonly RevisionGraph _revisionGraph;
         private readonly GraphCache _graphCache = new GraphCache();
@@ -34,6 +35,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
         {
             _grid = grid;
             _revisionGraph = revisionGraph;
+            _laneInfoProvider = new LaneInfoProvider(new LaneNodeLocator(_revisionGraph));
 
             // TODO is it worth creating a lighter-weight column type?
 
@@ -296,7 +298,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                             // StartLane
                             if (endLane >= 0 && centerLane >= 0 && (endLane <= MaxLanes || centerLane <= MaxLanes))
                             {
-                                DrawSegment(g, brush, centerX, centerY - 1, endX, endY);
+                                DrawSegment(g, brush, centerX, centerY, endX, endY);
                             }
                         }
 
@@ -316,8 +318,6 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                             }
                             else //// Circle
                             {
-                                nodeRect.Width = nodeRect.Height = NodeDimension - 1;
-
                                 g.SmoothingMode = SmoothingMode.AntiAlias;
                                 g.FillEllipse(brush, nodeRect);
                             }
@@ -370,7 +370,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
             return brush;
         }
 
-        private static int GetLaneForRow(RevisionGraphRow row, RevisionGraphSegment revisionGraphRevision)
+        private static int GetLaneForRow(IRevisionGraphRow row, RevisionGraphSegment revisionGraphRevision)
         {
             if (row != null)
             {
@@ -394,18 +394,16 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                 }
                 else
                 {
-                    // Anti-aliasing seems to introduce an offset of two thirds
-                    // of a pixel to the right - compensate it.
+                    // Anti-aliasing with bezier & PixelOffsetMode.HighQuality
+                    // introduces an offset of ~1/8 px - compensate it.
                     g.SmoothingMode = SmoothingMode.AntiAlias;
-                    float offset = -0.667F;
+                    const float offset = -1f / 8f;
 
-                    // Left shifting int is fast equivalent of dividing by two,
-                    // thus computing the average of y0 and y1.
-                    var yMid = (y0 + y1) >> 1;
-                    var c0 = new PointF(offset + x0, yMid);
-                    var c1 = new PointF(offset + x1, yMid);
-                    var e0 = new PointF(offset + p0.X, p0.Y);
-                    var e1 = new PointF(offset + p1.X, p1.Y);
+                    var yMid = (y0 + y1) / 2f;
+                    var c0 = new PointF(offset + p0.X, offset + yMid);
+                    var c1 = new PointF(offset + p1.X, offset + yMid);
+                    var e0 = new PointF(offset + p0.X, offset + p0.Y);
+                    var e1 = new PointF(offset + p1.X, offset + p1.Y);
                     g.DrawBezier(lanePen, e0, c0, c1, e1);
                 }
             }
@@ -466,17 +464,7 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                                  .DefaultIfEmpty()
                                  .Max();
 
-            // When 'git log --first-parent' filtration is enabled and when only current
-            // branch needed to be rendered (and this filter actually works),
-            // it is much more readable to limit max lanes to 1.
-            int maxLanes =
-                (AppSettings.ShowFirstParent &&
-                 AppSettings.ShowCurrentBranchOnly &&
-                 AppSettings.BranchFilterEnabled)
-                    ? 1
-                    : MaxLanes;
-
-            laneCount = Math.Min(laneCount, maxLanes);
+            laneCount = Math.Min(laneCount, MaxLanes);
             var columnWidth = (LaneWidth * laneCount) + ColumnLeftMargin;
             if (columnWidth > minimumWidth)
             {
@@ -488,44 +476,15 @@ namespace GitUI.UserControls.RevisionGrid.Columns
 
         public override bool TryGetToolTip(DataGridViewCellMouseEventArgs e, GitRevision revision, out string toolTip)
         {
-            if (!revision.IsArtificial)
+            if (e.X >= ColumnLeftMargin && LaneWidth >= 0 && e.RowIndex >= 0)
             {
-                toolTip = GetLaneInfo(e.X - ColumnLeftMargin, e.RowIndex);
+                int lane = (e.X - ColumnLeftMargin) / LaneWidth;
+                toolTip = _laneInfoProvider.GetLaneInfo(e.RowIndex, lane);
                 return true;
             }
 
             toolTip = default;
             return false;
-
-            string GetLaneInfo(int x, int rowIndex)
-            {
-                int lane = x / LaneWidth;
-                var laneInfoText = new StringBuilder();
-                RevisionGraphRow row = _revisionGraph.GetSegmentsForRow(rowIndex);
-                if (row != null)
-                {
-                    IEnumerable<RevisionGraphSegment> segmentsForLane = row.GetSegmentsForIndex(lane);
-
-                    if (segmentsForLane.Count() == 1)
-                    {
-                        // Crossing lange
-                        laneInfoText.Append(segmentsForLane.First().Parent.GitRevision.Body ?? segmentsForLane.First().Parent.GitRevision.Subject);
-                    }
-                    else
-                    if (segmentsForLane.Count() > 1)
-                    {
-                        // Current revision
-                        if (!row.Revision.Objectid.IsArtificial)
-                        {
-                            laneInfoText.AppendLine(row.Revision.Objectid.ToString());
-                            laneInfoText.AppendLine();
-                            laneInfoText.Append(row.Revision.GitRevision.Body ?? row.Revision.GitRevision.Subject);
-                        }
-                    }
-                }
-
-                return laneInfoText.ToString();
-            }
         }
     }
 
@@ -592,6 +551,11 @@ namespace GitUI.UserControls.RevisionGrid.Columns
                 PixelFormat.Format32bppPArgb);
             _graphBitmapGraphics = Graphics.FromImage(_graphBitmap);
             _graphBitmapGraphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // With SmoothingMode != None it is better to use PixelOffsetMode.HighQuality
+            // e.g. to avoid shrinking rectangles, ellipses and etc. by 1 px from right bottom
+            _graphBitmapGraphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
             Head = 0;
             Count = 0;
         }

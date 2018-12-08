@@ -22,8 +22,8 @@ namespace GitUI.CommandsDialogs
             environmentInfo.SetCopyButtonTooltip(_copyTooltip.Text);
 
             // Click handlers
-            _NO_TRANSLATE_labelProductName.LinkClicked += (s, e) => { Process.Start(@"http://github.com/gitextensions/gitextensions"); };
-            thanksTo.LinkClicked += delegate { ShowContributorsForm(); };
+            _NO_TRANSLATE_labelProductName.LinkClicked += delegate { Process.Start("https://github.com/gitextensions/gitextensions"); };
+            _NO_TRANSLATE_ThanksTo.LinkClicked += delegate { ShowContributorsForm(); };
             pictureDonate.Click += delegate { Process.Start(FormDonate.DonationUrl); };
             linkLabelIcons.LinkClicked += delegate { Process.Start("http://p.yusukekamiyamane.com/"); };
 
@@ -52,16 +52,17 @@ namespace GitUI.CommandsDialogs
             void ThankNextContributor()
             {
                 // Select a contributor at random
-                var contributorName = contributorsList[random.Next(contributorsList.Count - 1)].Trim();
+                var contributorName = contributorsList[random.Next(contributorsList.Count)].Trim();
 
-                thanksTo.Text = thanksToContributorsText + contributorName;
+                _NO_TRANSLATE_ThanksTo.Text = thanksToContributorsText + contributorName;
             }
 
             IReadOnlyList<string> GetContributorList()
             {
                 return new[] { Resources.Team, Resources.Coders, Resources.Translators, Resources.Designers }
-                    .Select(c => c.Replace(Environment.NewLine, " "))
-                    .SelectMany(line => line.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries))
+                    .Select(c => c.Replace(Environment.NewLine, ""))
+                    .SelectMany(line => line.Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries))
+                    .Select(contributor => contributor.Trim())
                     .ToList();
             }
         }

@@ -16,6 +16,7 @@ using GitCommands;
 using GitCommands.Config;
 using GitCommands.Patches;
 using GitCommands.Utils;
+using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.AutoCompletion;
 using GitUI.CommandsDialogs.CommitDialog;
@@ -264,6 +265,8 @@ namespace GitUI.CommandsDialogs
             splitRight.Panel2MinSize = Math.Max(splitRight.Panel2MinSize, flowCommitButtons.PreferredSize.Height);
             splitRight.SplitterDistance = Math.Min(splitRight.SplitterDistance, splitRight.Height - splitRight.Panel2MinSize);
 
+            SelectedDiff.EscapePressed += () => DialogResult = DialogResult.Cancel;
+
             InitializeComplete();
 
             // By calling this in the constructor, we prevent flickering caused by resizing the
@@ -403,10 +406,10 @@ namespace GitUI.CommandsDialogs
             switch (_commitKind)
             {
                 case CommitKind.Fixup:
-                    message = $"fixup! {_editedCommit.Subject}";
+                    message = TryAddPrefix("fixup!", _editedCommit.Subject);
                     break;
                 case CommitKind.Squash:
-                    message = $"squash! {_editedCommit.Subject}";
+                    message = TryAddPrefix("squash!", _editedCommit.Subject);
                     break;
                 default:
                     message = Module.GetMergeMessage();
@@ -432,6 +435,11 @@ namespace GitUI.CommandsDialogs
             base.OnShown(e);
 
             return;
+
+            string TryAddPrefix(string prefix, string suffix)
+            {
+                return suffix.StartsWith(prefix) ? suffix : $"{prefix} {suffix}";
+            }
 
             void AssignCommitMessageFromTemplate()
             {
@@ -2260,7 +2268,7 @@ namespace GitUI.CommandsDialogs
                     var module = new GitModule(_fullPathResolver.Resolve(name.EnsureTrailingPathSeparator()));
                     args = new GitArgumentBuilder("log")
                     {
-                        "--pretty = format:\"    %m %h - %s\"",
+                        "--pretty=format:\"    %m %h - %s\"",
                         "--no-merges",
                         $"{from}...{to}"
                     };
@@ -2382,8 +2390,16 @@ namespace GitUI.CommandsDialogs
             }
 
             var fileName = list.SelectedItem.Name;
+            var path = _fullPathResolver.Resolve(fileName).ToNativePath();
 
-            Process.Start(_fullPathResolver.Resolve(fileName).ToNativePath());
+            try
+            {
+                Process.Start(path);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                OsShellUtil.OpenAs(path);
+            }
         }
 
         private void OpenWithToolStripMenuItemClick(object sender, EventArgs e)
@@ -2419,7 +2435,7 @@ namespace GitUI.CommandsDialogs
                 fileNames.Append(_fullPathResolver.Resolve(item.Name).ToNativePath());
             }
 
-            Clipboard.SetText(fileNames.ToString());
+            ClipboardUtil.TrySetText(fileNames.ToString());
         }
 
         private void OpenFilesWithDiffTool(IEnumerable<GitItemStatus> items, string firstRevision, string secondRevision)
@@ -2488,7 +2504,7 @@ namespace GitUI.CommandsDialogs
             }
             finally
             {
-                _bypassActivatedEventHandler = true;
+                _bypassActivatedEventHandler = false;
             }
         }
 

@@ -50,6 +50,7 @@ libgit2sharp
 Setup/GitExtensions/
 Setup/GitExtensions-Portable-*.zip
 Setup/tools/tx.exe
+Plugins/GitExtensions.PluginManager/*
 
 # Backup & report files from converting an old project file to a newer
 # Visual Studio version. Backup files are not needed, because we have git ;-)
@@ -63,4 +64,6 @@ packages/
 GitExtensions.*.sln.VisualState.xml
 GitExtensions.settings.backup
 /Setup/*.zip
+/Setup/Changelog.md
 *.received.*
+Directory.Build.rsp

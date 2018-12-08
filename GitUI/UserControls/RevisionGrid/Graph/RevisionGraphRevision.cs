@@ -8,9 +8,9 @@ using GitUIPluginInterfaces;
 namespace GitUI.UserControls.RevisionGrid.Graph
 {
     // This class represents a revision, or node.
-    //     *  <- revision
+    //     *  <- child revision
     //     |
-    //     *  <- revision
+    //     *  <- parent revision
     public class RevisionGraphRevision
     {
         public RevisionGraphRevision(ObjectId objectId, int guessScore)
@@ -83,15 +83,29 @@ namespace GitUI.UserControls.RevisionGrid.Graph
                 return;
             }
 
-            IsRelative = true;
-
-            foreach (RevisionGraphRevision parent in Parents)
+            if (!Parents.Any())
             {
-                parent.MakeRelative();
+                IsRelative = true;
+                return;
+            }
+
+            var stack = new Stack<RevisionGraphRevision>();
+            stack.Push(this);
+
+            while (stack.Count > 0)
+            {
+                var revision = stack.Pop();
+
+                revision.IsRelative = true;
+
+                foreach (var parent in revision.Parents.Where(r => !r.IsRelative))
+                {
+                    stack.Push(parent);
+                }
             }
         }
 
-        public RevisionGraphSegment AddParent(RevisionGraphRevision parent, out int maxScore)
+        public void AddParent(RevisionGraphRevision parent, out int maxScore)
         {
             // Generate a LaneColor used for rendering
             if (Parents.Any())
@@ -114,12 +128,9 @@ namespace GitUI.UserControls.RevisionGrid.Graph
             Parents.Add(parent);
             parent.AddChild(this);
 
-            maxScore = parent.EnsureScoreIsAbove(Score);
+            maxScore = parent.EnsureScoreIsAbove(Score + 1);
 
-            RevisionGraphSegment revisionGraphSegment = new RevisionGraphSegment(parent, this);
-            StartSegments.Add(revisionGraphSegment);
-
-            return revisionGraphSegment;
+            StartSegments.Add(new RevisionGraphSegment(parent, this));
         }
 
         private void AddChild(RevisionGraphRevision child)

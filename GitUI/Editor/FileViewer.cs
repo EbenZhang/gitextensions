@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Patches;
 using GitCommands.Settings;
+using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.CommandsDialogs;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
@@ -17,7 +18,6 @@ using GitUI.Hotkey;
 using GitUI.Properties;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
-using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
 namespace GitUI.Editor
@@ -25,6 +25,11 @@ namespace GitUI.Editor
     [DefaultEvent("SelectedLineChanged")]
     public partial class FileViewer : GitModuleControl
     {
+        /// <summary>
+        /// Raised when the Escape key is pressed (and only when no selection exists, as the default behaviour of escape is to clear the selection).
+        /// </summary>
+        public event Action EscapePressed;
+
         private readonly TranslationString _largeFileSizeWarning = new TranslationString("This file is {0:N1} MB. Showing large files can be slow. Click to show anyway.");
 
         public event EventHandler<SelectedLineEventArgs> SelectedLineChanged;
@@ -71,6 +76,7 @@ namespace GitUI.Editor
             internalFileViewer.MouseLeave += (_, e) => OnMouseLeave(e);
             internalFileViewer.MouseMove += (_, e) => OnMouseMove(e);
             internalFileViewer.KeyUp += (_, e) => OnKeyUp(e);
+            internalFileViewer.EscapePressed += () => EscapePressed?.Invoke();
 
             _async = new AsyncLoader();
             _async.LoadingError +=
@@ -955,7 +961,7 @@ namespace GitUI.Editor
                 }
             }
 
-            Clipboard.SetText(DoAutoCRLF(code));
+            ClipboardUtil.TrySetText(DoAutoCRLF(code));
 
             return;
 
@@ -985,7 +991,7 @@ namespace GitUI.Editor
 
             if (!string.IsNullOrEmpty(selectedText))
             {
-                Clipboard.SetText(selectedText);
+                ClipboardUtil.TrySetText(selectedText);
                 return;
             }
 
@@ -993,7 +999,7 @@ namespace GitUI.Editor
 
             if (!text.IsNullOrEmpty())
             {
-                Clipboard.SetText(text);
+                ClipboardUtil.TrySetText(text);
             }
         }
 
@@ -1281,7 +1287,7 @@ namespace GitUI.Editor
                 code = string.Join("\n", lines);
             }
 
-            Clipboard.SetText(DoAutoCRLF(code));
+            ClipboardUtil.TrySetText(DoAutoCRLF(code));
         }
 
         private string DoAutoCRLF(string text)

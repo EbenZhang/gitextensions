@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Windows.Forms;
 
 namespace GitUI.CommandsDialogs
@@ -7,9 +8,15 @@ namespace GitUI.CommandsDialogs
     {
         public EnvironmentInfo()
         {
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime || GitModuleForm.IsUnitTestActive)
+            {
+                UserEnvironmentInformation.Initialise(
+                "9999999999999999999999999999999999abcdef", true);
+            }
+
             InitializeComponent();
 
-            environmentIssueInfo.Text = UserEnvironmentInformation.GetInformation().Replace("-", "");
+            environmentIssueInfo.Text = UserEnvironmentInformation.GetInformation().Replace("- ", "");
         }
 
         public ToolTip ToolTip { get; set; }

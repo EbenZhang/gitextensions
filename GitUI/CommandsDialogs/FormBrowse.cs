@@ -17,6 +17,7 @@ using GitCommands.Gpg;
 using GitCommands.Submodules;
 using GitCommands.UserRepositoryHistory;
 using GitCommands.Utils;
+using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.CommandsDialogs.BrowseDialog;
 using GitUI.CommandsDialogs.BrowseDialog.DashboardControl;
@@ -96,7 +97,6 @@ namespace GitUI.CommandsDialogs
         private readonly IAppTitleGenerator _appTitleGenerator;
         private readonly WindowsJumpListManager _windowsJumpListManager;
         private readonly SubmoduleStatusProvider _submoduleStatusProvider;
-        private readonly bool _startWithDashboard;
 
         [CanBeNull] private BuildReportTabPageExtension _buildReportTabPageExtension;
         private ConEmuControl _terminal;
@@ -126,11 +126,9 @@ namespace GitUI.CommandsDialogs
             InitializeComplete();
         }
 
-        public FormBrowse([NotNull] GitUICommands commands, string filter, ObjectId selectCommit = null, bool startWithDashboard = false)
+        public FormBrowse([NotNull] GitUICommands commands, string filter, ObjectId selectCommit = null)
             : base(commands)
         {
-            _startWithDashboard = startWithDashboard;
-
             InitializeComponent();
 
             commandsToolStripMenuItem.DropDownOpening += CommandsToolStripMenuItem_DropDownOpening;
@@ -439,7 +437,7 @@ namespace GitUI.CommandsDialogs
             LayoutRevisionInfo();
             InternalInitialize(false);
 
-            if (_startWithDashboard || !Module.IsValidGitWorkingDir())
+            if (!Module.IsValidGitWorkingDir())
             {
                 base.OnLoad(e);
                 return;
@@ -1284,10 +1282,16 @@ namespace GitUI.CommandsDialogs
             UICommands.StartPushDialog(this, pushOnShow: ModifierKeys.HasFlag(Keys.Shift));
         }
 
-        private void RefreshToolStripMenuItemClick(object sender, EventArgs e)
+        private void RefreshStatus()
         {
+            _gitStatusMonitor?.RequestRefresh();
             _submoduleStatusUpdateNeeded = true;
             _stashCountUpdateNeeded = true;
+        }
+
+        private void RefreshToolStripMenuItemClick(object sender, EventArgs e)
+        {
+            RefreshStatus();
             RefreshRevisions();
         }
 
@@ -1423,7 +1427,7 @@ namespace GitUI.CommandsDialogs
 
         private void RefreshButtonClick(object sender, EventArgs e)
         {
-            _gitStatusMonitor?.RequestRefresh();
+            RefreshStatus();
             RefreshRevisions();
         }
 
@@ -1725,7 +1729,7 @@ namespace GitUI.CommandsDialogs
         {
             try
             {
-                Process.Start("http://git-extensions-documentation.readthedocs.org/en/release-2.51/");
+                Process.Start("http://git-extensions-documentation.readthedocs.org/en/release-3.00/");
             }
             catch (Win32Exception)
             {
@@ -1908,7 +1912,7 @@ namespace GitUI.CommandsDialogs
 
         private void TranslateToolStripMenuItemClick(object sender, EventArgs e)
         {
-            Process.Start("https://www.transifex.com/git-extensions/git-extensions/translate/");
+            Process.Start("https://github.com/gitextensions/gitextensions/wiki/Translations");
         }
 
         private void FileExplorerToolStripMenuItemClick(object sender, EventArgs e)
@@ -1958,7 +1962,7 @@ namespace GitUI.CommandsDialogs
                 fileNames.Append(Path.Combine(module.WorkingDir, item.Name).ToNativePath());
             }
 
-            Clipboard.SetText(fileNames.ToString());
+            ClipboardUtil.TrySetText(fileNames.ToString());
         }
 
         private void deleteIndexLockToolStripMenuItem_Click(object sender, EventArgs e)
@@ -3001,13 +3005,14 @@ namespace GitUI.CommandsDialogs
             }
             else
             {
-                int width = DpiUtil.Scale(420);
+                // enough to fit CommitInfoHeader in most cases, when the width is (avatar + commit hash)
+                int width = DpiUtil.Scale(490) + SystemInformation.VerticalScrollBarWidth;
                 CommitInfoTabControl.RemoveIfExists(CommitInfoTabPage);
 
                 if (commitInfoPosition == CommitInfoPosition.RightwardFromList)
                 {
                     RevisionsSplitContainer.FixedPanel = FixedPanel.Panel2;
-                    RevisionsSplitContainer.SplitterDistance = RevisionsSplitContainer.Width - width;
+                    RevisionsSplitContainer.SplitterDistance = Math.Max(0, RevisionsSplitContainer.Width - width);
                     RevisionInfo.Parent = RevisionsSplitContainer.Panel2;
                     RevisionGrid.Parent = RevisionsSplitContainer.Panel1;
                 }
