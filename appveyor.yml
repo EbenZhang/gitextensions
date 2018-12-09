@@ -169,3 +169,14 @@ for:
       # publish artifacts
       # -------------------------------
       Get-ChildItem .\Signed\*.* | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+deploy:
+  release: GitExtensions-v$(appveyor_build_version)
+  description: "Release GitExtensions"
+  provider: GitHub
+  auto_token:
+    secure: rXu9qtKcQQGqMciH1aloVBxwqYuiqrtLd04CYPey4hKMu2AN9Mtl4j+98dPP+V1r
+  artifact: /Setup\/GitExtentions.*/
+  draft: false
+  prerelease: true
+  on:
+    APPVEYOR_REPO_TAG: true
