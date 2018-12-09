@@ -112,6 +112,10 @@ for:
     spciuser:
       secure: 08u9FjVkH+iHEIOxfW0YoFrQi5abSD9mKI5CxiGVjEnvXGj2aA/396z7vFSMK3dL
 
+  artifacts:
+    # upload the generated portable archive only
+    - path: 'Setup/GitExtensions-*.msi'
+
   # scripts to run after tests
   after_test:
   - ps: |
@@ -170,14 +174,14 @@ for:
       # -------------------------------
       # publish artifacts
       # -------------------------------
-      Get-Item $combinedSigned | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+      #Get-Item $combinedSigned | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 deploy:
-  release: GitExtensions-v$(MAJOR_MINOR_PATCH)
-  description: "Release GitExtensions"
+  release: $(MAJOR_MINOR_PATCH)
+  description: ""
   provider: GitHub
   auth_token:
     secure: rXu9qtKcQQGqMciH1aloVBxwqYuiqrtLd04CYPey4hKMu2AN9Mtl4j+98dPP+V1r
-  artifact: Setup/GitExtentions-$(MAJOR_MINOR_PATCH).msi
+  artifact: Setup/GitExtensions-$(MAJOR_MINOR_PATCH).msi
   draft: false
   prerelease: true
   on:
