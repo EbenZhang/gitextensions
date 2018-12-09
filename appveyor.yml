@@ -13,6 +13,7 @@ environment:
   SKIP_PAUSE: TRUE
   ARCHIVE_WITH_PDB: TRUE
   MAJOR_MINOR_PATCH: 3.0.1
+  SIGN_APP: FALSE
 
 # Build settings, not to be confused with "before_build" and "after_build".
 # "project" is relative to the original build directory and not influenced by directory changes in "before_build".
@@ -146,21 +147,25 @@ for:
       # get files
       $msi = (Resolve-Path GitExtensions-*.msi)[0].Path;
       $combinedSigned = "GitExtensions-$env:MAJOR_MINOR_PATCH.msi"
-      # sign
-      $description = "https://ci.appveyor.com/project/EbenZhang/gitextensions/builds/$env:APPVEYOR_BUILD_ID\n$env:APPVEYOR_REPO_COMMIT_MESSAGE\n$env:APPVEYOR_REPO_BRANCH from $env:APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH";
-      Submit-SigningRequest `
-          -InputArtifactPath $msi `
-          -Description $description `
-          -CIUserToken $env:spciuser `
-          -OrganizationId 'f11aecd8-987a-4024-9def-f95048c1e1bb' `
-          -SigningPolicyId 'dd9812cb-f36c-4c42-b2c5-c5e417d6f10b' `
-          -WaitForCompletion `
-          -WaitForCompletionTimeoutInSeconds 180 `
-          -OutputArtifactPath $combinedSigned `
-          -Force
-      # extract signed artifacts to Signed folder
-      if (($LastExitCode -ne 0) -or !(Test-Path $combinedSigned)) {
-          $host.SetShouldExit(-1)
+      if($env:SIGN_APP -eq "TRUE") {
+        # sign
+        $description = "https://ci.appveyor.com/project/EbenZhang/gitextensions/builds/$env:APPVEYOR_BUILD_ID\n$env:APPVEYOR_REPO_COMMIT_MESSAGE\n$env:APPVEYOR_REPO_BRANCH from $env:APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH";
+        Submit-SigningRequest `
+            -InputArtifactPath $msi `
+            -Description $description `
+            -CIUserToken $env:spciuser `
+            -OrganizationId 'f11aecd8-987a-4024-9def-f95048c1e1bb' `
+            -SigningPolicyId 'dd9812cb-f36c-4c42-b2c5-c5e417d6f10b' `
+            -WaitForCompletion `
+            -WaitForCompletionTimeoutInSeconds 180 `
+            -OutputArtifactPath $combinedSigned `
+            -Force
+        # extract signed artifacts to Signed folder
+        if (($LastExitCode -ne 0) -or !(Test-Path $combinedSigned)) {
+            $host.SetShouldExit(-1)
+        }
+      } else {
+        move-item $msi $combinedSigned
       }
       # -------------------------------
       # publish artifacts
@@ -172,7 +177,7 @@ deploy:
   provider: GitHub
   auto_token:
     secure: rXu9qtKcQQGqMciH1aloVBxwqYuiqrtLd04CYPey4hKMu2AN9Mtl4j+98dPP+V1r
-  artifact: /Setup\/GitExtentions.*/
+  artifact: Setup/GitExtentions-$(MAJOR_MINOR_PATCH).msi
   draft: false
   prerelease: true
   on:
