@@ -1,4 +1,4 @@
-version: 3.0.1.{build}
+version: $(MAJOR_MINOR_PATCH).{build}
 
 os: Visual Studio 2017
 
@@ -12,6 +12,7 @@ environment:
   - IdeVersion: VS2017
   SKIP_PAUSE: TRUE
   ARCHIVE_WITH_PDB: TRUE
+  MAJOR_MINOR_PATCH: 3.0.1
 
 # Build settings, not to be confused with "before_build" and "after_build".
 # "project" is relative to the original build directory and not influenced by directory changes in "before_build".
@@ -93,7 +94,7 @@ for:
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
       & Setup\Set-Portable.ps1
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
-      & Setup\MakePortableArchive.cmd Release $env:APPVEYOR_BUILD_VERSION
+      & Setup\MakePortableArchive.cmd Release $env:FULL_VER
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
 
   artifacts:
@@ -108,7 +109,7 @@ for:
 
   environment:
     spciuser:
-      secure: d/ak/yIuPjpVeWl+gDR0Yl1s8L4AGP+sn46jqGl7EvVZMq0bhzZBFwBCm9JTy0P9
+      secure: 08u9FjVkH+iHEIOxfW0YoFrQi5abSD9mKI5CxiGVjEnvXGj2aA/396z7vFSMK3dL
 
   # scripts to run after tests
   after_test:
@@ -120,7 +121,7 @@ for:
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
       & Setup\Set-Portable.ps1 -IsPortable
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
-      & Setup\MakePortableArchive.cmd Release $env:APPVEYOR_BUILD_VERSION
+      & Setup\MakePortableArchive.cmd Release $env:FULL_VER
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
       & Setup\Set-Portable.ps1
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
@@ -144,33 +145,29 @@ for:
       Import-Module .\SignPath.psm1 -Force;
       # get files
       $msi = (Resolve-Path GitExtensions-*.msi)[0].Path;
-      $zip = (Resolve-Path GitExtensions-Portable-*.zip)[0].Path;
-      # archive files so we send them all in one go
-      $combined = ".\combined.$($env:APPVEYOR_BUILD_VERSION).zip"
-      $combinedSigned = ".\combined.$($env:APPVEYOR_BUILD_VERSION).signed.zip"
-      Compress-Archive -LiteralPath $msi, $zip -CompressionLevel NoCompression -DestinationPath $combined -Force
+      $combinedSigned = "GitExtensions-$env:MAJOR_MINOR_PATCH.msi"
       # sign
-      $description = "https://ci.appveyor.com/project/gitextensions/gitextensions/builds/$env:APPVEYOR_BUILD_ID\n$env:APPVEYOR_REPO_COMMIT_MESSAGE\n$env:APPVEYOR_REPO_BRANCH from $env:APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH";
+      $description = "https://ci.appveyor.com/project/EbenZhang/gitextensions/builds/$env:APPVEYOR_BUILD_ID\n$env:APPVEYOR_REPO_COMMIT_MESSAGE\n$env:APPVEYOR_REPO_BRANCH from $env:APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH";
       Submit-SigningRequest `
-          -InputArtifactPath $combined `
+          -InputArtifactPath $msi `
           -Description $description `
           -CIUserToken $env:spciuser `
-          -OrganizationId '7c19b2cf-90f7-4d15-9b12-1b615f7c18c4' `
-          -SigningPolicyId '5c9879c7-0dea-4303-8e5b-fc4192a7b0de' `
+          -OrganizationId 'f11aecd8-987a-4024-9def-f95048c1e1bb' `
+          -SigningPolicyId 'dd9812cb-f36c-4c42-b2c5-c5e417d6f10b' `
           -WaitForCompletion `
           -WaitForCompletionTimeoutInSeconds 180 `
+          -OutputArtifactPath $combinedSigned `
           -Force
       # extract signed artifacts to Signed folder
       if (($LastExitCode -ne 0) -or !(Test-Path $combinedSigned)) {
           $host.SetShouldExit(-1)
       }
-      Expand-Archive  -LiteralPath $combinedSigned -DestinationPath .\Signed
       # -------------------------------
       # publish artifacts
       # -------------------------------
-      Get-ChildItem .\Signed\*.* | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+      Get-Item $combinedSigned | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 deploy:
-  release: GitExtensions-v$(appveyor_build_version)
+  release: GitExtensions-v$(MAJOR_MINOR_PATCH)
   description: "Release GitExtensions"
   provider: GitHub
   auto_token:
