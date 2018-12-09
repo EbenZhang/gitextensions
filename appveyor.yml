@@ -175,7 +175,7 @@ deploy:
   release: GitExtensions-v$(MAJOR_MINOR_PATCH)
   description: "Release GitExtensions"
   provider: GitHub
-  auto_token:
+  auth_token:
     secure: rXu9qtKcQQGqMciH1aloVBxwqYuiqrtLd04CYPey4hKMu2AN9Mtl4j+98dPP+V1r
   artifact: Setup/GitExtentions-$(MAJOR_MINOR_PATCH).msi
   draft: false
