@@ -12,7 +12,7 @@ environment:
   - IdeVersion: VS2017
   SKIP_PAUSE: TRUE
   ARCHIVE_WITH_PDB: TRUE
-  MAJOR_MINOR_PATCH: 3.0.2
+  MAJOR_MINOR_PATCH: 3.0.3
   SIGN_APP: TRUE
   spciuser: ""
 
