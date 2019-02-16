@@ -580,10 +580,10 @@ namespace GitCommands
 
         #endregion
 
-        public ExecutionResult Clean(bool dryRun, bool directories = false, bool nonIgnored = false, bool ignored = false, string paths = null)
+        public ExecutionResult Clean(CleanMode mode, bool dryRun = false, bool directories = false, string paths = null)
         {
             return _gitExecutable.Execute(
-                GitCommandHelpers.CleanUpCmd(dryRun, directories, nonIgnored, ignored, paths));
+                GitCommandHelpers.CleanCmd(mode, dryRun, directories, paths));
         }
 
         public bool EditNotes(ObjectId commitId)
@@ -1466,42 +1466,9 @@ namespace GitCommands
             return _gitExecutable.GetOutput(args);
         }
 
-        // TODO use an enum to set the reset kind (soft / mixed / hard)
-
-        public void ResetSoft(string commit, string file = null)
+        public void Reset(ResetMode mode, string file = null)
         {
-            _gitExecutable.RunCommand(
-                new GitArgumentBuilder("reset")
-            {
-                "--soft",
-                commit.QuoteNE(),
-                "--",
-                file.QuoteNE()
-            });
-        }
-
-        public void ResetMixed(string commit, string file = null)
-        {
-            _gitExecutable.RunCommand(
-                new GitArgumentBuilder("reset")
-            {
-                "--mixed",
-                commit.QuoteNE(),
-                "--",
-                file.QuoteNE()
-            });
-        }
-
-        public void ResetHard(string commit, string file = null)
-        {
-            _gitExecutable.RunCommand(
-                new GitArgumentBuilder("reset")
-            {
-                "--hard",
-                commit.QuoteNE(),
-                "--",
-                file.QuoteNE()
-            });
+            _gitExecutable.RunCommand(GitCommandHelpers.ResetCmd(mode, null, file));
         }
 
         public string ResetFile(string file)
@@ -2773,12 +2740,7 @@ namespace GitCommands
 
         public void UnstageFileToRemove(string file)
         {
-            var args = new GitArgumentBuilder("reset")
-            {
-                "HEAD",
-                "--",
-                file.ToPosixPath().QuoteNE()
-            };
+            var args = GitCommandHelpers.ResetCmd(ResetMode.ResetIndex, "HEAD", file);
             _gitExecutable.RunCommand(args);
         }
 

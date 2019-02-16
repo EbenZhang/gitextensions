@@ -2170,7 +2170,7 @@ namespace GitUI.CommandsDialogs
                 case Command.FindFileInSelectedCommit: FindFileInSelectedCommit(); break;
                 case Command.CheckoutBranch: CheckoutBranchToolStripMenuItemClick(null, null); break;
                 case Command.QuickFetch: QuickFetch(); break;
-                case Command.QuickPull: UICommands.StartPullDialogAndPullImmediately(this); break;
+                case Command.QuickPull: mergeToolStripMenuItem_Click(null, null); break;
                 case Command.QuickPush: UICommands.StartPushDialog(this, true); break;
                 case Command.CloseRepository: CloseToolStripMenuItemClick(null, null); break;
                 case Command.Stash: UICommands.StashSave(this, AppSettings.IncludeUntrackedFilesInManualStash); break;
@@ -2711,7 +2711,7 @@ namespace GitUI.CommandsDialogs
         private void reportAnIssueToolStripMenuItem_Click(object sender, EventArgs e)
         {
             UserEnvironmentInformation.CopyInformation();
-            Process.Start(@"https://github.com/EbenZhang/gitextensions/issues/new");
+            Process.Start(@"https://github.com/EbenZhang/gitextensions/issues");
         }
 
         private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
@@ -3075,11 +3075,7 @@ namespace GitUI.CommandsDialogs
         {
             if (AppSettings.DontConfirmUndoLastCommit || MessageBox.Show(this, _undoLastCommitText.Text, _undoLastCommitCaption.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
-                var args = new GitArgumentBuilder("reset")
-                {
-                    "--soft",
-                    "HEAD~1"
-                };
+                var args = GitCommandHelpers.ResetCmd(ResetMode.Soft, "HEAD~1");
                 Module.RunGitCmd(args);
                 RefreshRevisions();
             }

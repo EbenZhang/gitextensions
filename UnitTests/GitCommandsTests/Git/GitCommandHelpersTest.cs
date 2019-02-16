@@ -525,8 +525,54 @@ namespace GitCommandsTests.Git
                 GitCommandHelpers.StashSaveCmd(untracked: false, keepIndex: false, "message", null).Arguments);
 
             Assert.AreEqual(
-                "stash push -- a b",
+                "stash push -- \"a\" \"b\"",
                 GitCommandHelpers.StashSaveCmd(untracked: false, keepIndex: false, null, new[] { "a", "b" }).Arguments);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        [TestCase("\t")]
+        public void StashSaveCmd_should_not_add_empty_message_full_stash(string theMessage)
+        {
+            Assert.AreEqual(
+               "stash save",
+               GitCommandHelpers.StashSaveCmd(untracked: false, keepIndex: false, theMessage, Array.Empty<string>()).Arguments);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        [TestCase("\t")]
+        public void StashPushCmd_should_not_add_empty_message_partial_stash(string theMessage)
+        {
+            Assert.AreEqual(
+               "stash push -- \"a\" \"b\"",
+               GitCommandHelpers.StashSaveCmd(untracked: false, keepIndex: false, theMessage, new[] { "a", "b" }).Arguments);
+        }
+
+        [Test]
+        public void StashSaveCmd_should_add_message_if_provided_full_stash()
+        {
+            Assert.AreEqual(
+               "stash save \"test message\"",
+               GitCommandHelpers.StashSaveCmd(untracked: false, keepIndex: false, "test message", Array.Empty<string>()).Arguments);
+        }
+
+        [Test]
+        public void StashPushCmd_should_add_message_if_provided_partial_stash()
+        {
+            Assert.AreEqual(
+               "stash push -m \"test message\" -- \"a\" \"b\"",
+               GitCommandHelpers.StashSaveCmd(untracked: false, keepIndex: false, "test message", new[] { "a", "b" }).Arguments);
+        }
+
+        [Test]
+        public void StashPushCmd_should_not_add_null_or_empty_filenames()
+        {
+            Assert.AreEqual(
+               "stash push -- \"a\"",
+               GitCommandHelpers.StashSaveCmd(untracked: false, keepIndex: false, null, new[] { null, "", "a" }).Arguments);
         }
 
         [Test]
@@ -588,29 +634,47 @@ namespace GitCommandsTests.Git
         }
 
         [Test]
-        public void CleanUpCmd()
+        public void CleanCmd()
         {
             Assert.AreEqual(
-                "clean -f",
-                GitCommandHelpers.CleanUpCmd(dryRun: false, directories: false, nonIgnored: true, ignored: false).Arguments);
-            Assert.AreEqual(
                 "clean --dry-run",
-                GitCommandHelpers.CleanUpCmd(dryRun: true, directories: false, nonIgnored: true, ignored: false).Arguments);
+                GitCommandHelpers.CleanCmd(CleanMode.OnlyNonIgnored, dryRun: true, directories: false).Arguments);
+            Assert.AreEqual(
+                "clean -f",
+                GitCommandHelpers.CleanCmd(CleanMode.OnlyNonIgnored, dryRun: false, directories: false).Arguments);
             Assert.AreEqual(
                 "clean -d -f",
-                GitCommandHelpers.CleanUpCmd(dryRun: false, directories: true, nonIgnored: true, ignored: false).Arguments);
-            Assert.AreEqual(
-                "clean -x -f",
-                GitCommandHelpers.CleanUpCmd(dryRun: false, directories: false, nonIgnored: false, ignored: false).Arguments);
-            Assert.AreEqual(
-                "clean -X -f",
-                GitCommandHelpers.CleanUpCmd(dryRun: false, directories: false, nonIgnored: true, ignored: true).Arguments);
-            Assert.AreEqual(
-                "clean -X -f",
-                GitCommandHelpers.CleanUpCmd(dryRun: false, directories: false, nonIgnored: false, ignored: true).Arguments);
+                GitCommandHelpers.CleanCmd(CleanMode.OnlyNonIgnored, dryRun: false, directories: true).Arguments);
             Assert.AreEqual(
                 "clean -f paths",
-                GitCommandHelpers.CleanUpCmd(dryRun: false, directories: false, nonIgnored: true, ignored: false, "paths").Arguments);
+                GitCommandHelpers.CleanCmd(CleanMode.OnlyNonIgnored, dryRun: false, directories: false, "paths").Arguments);
+
+            Assert.AreEqual(
+                "clean -x -f",
+                GitCommandHelpers.CleanCmd(CleanMode.All, dryRun: false, directories: false).Arguments);
+            Assert.AreEqual(
+                "clean -X -f",
+                GitCommandHelpers.CleanCmd(CleanMode.OnlyIgnored, dryRun: false, directories: false).Arguments);
+        }
+
+        [Test]
+        public void ResetCmd()
+        {
+            Assert.Throws<ArgumentException>(
+                () => GitCommandHelpers.ResetCmd(ResetMode.ResetIndex, file: "file.txt"));
+            Assert.AreEqual(
+                @"reset ""tree-ish"" -- ""file.txt""",
+                GitCommandHelpers.ResetCmd(ResetMode.ResetIndex, commit: "tree-ish", file: "file.txt").Arguments);
+
+            Assert.AreEqual(
+                @"reset --soft --",
+                GitCommandHelpers.ResetCmd(ResetMode.Soft).Arguments);
+            Assert.AreEqual(
+                @"reset --mixed --",
+                GitCommandHelpers.ResetCmd(ResetMode.Mixed).Arguments);
+            Assert.AreEqual(
+                @"reset --hard --",
+                GitCommandHelpers.ResetCmd(ResetMode.Hard).Arguments);
         }
 
         [Test]

@@ -95,6 +95,8 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _hoverShowImageLabelText = new TranslationString("Hover to see scenario when fast forward is possible.");
         private readonly TranslationString _formTitlePull = new TranslationString("Pull ({0})");
         private readonly TranslationString _formTitleFetch = new TranslationString("Fetch ({0})");
+        private readonly TranslationString _buttonPull = new TranslationString("&Pull");
+        private readonly TranslationString _buttonFetch = new TranslationString("&Fetch");
         #endregion
 
         private const string AllRemotes = "[ All ]";
@@ -127,11 +129,13 @@ namespace GitUI.CommandsDialogs
             _branch = Module.GetSelectedBranch();
             BindRemotesDropDown(defaultRemote);
 
+            if (pullAction == AppSettings.PullAction.None)
+            {
+                pullAction = AppSettings.DefaultPullAction;
+            }
+
             switch (pullAction)
             {
-                case AppSettings.PullAction.None:
-                    // Treat None as Fetch
-                    goto case AppSettings.PullAction.Fetch;
                 case AppSettings.PullAction.Merge:
                     Merge.Checked = true;
                     Prune.Enabled = true;
@@ -149,8 +153,8 @@ namespace GitUI.CommandsDialogs
                     break;
                 case AppSettings.PullAction.FetchPruneAll:
                     Fetch.Checked = true;
-                    _NO_TRANSLATE_Remotes.Text = AllRemotes;
                     Prune.Checked = true;
+                    _NO_TRANSLATE_Remotes.Text = AllRemotes;
                     break;
                 case AppSettings.PullAction.Default:
                     Debug.Assert(false, "pullAction is not a valid action");
@@ -794,16 +798,18 @@ namespace GitUI.CommandsDialogs
         {
             _NO_TRANSLATE_Remotes.Select();
 
-            UpdateFormTitle();
+            UpdateFormTitleAndButton();
         }
 
-        private void UpdateFormTitle()
+        private void UpdateFormTitleAndButton()
         {
             var format = Fetch.Checked
                 ? _formTitleFetch.Text
                 : _formTitlePull.Text;
 
             Text = string.Format(format, PathUtil.GetDisplayPath(Module.WorkingDir));
+
+            Pull.Text = Fetch.Checked ? _buttonFetch.Text : _buttonPull.Text;
         }
 
         private void StashClick(object sender, EventArgs e)
@@ -895,6 +901,7 @@ namespace GitUI.CommandsDialogs
             helpImageDisplayUserControl1.IsOnHoverShowImage2 = true;
             AllTags.Enabled = false;
             Prune.Enabled = true;
+            UpdateFormTitleAndButton();
             if (AllTags.Checked)
             {
                 ReachableTags.Checked = true;
@@ -914,6 +921,7 @@ namespace GitUI.CommandsDialogs
             helpImageDisplayUserControl1.IsOnHoverShowImage2 = false;
             AllTags.Enabled = false;
             Prune.Enabled = false;
+            UpdateFormTitleAndButton();
             if (AllTags.Checked)
             {
                 ReachableTags.Checked = true;
@@ -933,7 +941,7 @@ namespace GitUI.CommandsDialogs
             helpImageDisplayUserControl1.IsOnHoverShowImage2 = false;
             AllTags.Enabled = true;
             Prune.Enabled = true;
-            UpdateFormTitle();
+            UpdateFormTitleAndButton();
         }
 
         private void PullSourceValidating(object sender, CancelEventArgs e)
@@ -978,6 +986,26 @@ namespace GitUI.CommandsDialogs
             {
                 Branches.Text = localBranch.Text;
             }
+        }
+
+        internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+
+        internal readonly struct TestAccessor
+        {
+            private readonly FormPull _form;
+
+            public TestAccessor(FormPull form)
+            {
+                _form = form;
+            }
+
+            public RadioButton Merge => _form.Merge;
+            public RadioButton Rebase => _form.Rebase;
+            public RadioButton Fetch => _form.Fetch;
+            public CheckBox AutoStash => _form.AutoStash;
+            public CheckBox Prune => _form.Prune;
+            public ComboBox Remotes => _form._NO_TRANSLATE_Remotes;
+            public TextBox LocalBranch => _form.localBranch;
         }
     }
 }

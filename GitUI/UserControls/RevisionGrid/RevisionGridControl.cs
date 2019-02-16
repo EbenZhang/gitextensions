@@ -185,6 +185,7 @@ namespace GitUI
             HotkeysEnabled = true;
 
             _gridView.ShowCellToolTips = false;
+            _gridView.AuthorHighlighting = _authorHighlighting;
 
             _gridView.KeyPress += (_, e) => _quickSearchProvider.OnKeyPress(e);
             _gridView.KeyUp += OnGridViewKeyUp;
@@ -864,6 +865,8 @@ namespace GitUI
                     await TaskScheduler.Default;
                     return GetSuperprojectCheckout(ShowRemoteRef, capturedModule);
                 });
+                _superprojectCurrentCheckout.Task.ContinueWith((task) => Refresh(),
+                    TaskScheduler.FromCurrentSynchronizationContext());
 
                 ResetNavigationHistory();
             }
@@ -989,9 +992,12 @@ namespace GitUI
                     ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
                         await this.SwitchToMainThreadAsync();
+
                         SetPage(_gridView);
                         _isRefreshingRevisions = false;
                         CheckAndRepairInitialRevision();
+                        HighlightRevisionsByAuthor(GetSelectedRevisions());
+
                         if (ShowBuildServerInfo)
                         {
                             await _buildServerWatcher.LaunchBuildServerInfoFetchOperationAsync();
@@ -1183,6 +1189,11 @@ namespace GitUI
             compareWithCurrentBranchToolStripMenuItem.Enabled = Module.GetSelectedBranch().IsNotNullOrWhitespace();
             compareSelectedCommitsMenuItem.Enabled = firstSelectedRevision != null && secondSelectedRevision != null;
 
+            HighlightRevisionsByAuthor(selectedRevisions);
+        }
+
+        private void HighlightRevisionsByAuthor(in IReadOnlyList<GitRevision> selectedRevisions)
+        {
             if (Parent != null &&
                 !_gridView.UpdatingVisibleRows &&
                 _authorHighlighting.ProcessRevisionSelectionChange(Module, selectedRevisions))
@@ -2628,7 +2639,13 @@ namespace GitUI
                 case Commands.ShowFilteredBranches: ShowFilteredBranches(); break;
                 case Commands.ShowRemoteBranches: ToggleShowRemoteBranches(); break;
                 case Commands.ShowFirstParent: ShowFirstParent(); break;
-                case Commands.SelectCurrentRevision: SetSelectedRevision(new GitRevision(CurrentCheckout)); break;
+                case Commands.SelectCurrentRevision:
+                    if (CurrentCheckout != null)
+                    {
+                        SetSelectedRevision(new GitRevision(CurrentCheckout));
+                    }
+
+                    break;
                 case Commands.GoToCommit: MenuCommands.GotoCommitExecute(); break;
                 case Commands.GoToParent: goToParentToolStripMenuItem_Click(); break;
                 case Commands.GoToMergeBaseCommit: goToMergeBaseCommitToolStripMenuItem_Click(null, null); break;
