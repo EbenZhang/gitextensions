@@ -12,7 +12,7 @@ environment:
   - IdeVersion: VS2017
   SKIP_PAUSE: TRUE
   ARCHIVE_WITH_PDB: TRUE
-  SIGN_APP: TRUE
+  ARTIFACT_SIGNING_ENABLED: TRUE
   spciuser: ""
 
 init:
