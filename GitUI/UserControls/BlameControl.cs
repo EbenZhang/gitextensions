@@ -18,6 +18,11 @@ namespace GitUI.Blame
     {
         public event EventHandler<CommandEventArgs> CommandClick;
 
+        /// <summary>
+        /// Raised when the Escape key is pressed (and only when no selection exists, as the default behaviour of escape is to clear the selection).
+        /// </summary>
+        public event Action EscapePressed;
+
         private readonly AsyncLoader _blameLoader = new AsyncLoader();
 
         [CanBeNull] private GitBlameLine _lastBlameLine;
@@ -41,17 +46,20 @@ namespace GitUI.Blame
             BlameCommitter.IsReadOnly = true;
             BlameCommitter.EnableScrollBars(false);
             BlameCommitter.ShowLineNumbers = false;
-            BlameCommitter.ScrollPosChanged += BlameCommitter_ScrollPosChanged;
+            BlameCommitter.HScrollPositionChanged += BlameCommitter_HScrollPositionChanged;
+            BlameCommitter.VScrollPositionChanged += BlameCommitter_VScrollPositionChanged;
             BlameCommitter.MouseMove += BlameCommitter_MouseMove;
             BlameCommitter.MouseLeave += BlameCommitter_MouseLeave;
             BlameCommitter.SelectedLineChanged += SelectedLineChanged;
             BlameCommitter.RequestDiffView += ActiveTextAreaControlDoubleClick;
+            BlameCommitter.EscapePressed += () => EscapePressed?.Invoke();
 
             BlameFile.IsReadOnly = true;
-            BlameFile.ScrollPosChanged += BlameFile_ScrollPosChanged;
+            BlameFile.VScrollPositionChanged += BlameFile_VScrollPositionChanged;
             BlameFile.SelectedLineChanged += SelectedLineChanged;
             BlameFile.RequestDiffView += ActiveTextAreaControlDoubleClick;
             BlameFile.MouseMove += BlameFile_MouseMove;
+            BlameFile.EscapePressed += () => EscapePressed?.Invoke();
 
             CommitInfo.CommandClicked += commitInfo_CommandClicked;
         }
@@ -68,7 +76,7 @@ namespace GitUI.Blame
 
             controlToMask?.Mask();
 
-            var scrollPos = BlameFile.ScrollPos;
+            var scrollPos = BlameFile.VScrollPosition;
 
             var line = _clickedBlameLine != null && _clickedBlameLine.Commit.ObjectId == objectId
                 ? _clickedBlameLine.OriginLineNumber
@@ -79,7 +87,7 @@ namespace GitUI.Blame
             _encoding = encoding;
 
             _blameLoader.LoadAsync(() => _blame = Module.Blame(fileName, objectId.ToString(), encoding),
-                () => ProcessBlame(revision, children, controlToMask, line, scrollPos));
+                () => ProcessBlame(fileName, revision, children, controlToMask, line, scrollPos));
         }
 
         private void commitInfo_CommandClicked(object sender, CommandEventArgs e)
@@ -214,12 +222,17 @@ namespace GitUI.Blame
             CommitInfo.Revision = Module.GetRevision(_lastBlameLine.Commit.ObjectId);
         }
 
-        private void BlameCommitter_ScrollPosChanged(object sender, EventArgs e)
+        private void BlameCommitter_HScrollPositionChanged(object sender, EventArgs e)
+        {
+            BlameCommitter.HScrollPosition = 0;
+        }
+
+        private void BlameCommitter_VScrollPositionChanged(object sender, EventArgs e)
         {
             if (!_changingScrollPosition)
             {
                 _changingScrollPosition = true;
-                BlameFile.ScrollPos = BlameCommitter.ScrollPos;
+                BlameFile.VScrollPosition = BlameCommitter.VScrollPosition;
                 _changingScrollPosition = false;
             }
 
@@ -233,7 +246,7 @@ namespace GitUI.Blame
             }
         }
 
-        private void BlameFile_ScrollPosChanged(object sender, EventArgs e)
+        private void BlameFile_VScrollPositionChanged(object sender, EventArgs e)
         {
             if (_changingScrollPosition)
             {
@@ -241,11 +254,11 @@ namespace GitUI.Blame
             }
 
             _changingScrollPosition = true;
-            BlameCommitter.ScrollPos = BlameFile.ScrollPos;
+            BlameCommitter.VScrollPosition = BlameFile.VScrollPosition;
             _changingScrollPosition = false;
         }
 
-        private void ProcessBlame(GitRevision revision, IReadOnlyList<ObjectId> children, Control controlToMask, int lineNumber, int scrollpos)
+        private void ProcessBlame(string filename, GitRevision revision, IReadOnlyList<ObjectId> children, Control controlToMask, int lineNumber, int scrollpos)
         {
             var gutter = new StringBuilder(capacity: 4096);
             var body = new StringBuilder(capacity: 4096);
@@ -261,16 +274,24 @@ namespace GitUI.Blame
             {
                 if (line.Commit == lastCommit)
                 {
-                    gutter.Append(' ', 200).AppendLine();
+                    gutter.Append(' ', 120).AppendLine();
                 }
                 else
                 {
                     gutter.Append(line.Commit.Author);
                     gutter.Append(" - ");
-                    gutter.Append(line.Commit.AuthorTime.ToString(CultureInfo.CurrentUICulture));
-                    gutter.Append(" - ");
-                    gutter.Append(line.Commit.FileName);
-                    gutter.Append(' ', 100).AppendLine();
+                    gutter.Append(line.Commit.AuthorTime.ToString(CultureInfo.CurrentCulture));
+                    var authorLength = line.Commit.Author?.Length ?? 0;
+                    if (filename != line.Commit.FileName)
+                    {
+                        gutter.Append(" - ");
+                        gutter.Append(line.Commit.FileName);
+                        gutter.Append(' ', Math.Max(0, 95 - authorLength - line.Commit.FileName.Length)).AppendLine();
+                    }
+                    else
+                    {
+                        gutter.Append(' ', Math.Max(0, 98 - authorLength)).AppendLine();
+                    }
                 }
 
                 body.AppendLine(line.Text);
@@ -289,7 +310,7 @@ namespace GitUI.Blame
             }
             else
             {
-                BlameFile.ScrollPos = scrollpos;
+                BlameFile.VScrollPosition = scrollpos;
             }
 
             _clickedBlameLine = null;
@@ -360,6 +381,11 @@ namespace GitUI.Blame
 
         private void copyLogMessageToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            CopyToClipboard(c => c.Summary);
+        }
+
+        private void CopyToClipboard(Func<GitBlameCommit, string> formatter)
+        {
             var commit = GetBlameCommit();
 
             if (commit == null)
@@ -367,7 +393,17 @@ namespace GitUI.Blame
                 return;
             }
 
-            ClipboardUtil.TrySetText(commit.Summary);
+            ClipboardUtil.TrySetText(formatter(commit));
+        }
+
+        private void copyAllCommitInfoToClipboardToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CopyToClipboard(c => c.ToString());
+        }
+
+        private void copyCommitHashToClipboardToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CopyToClipboard(c => c.ObjectId.ToString());
         }
 
         private void blamePreviousRevisionToolStripMenuItem_Click(object sender, EventArgs e)

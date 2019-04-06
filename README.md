@@ -12,7 +12,7 @@ If you want to contribute a fix or feature, please make sure your branch is base
 
 ## OS Support
 - Windows: 7SP1 and above
-- Linux/Mac: requires [Mono 5.0](http://www.mono-project.com/download/) and above, however the support is limited due to limited support of WinForms by Mono
+
  
 
 ## Links

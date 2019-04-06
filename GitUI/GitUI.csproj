@@ -85,6 +85,18 @@
     <Compile Include="Avatars\AvatarService.cs" />
     <Compile Include="Avatars\BackupAvatarProvider.cs" />
     <Compile Include="Avatars\IAvatarProvider.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\LocalBranchMenuItems.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\MenuItemsStrings.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\RemoteBranchMenuItems.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\TagMenuItems.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\ICanDelete.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\ICanRename.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\IGitRefActions.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\IMenuItemFactory.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\IMenuItemsGenerator.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\INode.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\MenuItemKey.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\MenuItemsGenerator.cs" />
     <Compile Include="BranchTreePanel\RepoObjectsTree.ContextActions.cs">
       <SubType>UserControl</SubType>
       <DependentUpon>RepoObjectsTree.cs</DependentUpon>
@@ -100,9 +112,17 @@
       <SubType>UserControl</SubType>
       <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
     </Compile>
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Submodules.cs">
+      <SubType>UserControl</SubType>
+      <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
+    </Compile>
     <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Tags.cs">
       <SubType>UserControl</SubType>
       <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BranchTreePanel\RepoObjectsTree.SettingsContextMenu.cs">
+      <SubType>UserControl</SubType>
+      <DependentUpon>RepoObjectsTree.cs</DependentUpon>
     </Compile>
     <Compile Include="BuildServerIntegration\BuildServerWatcher.cs" />
     <Compile Include="CommandsDialogs\EnvironmentInfo.cs">
@@ -147,6 +167,7 @@
     <Compile Include="CommandsDialogs\BrowseDialog\MenuCommand.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\MenuCommandsBase.cs" />
     <Compile Include="CommandsDialogs\FormBrowseController.cs" />
+    <Compile Include="CommandsDialogs\FormFileHistoryController.cs" />
     <Compile Include="CommandsDialogs\FullBleedTabControl.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -289,6 +310,9 @@
     <Compile Include="CommandsDialogs\SettingsDialog\Pages\FormBrowseRepoSettingsPage.Designer.cs">
       <DependentUpon>FormBrowseRepoSettingsPage.cs</DependentUpon>
     </Compile>
+    <Compile Include="CommandsDialogs\ToolStripPushButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="CommitInfo\CommitInfoHeader.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -377,6 +401,7 @@
     </Compile>
     <Compile Include="Hotkey\KeysExtensions.cs" />
     <Compile Include="Script\PowerShellHelper.cs" />
+    <Compile Include="Script\ScriptOptionsParser.cs" />
     <Compile Include="Script\ScriptRunner.cs" />
     <Compile Include="AutoCompletion\AutoCompleteWord.cs" />
     <Compile Include="Script\FormFilePrompt.cs">
@@ -390,6 +415,8 @@
     <Compile Include="SpellChecker\WordAtCursorExtractor.cs" />
     <Compile Include="TaskbarProgress.cs" />
     <Compile Include="UserControls\GitItemStatusWithParent.cs" />
+    <Compile Include="UserControls\NativeTreeViewDoubleClickDecorator.cs" />
+    <Compile Include="UserControls\NativeTreeViewExplorerNavigationDecorator.cs" />
     <Compile Include="UserControls\RevisionGrid\CellStyle.cs" />
     <Compile Include="UserControls\ListViewGroupHitInfo.cs" />
     <Compile Include="UserControls\RevisionGrid\Graph\LaneInfoProvider.cs" />
@@ -397,6 +424,15 @@
     <Compile Include="UserControls\RevisionGrid\Columns\RevisionGraphColumnProvider.cs" />
     <Compile Include="UserControls\RevisionGrid\Columns\MultilineIndicator.cs" />
     <Compile Include="UserControls\HslColor.cs" />
+    <Compile Include="UserControls\RevisionGrid\FormQuickStringSelector.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UserControls\RevisionGrid\FormQuickItemSelector.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UserControls\RevisionGrid\FormQuickItemSelector.Designer.cs">
+      <DependentUpon>FormQuickItemSelector.cs</DependentUpon>
+    </Compile>
     <Compile Include="UserControls\RevisionGrid\Graph\RevisionGraph.cs" />
     <Compile Include="UserControls\RevisionGrid\Graph\RevisionGraphLaneColor.cs" />
     <Compile Include="UserControls\RevisionGrid\Graph\RevisionGraphRevision.cs" />
@@ -492,16 +528,17 @@
     <Compile Include="UserControls\RevisionGrid\FormQuickGitRefSelector.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="UserControls\RevisionGrid\FormQuickGitRefSelector.Designer.cs">
-      <DependentUpon>FormQuickGitRefSelector.cs</DependentUpon>
-    </Compile>
     <Compile Include="UserControls\RevisionGrid\RevisionGridToolTipProvider.cs" />
     <Compile Include="UserControls\RevisionGrid\RevisionGridRefRenderer.cs" />
     <Compile Include="UserControls\RevisionGrid\SuperProjectInfo.cs" />
     <Compile Include="UserControls\RevisionGrid\VisibleRowRange.cs" />
+    <Compile Include="UserControls\SortDiffListContextMenuItem.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="UserControls\TextEventArgs.cs" />
     <Compile Include="UserControls\RepoStateVisualiser.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\GitStatusMonitor.cs" />
+    <Compile Include="UserControls\TreeViewExtensions.cs" />
     <Compile Include="UserControls\WaitSpinner.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -673,12 +710,6 @@
     <Compile Include="CommandsDialogs\SettingsDialog\Pages\FormFixHome.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="HelperDialogs\FormRunScriptSpecify.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="HelperDialogs\FormRunScriptSpecify.Designer.cs">
-      <DependentUpon>FormRunScriptSpecify.cs</DependentUpon>
-    </Compile>
     <Compile Include="FormStatus.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -820,6 +851,9 @@
     </Compile>
     <Compile Include="CommandsDialogs\SettingsDialog\SettingsPageBase.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CommandsDialogs\SettingsDialog\SettingsPageBase.Designer.cs">
+      <DependentUpon>SettingsPageBase.cs</DependentUpon>
     </Compile>
     <Compile Include="CommandsDialogs\SettingsDialog\SettingsPageReference.cs" />
     <Compile Include="CommandsDialogs\SettingsDialog\SettingsTreeViewUserControl.cs">
@@ -1585,6 +1619,9 @@
     <EmbeddedResource Include="UserControls\RevisionGrid\EmptyRepoControl.resx">
       <DependentUpon>EmptyRepoControl.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="UserControls\RevisionGrid\FormQuickItemSelector.resx">
+      <DependentUpon>FormQuickItemSelector.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="UserControls\RevisionGrid\FormRevisionFilter.resx">
       <DependentUpon>FormRevisionFilter.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -1638,9 +1675,6 @@
     <EmbeddedResource Include="UserControls\RevisionGrid\RevisionGridControl.resx">
       <DependentUpon>RevisionGridControl.cs</DependentUpon>
       <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="UserControls\RevisionGrid\FormQuickGitRefSelector.resx">
-      <DependentUpon>FormQuickGitRefSelector.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\SearchControl.resx">
       <DependentUpon>SearchControl.cs</DependentUpon>
@@ -1817,6 +1851,14 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\Icons\DocumentTree.png" />
+    <None Include="Resources\Icons\pullRequest.png" />
+    <None Include="Resources\Icons\information.png" />
+    <None Include="Resources\Icons\RecentRepositories.png" />
+    <None Include="Resources\Icons\CopyToClipboard.png" />
+    <None Include="Resources\Icons\CommitId.png" />
+    <None Include="Resources\Icons\CommitSummary.png" />
+    <None Include="Resources\Icons\Message.png" />
     <Content Include="Translation\Czech.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

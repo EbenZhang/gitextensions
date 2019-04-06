@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
@@ -50,7 +51,7 @@ namespace ResourceManager
                 {
                     if (hotkey != null && hotkey.KeyData == keyData)
                     {
-                        return ExecuteCommand(hotkey.CommandCode);
+                        return ExecuteCommand(hotkey.CommandCode).Executed;
                     }
                 }
             }
@@ -70,12 +71,22 @@ namespace ResourceManager
         }
 
         /// <summary>Override this method to handle form-specific Hotkey commands.</summary>
-        protected virtual bool ExecuteCommand(int command)
+        protected virtual CommandStatus ExecuteCommand(int command)
         {
             return false;
         }
 
         #endregion
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == NativeMethods.WM_ACTIVATEAPP && m.WParam != IntPtr.Zero)
+            {
+                OnApplicationActivated();
+            }
+
+            base.WndProc(ref m);
+        }
 
         /// <summary>Performs post-initialisation tasks such as translation and DPI scaling.</summary>
         /// <remarks>
@@ -126,5 +137,12 @@ namespace ResourceManager
         }
 
         #endregion
+
+        /// <summary>
+        /// Notifies whenever the application becomes active.
+        /// </summary>
+        protected virtual void OnApplicationActivated()
+        {
+        }
     }
 }

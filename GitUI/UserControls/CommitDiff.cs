@@ -5,16 +5,23 @@ using GitCommands;
 using GitExtUtils.GitUI;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
+using ResourceManager;
 
 namespace GitUI.UserControls
 {
     public partial class CommitDiff : GitModuleControl
     {
+        /// <summary>
+        /// Raised when the Escape key is pressed (and only when no selection exists, as the default behaviour of escape is to clear the selection).
+        /// </summary>
+        public event Action EscapePressed;
+
         public CommitDiff()
         {
             InitializeComponent();
             InitializeComplete();
 
+            DiffText.EscapePressed += () => EscapePressed?.Invoke();
             DiffText.ExtraDiffArgumentsChanged += DiffText_ExtraDiffArgumentsChanged;
             DiffFiles.Focus();
             DiffFiles.SetDiffs();
@@ -70,14 +77,30 @@ namespace GitUI.UserControls
             }
         }
 
+        // Partly the same as RevisionDiffControl.cs ShowSelectedFileDiffAsync()
         private async Task ViewSelectedDiffAsync()
         {
-            GitRevision revision = DiffFiles.Revision;
-            if (DiffFiles.SelectedItem != null && revision != null)
+            if (DiffFiles.SelectedItem == null || DiffFiles.Revision == null)
             {
-                await DiffText.ViewChangesAsync(DiffFiles.SelectedItemParent?.ObjectId, revision.ObjectId, DiffFiles.SelectedItem, string.Empty,
-                    openWithDifftool: null /* use default */);
+                return;
             }
+
+            if (DiffFiles.SelectedItemParent?.Guid == GitRevision.CombinedDiffGuid)
+            {
+                var diffOfConflict = Module.GetCombinedDiffContent(DiffFiles.Revision, DiffFiles.SelectedItem.Name,
+                    DiffText.GetExtraDiffArguments(), DiffText.Encoding);
+
+                if (string.IsNullOrWhiteSpace(diffOfConflict))
+                {
+                    diffOfConflict = Strings.UninterestingDiffOmitted;
+                }
+
+                DiffText.ViewPatch(text: diffOfConflict, openWithDifftool: null /* not implemented */);
+                return;
+            }
+
+            await DiffText.ViewChangesAsync(DiffFiles.SelectedItemParent?.ObjectId, DiffFiles.Revision?.ObjectId, DiffFiles.SelectedItem, string.Empty,
+                openWithDifftool: null /* use default */);
         }
     }
 }

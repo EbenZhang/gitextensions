@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using GitCommands;
 using JetBrains.Annotations;
 
 namespace GitUIPluginInterfaces
@@ -40,24 +38,19 @@ namespace GitUIPluginInterfaces
         void SetSetting(string setting, string value);
         void UnsetSetting(string setting);
 
-        #region Git process execution
-
-        IEnumerable<string> GetGitOutputLines(ArgumentString arguments, Encoding outputEncoding = null);
-
-        /// <summary>
-        /// Run git command, console window is hidden, wait for exit, redirect output
-        /// </summary>
-        string RunGitCmd(ArgumentString arguments, Encoding outputEncoding = null, byte[] stdInput = null);
-
-        /// <summary>
-        /// Run git command, console window is hidden, wait for exit, redirect output
-        /// </summary>
-        ExecutionResult RunGitCmdResult(ArgumentString arguments);
-
-        #endregion
-
         /// <summary>Gets the directory which contains the git repository.</summary>
         string WorkingDir { get; }
+
+        /// <summary>
+        /// Gets the access to the current git executable associated with this module.
+        /// </summary>
+        IExecutable GitExecutable { get; }
+
+        /// <summary>
+        /// Gets the access to the current git executable associated with this module.
+        /// </summary>
+        [NotNull]
+        IGitCommandRunner GitCommandRunner { get; }
 
         /// <summary>
         /// Gets the location of .git directory for the current working folder.
@@ -67,7 +60,7 @@ namespace GitUIPluginInterfaces
         /// <summary>
         /// Asks git to resolve the given relativePath
         /// git special folders are located in different directories depending on the kind of repo: submodule, worktree, main
-        /// See https://git-scm.com/docs/git-rev-parse#git-rev-parse---git-pathltpathgt
+        /// See https://git-scm.com/docs/git-rev-parse#Documentation/git-rev-parse.txt---git-pathltpathgt
         /// </summary>
         /// <param name="relativePath">A path relative to the .git directory</param>
         string ResolveGitInternalPath(string relativePath);
@@ -104,6 +97,13 @@ namespace GitUIPluginInterfaces
         /// </summary>
         /// <returns>Registered remotes.</returns>
         IReadOnlyList<string> GetRemoteNames();
+
+        /// <summary>
+        /// Gets the commit ID of the currently checked out commit.
+        /// If the repo is bare or has no commits, <c>null</c> is returned.
+        /// </summary>
+        [CanBeNull]
+        ObjectId GetCurrentCheckout();
 
         /// <summary>Gets the remote of the current branch; or "" if no remote is configured.</summary>
         string GetCurrentRemote();

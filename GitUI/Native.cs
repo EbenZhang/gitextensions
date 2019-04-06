@@ -65,6 +65,8 @@ namespace GitUI
 
         internal const int WM_USER = 0x0400;
         internal const int EM_FORMATRANGE = WM_USER + 57;
+        internal const int WM_HSCROLL = 276;
+        internal const int SB_LEFT = 6;
 
         // from vsstyle.h
         internal const int TEXT_MAININSTRUCTION = 1;
@@ -113,6 +115,9 @@ namespace GitUI
 
         [DllImport("uxtheme", ExactSpelling = true, CharSet = CharSet.Unicode)]
         internal static extern int GetThemeFont(IntPtr hTheme, IntPtr hdc, int iPartId, int iStateId, int iPropId, out LOGFONT pFont);
+
+        [DllImport("wininet.dll")]
+        internal static extern bool InternetGetConnectedState(out int description, int reservedValue);
 
         #endregion
     }

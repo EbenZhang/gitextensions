@@ -73,8 +73,8 @@ namespace GitUI
         private readonly BuildServerWatcher _buildServerWatcher;
         private readonly Timer _selectionTimer;
         private readonly RevisionGraphColumnProvider _revisionGraphColumnProvider;
-        private readonly List<DataGridViewColumn> _resizableColumns;
         private readonly DataGridViewColumn _maximizedColumn;
+        private DataGridViewColumn _lastVisibleResizableColumn;
 
         private RefFilterOptions _refFilterOptions = RefFilterOptions.All | RefFilterOptions.Boundary;
 
@@ -98,7 +98,7 @@ namespace GitUI
         private string _fixedRevisionFilter = "";
         private string _fixedPathFilter = "";
         private string _branchFilter = "";
-        private JoinableTask<SuperProjectInfo> _superprojectCurrentCheckout;
+        private SuperProjectInfo _superprojectCurrentCheckout;
         private int _latestSelectedRowIndex;
 
         private bool _settingsLoaded;
@@ -212,8 +212,8 @@ namespace GitUI
             _gridView.AddColumn(new DateColumnProvider(this));
             _gridView.AddColumn(new CommitIdColumnProvider(this));
             _gridView.AddColumn(_buildServerWatcher.ColumnProvider);
-            _resizableColumns = _gridView.Columns.Cast<DataGridViewColumn>().Where(column => column.Resizable == DataGridViewTriState.True).ToList();
-            _maximizedColumn = _resizableColumns.FirstOrDefault(column => column.AutoSizeMode == DataGridViewAutoSizeColumnMode.Fill);
+            _maximizedColumn = _gridView.Columns.Cast<DataGridViewColumn>()
+                .FirstOrDefault(column => column.Resizable == DataGridViewTriState.True && column.AutoSizeMode == DataGridViewAutoSizeColumnMode.Fill);
         }
 
         protected override void Dispose(bool disposing)
@@ -327,11 +327,10 @@ namespace GitUI
                 return;
             }
 
-            var rect = _gridView.GetCellDisplayRectangle(0, _latestSelectedRowIndex, true);
             using (var dlg = new FormQuickGitRefSelector())
             {
                 dlg.Init(actionLabel, refs);
-                dlg.Location = PointToScreen(new Point(rect.Right, rect.Bottom));
+                dlg.Location = GetQuickItemSelectorLocation();
                 if (dlg.ShowDialog(this) != DialogResult.OK || dlg.SelectedRef == null)
                 {
                     return;
@@ -339,6 +338,12 @@ namespace GitUI
 
                 action(dlg.SelectedRef);
             }
+        }
+
+        public Point GetQuickItemSelectorLocation()
+        {
+            var rect = _gridView.GetCellDisplayRectangle(0, _latestSelectedRowIndex, true);
+            return PointToScreen(new Point(rect.Right, rect.Bottom));
         }
 
         #region Navigation
@@ -479,23 +484,26 @@ namespace GitUI
                 return;
             }
 
-            _gridView.Refresh();
+            if (_lastVisibleResizableColumn != null)
+            {
+                // restore its resizable state
+                _lastVisibleResizableColumn.Resizable = DataGridViewTriState.True;
+            }
+
+            _gridView.Refresh(); // columns could change their Resizable state, e.g. the BuildStatusColumnProvider
 
             base.Refresh();
 
             _toolTipProvider.Clear();
 
-            if (_maximizedColumn != null)
+            // suppress the manual resizing of the last visible column because it will be resized when the maximized column is resized
+            //// LINQ because the following did not work reliable:
+            //// _lastVisibleResizableColumn = _gridView.Columns.GetLastColumn(DataGridViewElementStates.Visible | DataGridViewElementStates.Resizable, DataGridViewElementStates.None);
+            _lastVisibleResizableColumn = _gridView.Columns.Cast<DataGridViewColumn>()
+                .OrderBy(column => column.Index).Last(column => column.Visible && column.Resizable == DataGridViewTriState.True);
+            if (_lastVisibleResizableColumn != null)
             {
-                // restore the resizable state
-                _resizableColumns.ForEach(column => column.Resizable = DataGridViewTriState.True);
-
-                // suppress the manual resizing of the last visible column because it will be resized when the maximized column is resized
-                var lastVisibleResizableColumn = _gridView.Columns.GetLastColumn(DataGridViewElementStates.Visible | DataGridViewElementStates.Resizable, DataGridViewElementStates.None);
-                if (lastVisibleResizableColumn != null)
-                {
-                    lastVisibleResizableColumn.Resizable = DataGridViewTriState.False;
-                }
+                _lastVisibleResizableColumn.Resizable = DataGridViewTriState.False;
             }
         }
 
@@ -860,14 +868,14 @@ namespace GitUI
                     _initialLoad = false;
                 }
 
-                _superprojectCurrentCheckout = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                _superprojectCurrentCheckout = null;
+                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
-                    await TaskScheduler.Default;
-                    return GetSuperprojectCheckout(ShowRemoteRef, capturedModule);
+                    var scc = await GetSuperprojectCheckoutAsync(ShowRemoteRef, capturedModule, noLocks: true);
+                    await this.SwitchToMainThreadAsync();
+                    _superprojectCurrentCheckout = scc;
+                    Refresh();
                 });
-                _superprojectCurrentCheckout.Task.ContinueWith((task) => Refresh(),
-                    TaskScheduler.FromCurrentSynchronizationContext());
-
                 ResetNavigationHistory();
             }
             catch
@@ -936,7 +944,8 @@ namespace GitUI
                         CommitDate = DateTime.MaxValue,
                         CommitterEmail = userEmail,
                         Subject = Strings.Workspace,
-                        ParentIds = new[] { ObjectId.IndexId }
+                        ParentIds = new[] { ObjectId.IndexId },
+                        HasNotes = true
                     };
                     _gridView.Add(workTreeRev);
 
@@ -950,7 +959,8 @@ namespace GitUI
                         CommitDate = DateTime.MaxValue,
                         CommitterEmail = userEmail,
                         Subject = Strings.Index,
-                        ParentIds = new[] { filteredCurrentCheckout }
+                        ParentIds = new[] { filteredCurrentCheckout },
+                        HasNotes = true
                     };
                     _gridView.Add(indexRev);
 
@@ -1019,7 +1029,7 @@ namespace GitUI
         }
 
         [CanBeNull]
-        private static SuperProjectInfo GetSuperprojectCheckout(Func<IGitRef, bool> showRemoteRef, GitModule gitModule)
+        private static async Task<SuperProjectInfo> GetSuperprojectCheckoutAsync(Func<IGitRef, bool> showRemoteRef, GitModule gitModule, bool noLocks = false)
         {
             if (gitModule.SuperprojectModule == null)
             {
@@ -1027,11 +1037,12 @@ namespace GitUI
             }
 
             var spi = new SuperProjectInfo();
-            var (code, commit) = gitModule.GetSuperprojectCurrentCheckout();
+            var (code, commit) = await gitModule.GetSuperprojectCurrentCheckoutAsync().ConfigureAwait(false);
             if (code == 'U')
             {
                 // return local and remote hashes
-                var array = gitModule.SuperprojectModule.GetConflict(gitModule.SubmodulePath);
+                var array = await gitModule.SuperprojectModule.GetConflictAsync(gitModule.SubmodulePath)
+                    .ConfigureAwaitRunInline();
                 spi.ConflictBase = array.Base.ObjectId;
                 spi.ConflictLocal = array.Local.ObjectId;
                 spi.ConflictRemote = array.Remote.ObjectId;
@@ -1041,7 +1052,7 @@ namespace GitUI
                 spi.CurrentBranch = commit;
             }
 
-            var refs = gitModule.SuperprojectModule.GetSubmoduleItemsForEachRef(gitModule.SubmodulePath, showRemoteRef);
+            var refs = await gitModule.SuperprojectModule.GetSubmoduleItemsForEachRefAsync(gitModule.SubmodulePath, showRemoteRef, noLocks: noLocks);
 
             if (refs != null)
             {
@@ -1087,7 +1098,7 @@ namespace GitUI
                 selectedObjectIds = new ObjectId[] { Module.GetCurrentCheckout() };
             }
 
-            _gridView.ToBeSelectedObjectIds = selectedObjectIds.ToHashSet();
+            _gridView.ToBeSelectedObjectIds = selectedObjectIds.ToList();
             _selectedObjectIds = null;
         }
 
@@ -1144,7 +1155,7 @@ namespace GitUI
             //
             // "fatal: bad object b897cd39543bd933da30af872a633760e79472c9"
 
-            foreach (var line in Module.GetGitOutputLines(args))
+            foreach (var line in Module.GitExecutable.GetOutputLines(args))
             {
                 if (ObjectId.TryParse(line, out var parentId))
                 {
@@ -1186,7 +1197,7 @@ namespace GitUI
             }
 
             compareToWorkingDirectoryMenuItem.Enabled = firstSelectedRevision != null && firstSelectedRevision.ObjectId != ObjectId.WorkTreeId;
-            compareWithCurrentBranchToolStripMenuItem.Enabled = Module.GetSelectedBranch().IsNotNullOrWhitespace();
+            compareWithCurrentBranchToolStripMenuItem.Enabled = Module.GetSelectedBranch(setDefaultIfEmpty: false).IsNotNullOrWhitespace();
             compareSelectedCommitsMenuItem.Enabled = firstSelectedRevision != null && secondSelectedRevision != null;
 
             HighlightRevisionsByAuthor(selectedRevisions);
@@ -1273,27 +1284,19 @@ namespace GitUI
             {
                 case MouseButtons.XButton1: NavigateBackward(); break;
                 case MouseButtons.XButton2: NavigateForward(); break;
-                case MouseButtons.Left when _maximizedColumn != null:
-                    // suppress the manual resizing of the last visible column because it will be resized when the maximized column is resized
-                    var lastVisibleResizableColumn = _gridView.Columns.GetLastColumn(DataGridViewElementStates.Visible | DataGridViewElementStates.Resizable, DataGridViewElementStates.None);
-                    if (lastVisibleResizableColumn != null)
-                    {
-                        lastVisibleResizableColumn.Resizable = DataGridViewTriState.False;
-
-                        // make resizing of the maximized column work and restore the settings afterwards
-                        void OnGridViewMouseCaptureChanged(object ignoredSender, EventArgs ignoredArgs)
-                        {
-                            _gridView.MouseCaptureChanged -= OnGridViewMouseCaptureChanged;
-                            lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                            _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                        }
-
-                        _gridView.MouseCaptureChanged += OnGridViewMouseCaptureChanged;
-                        _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                        lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                    }
-
+                case MouseButtons.Left when _maximizedColumn != null && _lastVisibleResizableColumn != null:
+                    // make resizing of the maximized column work and restore the settings afterwards
+                    _gridView.MouseCaptureChanged += OnGridViewMouseCaptureChanged;
+                    _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; // None must be set before Fill
+                    _lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                     break;
+
+                    void OnGridViewMouseCaptureChanged(object ignoredSender, EventArgs ignoredArgs)
+                    {
+                        _gridView.MouseCaptureChanged -= OnGridViewMouseCaptureChanged;
+                        _lastVisibleResizableColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; // None must be set before Fill
+                        _maximizedColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                    }
             }
         }
 
@@ -1301,7 +1304,7 @@ namespace GitUI
         [ContractAnnotation("=>true,spi:notnull")]
         internal bool TryGetSuperProjectInfo(out SuperProjectInfo spi)
         {
-            spi = _superprojectCurrentCheckout.Task.CompletedOrDefault();
+            spi = _superprojectCurrentCheckout;
             return spi != null;
         }
 
@@ -1654,6 +1657,8 @@ namespace GitUI
 
             SetEnabled(openBuildReportToolStripMenuItem, !string.IsNullOrWhiteSpace(revision.BuildStatus?.Url));
 
+            SetEnabled(openPullRequestPageStripMenuItem, !string.IsNullOrWhiteSpace(revision.BuildStatus?.PullRequestUrl));
+
             RefreshOwnScripts();
 
             UpdateSeparators();
@@ -1807,12 +1812,14 @@ namespace GitUI
         internal void ToggleShowAuthorDate()
         {
             AppSettings.ShowAuthorDate = !AppSettings.ShowAuthorDate;
+            MenuCommands.TriggerMenuChanged();
             Refresh();
         }
 
         internal void ToggleShowRemoteBranches()
         {
             AppSettings.ShowRemoteBranches = !AppSettings.ShowRemoteBranches;
+            MenuCommands.TriggerMenuChanged();
             _gridView.Invalidate();
         }
 
@@ -1878,6 +1885,7 @@ namespace GitUI
         internal void ToggleShowRelativeDate(EventArgs e)
         {
             AppSettings.RelativeDate = !AppSettings.RelativeDate;
+            MenuCommands.TriggerMenuChanged();
             Refresh();
         }
 
@@ -1918,7 +1926,7 @@ namespace GitUI
         {
             if (status == null)
             {
-                return;
+                status = new List<GitItemStatus>();
             }
 
             workTreeRev = workTreeRev ?? GetRevision(ObjectId.WorkTreeId);
@@ -2074,7 +2082,7 @@ namespace GitUI
                         _settingsLoaded = true;
                     }
 
-                    if (ScriptRunner.RunScript(this, Module, sender.ToString(), this))
+                    if (ScriptRunner.RunScript(this, Module, sender.ToString(), UICommands, this).NeedsGridRefresh)
                     {
                         RefreshRevisions();
                     }
@@ -2185,7 +2193,7 @@ namespace GitUI
             Refresh();
         }
 
-        internal bool ExecuteCommand(Commands cmd)
+        internal CommandStatus ExecuteCommand(Commands cmd)
         {
             return ExecuteCommand((int)cmd);
         }
@@ -2263,7 +2271,7 @@ namespace GitUI
                 revisions
             };
 
-            var mergeBaseCommitId = UICommands.GitModule.RunGitCmd(args).TrimEnd('\n');
+            var mergeBaseCommitId = UICommands.GitModule.GitExecutable.GetOutput(args).TrimEnd('\n');
             if (string.IsNullOrWhiteSpace(mergeBaseCommitId))
             {
                 MessageBox.Show(_noMergeBaseCommit.Text);
@@ -2349,7 +2357,7 @@ namespace GitUI
 
         private void CompareWithCurrentBranchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var headBranch = Module.GetSelectedBranch();
+            var headBranch = Module.GetSelectedBranch(setDefaultIfEmpty: false);
             if (headBranch.IsNullOrWhiteSpace())
             {
                 MessageBox.Show(this, "No branch is currently selected");
@@ -2419,6 +2427,16 @@ namespace GitUI
             if (!string.IsNullOrWhiteSpace(revision.BuildStatus?.Url))
             {
                 Process.Start(revision.BuildStatus.Url);
+            }
+        }
+
+        private void openPullRequestPageStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var revision = GetSelectedRevisions().First();
+
+            if (!string.IsNullOrWhiteSpace(revision.BuildStatus?.PullRequestUrl))
+            {
+                Process.Start(revision.BuildStatus.PullRequestUrl);
             }
         }
 
@@ -2622,7 +2640,7 @@ namespace GitUI
             GoToMergeBaseCommit = 31,
         }
 
-        protected override bool ExecuteCommand(int cmd)
+        protected override CommandStatus ExecuteCommand(int cmd)
         {
             switch ((Commands)cmd)
             {
@@ -2664,8 +2682,12 @@ namespace GitUI
                 case Commands.CompareSelectedCommits: compareSelectedCommitsMenuItem_Click(null, null); break;
                 default:
                     {
-                        bool result = base.ExecuteCommand(cmd);
-                        RefreshRevisions();
+                        var result = base.ExecuteCommand(cmd);
+                        if (result.NeedsGridRefresh)
+                        {
+                            RefreshRevisions();
+                        }
+
                         return result;
                     }
             }

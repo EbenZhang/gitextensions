@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
+using GitCommands.Git;
 using GitCommands.UserRepositoryHistory;
 using GitExtUtils.GitUI;
 using GitUIPluginInterfaces;
@@ -170,8 +171,9 @@ namespace GitUI.CommandsDialogs
 
             FromTextUpdate(null, null);
 
+            cbLfs.Visible = !GitVersion.Current.DepreciatedLfsClone;
             cbLfs.Enabled = Module.HasLfsSupport();
-            if (!cbLfs.Enabled)
+            if (!cbLfs.Enabled || !cbLfs.Visible)
             {
                 cbLfs.Checked = false;
             }

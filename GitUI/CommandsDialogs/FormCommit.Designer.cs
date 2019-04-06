@@ -146,6 +146,7 @@ namespace GitUI.CommandsDialogs
             this.commitAuthorStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusBranchIcon = new System.Windows.Forms.ToolStripStatusLabel();
             this.branchNameLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.remoteNameLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.commitStagedCountLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.commitStagedCount = new System.Windows.Forms.ToolStripStatusLabel();
             this.commitCursorLineLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -404,6 +405,7 @@ namespace GitUI.CommandsDialogs
             this.stagedEditFileToolStripMenuItem11});
             this.StagedFileContext.Name = "StagedFileContext";
             this.StagedFileContext.Size = new System.Drawing.Size(233, 198);
+            this.StagedFileContext.Opening += StagedFileContext_Opening;
             //
             // stagedResetChanges
             //
@@ -1356,6 +1358,7 @@ namespace GitUI.CommandsDialogs
             this.commitAuthorStatus,
             this.toolStripStatusBranchIcon,
             this.branchNameLabel,
+            this.remoteNameLabel,
             this.commitStagedCountLabel,
             this.commitStagedCount,
             this.commitCursorLineLabel,
@@ -1394,11 +1397,22 @@ namespace GitUI.CommandsDialogs
             // branchNameLabel
             // 
             this.branchNameLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.branchNameLabel.Margin = new System.Windows.Forms.Padding(0, 3, 25, 2);
+            this.branchNameLabel.Margin = new System.Windows.Forms.Padding(0, 3, 0, 2);
             this.branchNameLabel.Name = "branchNameLabel";
             this.branchNameLabel.Size = new System.Drawing.Size(85, 17);
             this.branchNameLabel.Text = "(Branch name)";
-            this.branchNameLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.branchNameLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            // 
+            // remoteNameLabel
+            // 
+            this.remoteNameLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.remoteNameLabel.IsLink = true;
+            this.remoteNameLabel.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
+            this.remoteNameLabel.Margin = new System.Windows.Forms.Padding(0, 3, 25, 2);
+            this.remoteNameLabel.Name = "remoteNameLabel";
+            this.remoteNameLabel.Size = new System.Drawing.Size(85, 17);
+            this.remoteNameLabel.Text = "(Remote name)";
+            this.remoteNameLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // commitStagedCountLabel
             //
@@ -1642,6 +1656,7 @@ namespace GitUI.CommandsDialogs
         private ToolStripButton createBranchToolStripButton;
         private ToolStripStatusLabel toolStripStatusBranchIcon;
         private ToolStripStatusLabel branchNameLabel;
+        private ToolStripStatusLabel remoteNameLabel;
         private ToolStripSeparator toolStripSeparator14;
         private ToolStripTextBox toolStripGpgKeyTextBox;
         private ToolStripComboBox gpgSignCommitToolStripComboBox;

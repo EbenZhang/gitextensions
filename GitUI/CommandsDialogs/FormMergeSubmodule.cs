@@ -31,7 +31,7 @@ namespace GitUI.CommandsDialogs
 
         private void FormMergeSubmodule_Load(object sender, EventArgs e)
         {
-            var item = Module.GetConflict(_filename);
+            var item = ThreadHelper.JoinableTaskFactory.Run(() => Module.GetConflictAsync(_filename));
 
             tbBase.Text = item.Base.ObjectId?.ToString() ?? _deleted.Text;
             tbLocal.Text = item.Local.ObjectId?.ToString() ?? _deleted.Text;
@@ -59,7 +59,7 @@ namespace GitUI.CommandsDialogs
                     "--",
                     _filename.QuoteNE()
                 };
-                string output = Module.RunGitCmd(args);
+                string output = Module.GitExecutable.GetOutput(args);
                 form.AddMessageLine(output);
                 form.Done(isSuccess: string.IsNullOrWhiteSpace(output));
             }

@@ -49,6 +49,60 @@ namespace GitUITests.CommandsDialogs.CommitDialog
             _referenceRepository.Dispose();
         }
 
+        [Test]
+        public void Should_correctly_setup_form_title_for_merge_action()
+        {
+            RunFormTest(
+                form =>
+                {
+                    var accessor = form.GetTestAccessor();
+
+                    accessor.Merge.Checked = true;
+                    var expected = string.Format(accessor.PullTitleText, PathUtil.GetDisplayPath(_referenceRepository.Module.WorkingDir));
+
+                    accessor.Title.Should().StartWith(expected);
+                },
+                null, null,
+                //// select an action different from Merge
+                AppSettings.PullAction.FetchAll);
+        }
+
+        [Test]
+        public void Should_correctly_setup_form_title_for_rebase_action()
+        {
+            RunFormTest(
+                form =>
+                {
+                    var accessor = form.GetTestAccessor();
+
+                    accessor.Rebase.Checked = true;
+                    var expected = string.Format(accessor.PullTitleText, PathUtil.GetDisplayPath(_referenceRepository.Module.WorkingDir));
+
+                    accessor.Title.Should().StartWith(expected);
+                },
+                null, null,
+                //// select an action different from Rebase
+                AppSettings.PullAction.FetchAll);
+        }
+
+        [Test]
+        public void Should_correctly_setup_form_title_for_fetch_action()
+        {
+            RunFormTest(
+                form =>
+                {
+                    var accessor = form.GetTestAccessor();
+
+                    accessor.Fetch.Checked = true;
+                    var expected = string.Format(accessor.FetchTitleText, PathUtil.GetDisplayPath(_referenceRepository.Module.WorkingDir));
+
+                    accessor.Title.Should().StartWith(expected);
+                },
+                null, null,
+                //// select an action different from None/fetch
+                AppSettings.PullAction.Merge);
+        }
+
         [TestCase(AppSettings.PullAction.Merge, true, false, false, false, false, true)]
         [TestCase(AppSettings.PullAction.Rebase, false, false, true, false, false, false)]
         [TestCase(AppSettings.PullAction.Fetch, false, false, false, true, false, true)]

@@ -17,7 +17,7 @@ namespace GitUI.Avatars
     {
         private const int MaxConcurrentDownloads = 10;
 
-        /* A brief skim through the GitExtensions repo history shows GitHub emails with the following user names:
+        /* A brief skim through the Git Extensions repo history shows GitHub emails with the following user names:
          *
          * 25421792+mserfli
          * 33052757+freza-tm
@@ -42,6 +42,12 @@ namespace GitUI.Avatars
             if (string.IsNullOrWhiteSpace(email))
             {
                 throw new ArgumentException(nameof(email));
+            }
+
+            // check network connectivity
+            if (!NativeMethods.InternetGetConnectedState(out _, 0))
+            {
+                return null;
             }
 
             var match = _gitHubEmailRegex.Match(email);
@@ -96,6 +102,7 @@ namespace GitUI.Avatars
                             case DefaultImageType.MonsterId: return "monsterid";
                             case DefaultImageType.Wavatar: return "wavatar";
                             case DefaultImageType.Retro: return "retro";
+                            case DefaultImageType.Robohash: return "robohash";
                             default: return "404";
                         }
                     }

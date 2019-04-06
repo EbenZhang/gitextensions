@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.Composition;
+using System.Globalization;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text;
@@ -34,6 +35,7 @@ namespace AzureDevOpsIntegration
         private IBuildServerWatcher _buildServerWatcher;
         private IntegrationSettings _settings;
         private ApiClient _apiClient;
+        private static readonly IBuildDurationFormatter _buildDurationFormatter = new BuildDurationFormatter();
 
         public void Initialize(IBuildServerWatcher buildServerWatcher, ISettingsSource config, Func<ObjectId, bool> isCommitInRevisionGrid = null)
         {
@@ -74,7 +76,7 @@ namespace AzureDevOpsIntegration
             return Observable.Create<BuildInfo>((observer, cancellationToken) => ObserveBuildsAsync(sinceDate, running, observer, cancellationToken));
         }
 
-        private async Task ObserveBuildsAsync(DateTime? sinceDate, bool? running, IObserver<GitUIPluginInterfaces.BuildServerIntegration.BuildInfo> observer, CancellationToken cancellationToken)
+        private async Task ObserveBuildsAsync(DateTime? sinceDate, bool? running, IObserver<BuildInfo> observer, CancellationToken cancellationToken)
         {
             try
             {
@@ -104,18 +106,11 @@ namespace AzureDevOpsIntegration
             {
                 if (buildDetail.Status == "inProgress")
                 {
-                    duration = " / " + GetDuration(DateTime.UtcNow - buildDetail.StartTime.Value);
+                    duration = _buildDurationFormatter.Format((long)(DateTime.UtcNow - buildDetail.StartTime.Value).TotalMilliseconds);
                 }
                 else
                 {
-                    if (buildDetail.FinishTime.HasValue)
-                    {
-                        duration = " / " + GetDuration(buildDetail.FinishTime.Value - buildDetail.StartTime.Value);
-                    }
-                    else
-                    {
-                        duration = " / ???";
-                    }
+                    duration = buildDetail.FinishTime.HasValue ? _buildDurationFormatter.Format((long)(buildDetail.FinishTime.Value - buildDetail.StartTime.Value).TotalMilliseconds) : "???";
                 }
             }
 
@@ -124,7 +119,8 @@ namespace AzureDevOpsIntegration
                 Id = buildDetail.BuildNumber,
                 StartDate = buildDetail.StartTime ?? DateTime.Now.AddHours(1),
                 Status = buildDetail.IsInProgress ? BuildInfo.BuildStatus.InProgress : MapResult(buildDetail.Result),
-                Description = buildDetail.BuildNumber + " (" + (buildDetail.IsInProgress ? buildDetail.Status : buildDetail.Result) + " " + duration + ")",
+                Description = duration + " " + buildDetail.BuildNumber,
+                Tooltip = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(buildDetail.IsInProgress ? buildDetail.Status : buildDetail.Result) + Environment.NewLine + duration + Environment.NewLine + buildDetail.BuildNumber,
                 CommitHashList = new[] { ObjectId.Parse(buildDetail.SourceVersion) },
                 Url = buildDetail._links.Web.Href,
                 ShowInBuildReportTab = false
@@ -148,23 +144,6 @@ namespace AzureDevOpsIntegration
                 default:
                     return BuildInfo.BuildStatus.Unknown;
             }
-        }
-
-        private static string GetDuration(TimeSpan duration)
-        {
-            var s = new StringBuilder();
-            if (duration.Hours != 0)
-            {
-                s.Append($"{duration.Hours}h");
-            }
-
-            if (duration.Minutes != 0)
-            {
-                s.Append($"{duration.Minutes:00}m");
-            }
-
-            s.Append($"{duration.Seconds:00}s");
-            return s.ToString();
         }
 
         public void Dispose()

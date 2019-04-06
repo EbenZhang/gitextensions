@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Git;
 using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.HelperDialogs;
@@ -50,7 +51,7 @@ namespace GitUI.CommandsDialogs
         {
             _isDirtyDir = UICommands.Module.IsDirtyDir();
             _currentBranch = UICommands.Module.GetSelectedBranch();
-            _isBranchCheckedOut = _currentBranch != "(no branch)";
+            _isBranchCheckedOut = _currentBranch != DetachedHeadParser.DetachedBranch;
             linkCurrentBranch.Text = "current branch (" + _currentBranch + ")";
             linkCurrentBranch.Visible = _isBranchCheckedOut;
             _lastHitRowIndex = 0;
@@ -62,8 +63,6 @@ namespace GitUI.CommandsDialogs
             branches.AddRange(UICommands.Module.GetRemoteBranches().Select(r => r.Name).OrderBy(n => n));
             Branches.DataSource = branches;
         }
-
-        public bool ShouldRefresh { get; set; }
 
         private void Branches_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -78,7 +77,7 @@ namespace GitUI.CommandsDialogs
                     "--no-abbrev",
                     item
                 };
-                var output = UICommands.GitModule.RunGitCmd(arguments);
+                var output = UICommands.GitModule.GitExecutable.GetOutput(arguments);
                 var refLines = ConvertReflogOutput().ToList();
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 gridReflog.DataSource = refLines;
@@ -105,13 +104,16 @@ namespace GitUI.CommandsDialogs
                 return;
             }
 
-            using (var form = new FormCreateBranch(UICommands, GetShaOfRefLine()))
+            UICommands.DoActionOnRepo(() =>
             {
-                form.CheckoutAfterCreation = false;
-                form.UserAbleToChangeRevision = false;
-                form.CouldBeOrphan = false;
-                ShouldRefresh = form.ShowDialog(this) == DialogResult.OK;
-            }
+                using (var form = new FormCreateBranch(UICommands, GetShaOfRefLine()))
+                {
+                    form.CheckoutAfterCreation = false;
+                    form.UserAbleToChangeRevision = false;
+                    form.CouldBeOrphan = false;
+                    return form.ShowDialog(this) == DialogResult.OK;
+                }
+            });
         }
 
         private ObjectId GetShaOfRefLine()
@@ -142,9 +144,13 @@ namespace GitUI.CommandsDialogs
 
             var gitRevision = UICommands.Module.GetRevision(GetShaOfRefLine());
             var resetType = _isDirtyDir ? FormResetCurrentBranch.ResetType.Soft : FormResetCurrentBranch.ResetType.Hard;
-            var formResetCurrentBranch = new FormResetCurrentBranch(UICommands, gitRevision, resetType);
-            var result = formResetCurrentBranch.ShowDialog(this);
-            ShouldRefresh = result == DialogResult.OK;
+            UICommands.DoActionOnRepo(() =>
+            {
+                using (var form = new FormResetCurrentBranch(UICommands, gitRevision, resetType))
+                {
+                    return form.ShowDialog(this) == DialogResult.OK;
+                }
+            });
         }
 
         private void copySha1ToolStripMenuItem_Click(object sender, EventArgs e)

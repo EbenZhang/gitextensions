@@ -16,7 +16,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
     {
         private readonly TranslationString _noneItem =
             new TranslationString("None");
-        private IGitRemoteManager _gitRemoteManager;
+        private IConfigFileRemoteSettingsManager _remotesManager;
         private JoinableTask<object> _populateBuildServerTypeTask;
 
         public BuildServerIntegrationSettingsPage()
@@ -30,7 +30,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             base.Init(pageHost);
 
-            _gitRemoteManager = new GitRemoteManager(() => Module);
+            _remotesManager = new ConfigFileRemoteSettingsManager(() => Module);
             _populateBuildServerTypeTask = ThreadHelper.JoinableTaskFactory.RunAsync(
                 async () =>
                 {
@@ -46,6 +46,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                     await this.SwitchToMainThreadAsync();
 
                     checkBoxEnableBuildServerIntegration.Enabled = true;
+                    checkBoxShowBuildResultPage.Enabled = true;
                     BuildServerType.Enabled = true;
 
                     BuildServerType.DataSource = new[] { _noneItem.Text }.Concat(buildServerTypes).ToArray();
@@ -65,6 +66,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                     await this.SwitchToMainThreadAsync();
 
                     checkBoxEnableBuildServerIntegration.SetNullableChecked(CurrentSettings.BuildServer.EnableIntegration.Value);
+                    checkBoxShowBuildResultPage.SetNullableChecked(CurrentSettings.BuildServer.ShowBuildResultPage.Value);
 
                     BuildServerType.SelectedItem = CurrentSettings.BuildServer.Type.Value ?? _noneItem.Text;
                 });
@@ -73,6 +75,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         protected override void PageToSettings()
         {
             CurrentSettings.BuildServer.EnableIntegration.Value = checkBoxEnableBuildServerIntegration.GetNullableChecked();
+            CurrentSettings.BuildServer.ShowBuildResultPage.Value = checkBoxShowBuildResultPage.GetNullableChecked();
 
             var selectedBuildServerType = GetSelectedBuildServerType();
 
@@ -118,7 +121,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             if (selectedExport != null)
             {
                 var buildServerSettingsUserControl = selectedExport.Value;
-                var remoteUrls = _gitRemoteManager.LoadRemotes(false).Select(r => string.IsNullOrEmpty(r.PushUrl) ? r.Url : r.PushUrl);
+                var remoteUrls = _remotesManager.LoadRemotes(false).Select(r => string.IsNullOrEmpty(r.PushUrl) ? r.Url : r.PushUrl);
 
                 buildServerSettingsUserControl.Initialize(defaultProjectName, remoteUrls);
                 return buildServerSettingsUserControl;

@@ -18,6 +18,7 @@ using GitUI.Hotkey;
 using GitUI.Properties;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
+using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
 namespace GitUI.Editor
@@ -33,7 +34,8 @@ namespace GitUI.Editor
         private readonly TranslationString _largeFileSizeWarning = new TranslationString("This file is {0:N1} MB. Showing large files can be slow. Click to show anyway.");
 
         public event EventHandler<SelectedLineEventArgs> SelectedLineChanged;
-        public event EventHandler ScrollPosChanged;
+        public event EventHandler HScrollPositionChanged;
+        public event EventHandler VScrollPositionChanged;
         public event EventHandler RequestDiffView;
         public new event EventHandler TextChanged;
         public event EventHandler TextLoaded;
@@ -47,9 +49,9 @@ namespace GitUI.Editor
         private Encoding _encoding;
         private Func<Task> _deferShowFunc;
 
-        [Description("Ignore changes in amount of whitespace. This ignores whitespace at line end, and considers all other sequences of one or more whitespace characters to be equivalent.")]
-        [DefaultValue(false)]
-        public bool IgnoreWhitespaceChanges { get; set; }
+        [Description("Sets what kind of whitespace changes shall be ignored in diffs")]
+        [DefaultValue(IgnoreWhitespaceKind.None)]
+        public IgnoreWhitespaceKind IgnoreWhitespace { get; set; }
         [Description("Show diffs with <n> lines of context.")]
         [DefaultValue(3)]
         public int NumberOfContextLines { get; set; }
@@ -90,15 +92,16 @@ namespace GitUI.Editor
                     }
                 };
 
-            IgnoreWhitespaceChanges = AppSettings.IgnoreWhitespaceChanges;
-            ignoreWhiteSpaces.Checked = IgnoreWhitespaceChanges;
+            IgnoreWhitespace = AppSettings.IgnoreWhitespaceKind;
+            OnIgnoreWhitespaceChanged();
+
+            ignoreWhitespaceAtEol.Image = Images.WhitespaceIgnoreEol;
+            ignoreWhitespaceAtEolToolStripMenuItem.Image = ignoreWhitespaceAtEol.Image;
+
             ignoreWhiteSpaces.Image = Images.WhitespaceIgnore;
-            ignoreWhitespaceChangesToolStripMenuItem.Checked = IgnoreWhitespaceChanges;
             ignoreWhitespaceChangesToolStripMenuItem.Image = ignoreWhiteSpaces.Image;
 
-            ignoreAllWhitespaces.Checked = AppSettings.IgnoreAllWhitespaceChanges;
             ignoreAllWhitespaces.Image = Images.WhitespaceIgnoreAll;
-            ignoreAllWhitespaceChangesToolStripMenuItem.Checked = ignoreAllWhitespaces.Checked;
             ignoreAllWhitespaceChangesToolStripMenuItem.Image = ignoreAllWhitespaces.Image;
 
             ShowEntireFile = AppSettings.ShowEntireFile;
@@ -138,7 +141,8 @@ namespace GitUI.Editor
 
                 TextChanged?.Invoke(sender, e);
             };
-            internalFileViewer.ScrollPosChanged += (sender, e) => ScrollPosChanged?.Invoke(sender, e);
+            internalFileViewer.HScrollPositionChanged += (sender, e) => HScrollPositionChanged?.Invoke(sender, e);
+            internalFileViewer.VScrollPositionChanged += (sender, e) => VScrollPositionChanged?.Invoke(sender, e);
             internalFileViewer.SelectedLineChanged += (sender, e) => SelectedLineChanged?.Invoke(sender, e);
             internalFileViewer.DoubleClick += (_, args) => RequestDiffView?.Invoke(this, EventArgs.Empty);
 
@@ -188,10 +192,10 @@ namespace GitUI.Editor
             set => internalFileViewer.IsReadOnly = value;
         }
 
-        [DefaultValue(true)]
+        [DefaultValue(null)]
         [Description("If true line numbers are shown in the textarea")]
         [Category("Appearance")]
-        public bool ShowLineNumbers
+        public bool? ShowLineNumbers
         {
             get => internalFileViewer.ShowLineNumbers;
             set => internalFileViewer.ShowLineNumbers = value;
@@ -230,10 +234,18 @@ namespace GitUI.Editor
 
         [DefaultValue(0)]
         [Browsable(false)]
-        public int ScrollPos
+        public int HScrollPosition
         {
-            get => internalFileViewer.ScrollPos;
-            set => internalFileViewer.ScrollPos = value;
+            get => internalFileViewer.HScrollPosition;
+            set => internalFileViewer.HScrollPosition = value;
+        }
+
+        [DefaultValue(0)]
+        [Browsable(false)]
+        public int VScrollPosition
+        {
+            get => internalFileViewer.VScrollPosition;
+            set => internalFileViewer.VScrollPosition = value;
         }
 
         private void OnUICommandsChanged(object sender, [CanBeNull] GitUICommandsChangedEventArgs e)
@@ -247,6 +259,7 @@ namespace GitUI.Editor
             if (commandSource?.UICommands != null)
             {
                 commandSource.UICommands.PostSettings += UICommands_PostSettings;
+                UICommands_PostSettings(commandSource.UICommands, null);
             }
 
             Encoding = null;
@@ -254,7 +267,11 @@ namespace GitUI.Editor
 
         private void UICommands_PostSettings(object sender, GitUIPostActionEventArgs e)
         {
-            internalFileViewer.VRulerPosition = AppSettings.DiffVerticalRulerPosition;
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await internalFileViewer.SwitchToMainThreadAsync();
+                internalFileViewer.VRulerPosition = AppSettings.DiffVerticalRulerPosition;
+            }).FileAndForget();
         }
 
         protected override void OnRuntimeLoad()
@@ -312,7 +329,9 @@ namespace GitUI.Editor
         public void SetVisibilityDiffContextMenu(bool visible, bool isStagingDiff)
         {
             _currentViewIsPatch = visible;
+            ignoreWhitespaceAtEolToolStripMenuItem.Visible = visible;
             ignoreWhitespaceChangesToolStripMenuItem.Visible = visible;
+            ignoreAllWhitespaceChangesToolStripMenuItem.Visible = visible;
             increaseNumberOfLinesToolStripMenuItem.Visible = visible;
             decreaseNumberOfLinesToolStripMenuItem.Visible = visible;
             showEntireFileToolStripMenuItem.Visible = visible;
@@ -336,14 +355,15 @@ namespace GitUI.Editor
         {
             return new ArgumentBuilder
             {
-                { ignoreAllWhitespaces.Checked, "--ignore-all-space" },
-                { !ignoreAllWhitespaces.Checked && IgnoreWhitespaceChanges, "--ignore-space-change" },
+                { IgnoreWhitespace == IgnoreWhitespaceKind.AllSpace, "--ignore-all-space" },
+                { IgnoreWhitespace == IgnoreWhitespaceKind.Change, "--ignore-space-change" },
+                { IgnoreWhitespace == IgnoreWhitespaceKind.Eol, "--ignore-space-at-eol" },
                 { ShowEntireFile, "--inter-hunk-context=9000 --unified=9000", $"--unified={NumberOfContextLines}" },
                 { TreatAllFilesAsText, "--text" }
             };
         }
 
-        public Task ViewFileAsync(string fileName)
+        public Task ViewFileAsync(string fileName, [CanBeNull] Action openWithDifftool = null)
         {
             return ShowOrDeferAsync(
                 fileName,
@@ -352,7 +372,7 @@ namespace GitUI.Editor
                     getImage: GetImage,
                     getFileText: GetFileText,
                     getSubmoduleText: () => LocalizationHelpers.GetSubmoduleText(Module, fileName.TrimEnd('/'), ""),
-                    openWithDifftool: null /* not implemented */));
+                    openWithDifftool));
 
             Image GetImage()
             {
@@ -405,12 +425,7 @@ namespace GitUI.Editor
 
             long GetFileLength()
             {
-                var file = new FileInfo(fileName);
-
-                if (!file.Exists)
-                {
-                    file = new FileInfo(_fullPathResolver.Resolve(fileName));
-                }
+                var file = GetFileInfo(fileName);
 
                 if (file.Exists)
                 {
@@ -469,38 +484,36 @@ namespace GitUI.Editor
 
             ShowOrDeferAsync(
                 fileName,
-                () =>
+                async () =>
                 {
                     if (!isSubmodule)
                     {
-                        return _async.LoadAsync(
-                            () => (patch: Module.GetCurrentChanges(fileName, oldFileName, staged, GetExtraDiffArguments(), Encoding), openWithDifftool),
-                            patch => ViewStagingPatch(patch.patch, patch.openWithDifftool));
-                    }
-                    else if (getStatusAsync() != null)
-                    {
-                        return ViewPatchAsync(
-                            () =>
-                            {
-                                var status = ThreadHelper.JoinableTaskFactory.Run(() => getStatusAsync());
-                                if (status == null)
-                                {
-                                    return (text: $"Submodule \"{fileName}\" has unresolved conflicts",
-                                        openWithDifftool: null /* not applicable */);
-                                }
-
-                                return (text: LocalizationHelpers.ProcessSubmoduleStatus(Module, status),
-                                    openWithDifftool: null /* not implemented */);
-                            });
+                        var patch = await Module.GetCurrentChangesAsync(
+                            fileName, oldFileName, staged, GetExtraDiffArguments(), Encoding);
+                        ViewStagingPatch(patch, openWithDifftool);
                     }
                     else
                     {
-                        return ViewPatchAsync(
-                            () =>
-                                (text: LocalizationHelpers.ProcessSubmodulePatch(
-                                        Module, fileName,
-                                        Module.GetCurrentChanges(fileName, oldFileName, staged, GetExtraDiffArguments(), Encoding)),
-                                    openWithDifftool: null /* not implemented */));
+                        var getStatusTask = getStatusAsync();
+                        if (getStatusTask != null)
+                        {
+                            var status = await getStatusTask;
+                            if (status == null)
+                            {
+                                ViewPatch($"Submodule \"{fileName}\" has unresolved conflicts", null);
+                                return;
+                            }
+
+                            ViewPatch(LocalizationHelpers.ProcessSubmoduleStatus(Module, status), null);
+                            return;
+                        }
+                        else
+                        {
+                            var changes = await Module.GetCurrentChangesAsync(fileName, oldFileName, staged, GetExtraDiffArguments(), Encoding);
+                            var text = LocalizationHelpers.ProcessSubmodulePatch(Module, fileName, changes);
+                            ViewPatch(text, null);
+                            return;
+                        }
                     }
                 });
         }
@@ -565,8 +578,7 @@ namespace GitUI.Editor
 
             async Task<string> SummariseBinaryFileAsync()
             {
-                var fullPath = Path.GetFullPath(_fullPathResolver.Resolve(fileName));
-                var fileInfo = new FileInfo(fullPath);
+                var fileInfo = GetFileInfo(fileName);
 
                 var str = new StringBuilder()
                     .AppendLine("Binary file:")
@@ -583,7 +595,7 @@ namespace GitUI.Editor
                     var displayByteCount = (int)Math.Min(fileInfo.Length, maxLength);
                     var bytes = new byte[displayByteCount];
 
-                    using (var stream = File.OpenRead(fullPath))
+                    using (var stream = File.OpenRead(fileInfo.FullName))
                     {
                         var offset = 0;
                         while (offset < displayByteCount)
@@ -608,6 +620,12 @@ namespace GitUI.Editor
 
                 return str.ToString();
             }
+        }
+
+        private FileInfo GetFileInfo(string fileName)
+        {
+            var resolvedPath = _fullPathResolver.Resolve(fileName);
+            return new FileInfo(resolvedPath);
         }
 
         public static string ToHexDump(byte[] bytes, StringBuilder str, int columnWidth = 8, int columnCount = 2)
@@ -770,7 +788,7 @@ namespace GitUI.Editor
                                 }
 
                                 PictureBox.Image = image == null ? null : DpiUtil.Scale(image);
-                                internalFileViewer.SetText("", () => { });
+                                internalFileViewer.SetText("", openWithDifftool);
                             });
             }
 
@@ -872,12 +890,76 @@ namespace GitUI.Editor
             }
         }
 
+        private void OnIgnoreWhitespaceChanged()
+        {
+            switch (IgnoreWhitespace)
+            {
+                case IgnoreWhitespaceKind.None:
+                    ignoreWhitespaceAtEol.Checked = false;
+                    ignoreWhitespaceAtEolToolStripMenuItem.Checked = ignoreWhitespaceAtEol.Checked;
+                    ignoreWhiteSpaces.Checked = false;
+                    ignoreWhitespaceChangesToolStripMenuItem.Checked = ignoreWhiteSpaces.Checked;
+                    ignoreAllWhitespaces.Checked = false;
+                    ignoreAllWhitespaceChangesToolStripMenuItem.Checked = ignoreAllWhitespaces.Checked;
+                    break;
+                case IgnoreWhitespaceKind.Eol:
+                    ignoreWhitespaceAtEol.Checked = true;
+                    ignoreWhitespaceAtEolToolStripMenuItem.Checked = ignoreWhitespaceAtEol.Checked;
+                    ignoreWhiteSpaces.Checked = false;
+                    ignoreWhitespaceChangesToolStripMenuItem.Checked = ignoreWhiteSpaces.Checked;
+                    ignoreAllWhitespaces.Checked = false;
+                    ignoreAllWhitespaceChangesToolStripMenuItem.Checked = ignoreAllWhitespaces.Checked;
+                    break;
+                case IgnoreWhitespaceKind.Change:
+                    ignoreWhitespaceAtEol.Checked = true;
+                    ignoreWhitespaceAtEolToolStripMenuItem.Checked = ignoreWhitespaceAtEol.Checked;
+                    ignoreWhiteSpaces.Checked = true;
+                    ignoreWhitespaceChangesToolStripMenuItem.Checked = ignoreWhiteSpaces.Checked;
+                    ignoreAllWhitespaces.Checked = false;
+                    ignoreAllWhitespaceChangesToolStripMenuItem.Checked = ignoreAllWhitespaces.Checked;
+                    break;
+                case IgnoreWhitespaceKind.AllSpace:
+                    ignoreWhitespaceAtEol.Checked = true;
+                    ignoreWhitespaceAtEolToolStripMenuItem.Checked = ignoreWhitespaceAtEol.Checked;
+                    ignoreWhiteSpaces.Checked = true;
+                    ignoreWhitespaceChangesToolStripMenuItem.Checked = ignoreWhiteSpaces.Checked;
+                    ignoreAllWhitespaces.Checked = true;
+                    ignoreAllWhitespaceChangesToolStripMenuItem.Checked = ignoreAllWhitespaces.Checked;
+                    break;
+                default:
+                    throw new NotSupportedException("Unsupported value for IgnoreWhitespaceKind: " + IgnoreWhitespace);
+            }
+
+            AppSettings.IgnoreWhitespaceKind = IgnoreWhitespace;
+        }
+
+        private void IgnoreWhitespaceAtEolToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (IgnoreWhitespace == IgnoreWhitespaceKind.Eol)
+            {
+                IgnoreWhitespace = IgnoreWhitespaceKind.None;
+            }
+            else
+            {
+                IgnoreWhitespace = IgnoreWhitespaceKind.Eol;
+            }
+
+            OnIgnoreWhitespaceChanged();
+            OnExtraDiffArgumentsChanged();
+        }
+
         private void IgnoreWhitespaceChangesToolStripMenuItemClick(object sender, EventArgs e)
         {
-            IgnoreWhitespaceChanges = !IgnoreWhitespaceChanges;
-            ignoreWhiteSpaces.Checked = IgnoreWhitespaceChanges;
-            ignoreWhitespaceChangesToolStripMenuItem.Checked = IgnoreWhitespaceChanges;
-            AppSettings.IgnoreWhitespaceChanges = IgnoreWhitespaceChanges;
+            if (IgnoreWhitespace == IgnoreWhitespaceKind.Change)
+            {
+                IgnoreWhitespace = IgnoreWhitespaceKind.None;
+            }
+            else
+            {
+                IgnoreWhitespace = IgnoreWhitespaceKind.Change;
+            }
+
+            OnIgnoreWhitespaceChanged();
             OnExtraDiffArgumentsChanged();
         }
 
@@ -1001,6 +1083,11 @@ namespace GitUI.Editor
             {
                 ClipboardUtil.TrySetText(text);
             }
+        }
+
+        public string GetSelectedText()
+        {
+            return internalFileViewer.GetSelectedText();
         }
 
         public int GetSelectionPosition()
@@ -1162,7 +1249,7 @@ namespace GitUI.Editor
             PreviousChange = 7
         }
 
-        protected override bool ExecuteCommand(int cmd)
+        protected override CommandStatus ExecuteCommand(int cmd)
         {
             var command = (Commands)cmd;
 
@@ -1350,7 +1437,7 @@ namespace GitUI.Editor
 
             if (patch != null && patch.Length > 0)
             {
-                string output = Module.RunGitCmd(args, null, patch);
+                string output = Module.GitExecutable.GetOutput(args, patch);
 
                 if (!string.IsNullOrEmpty(output))
                 {
@@ -1406,12 +1493,18 @@ namespace GitUI.Editor
             applySelectedLines(GetSelectionPosition(), GetSelectionLength(), reverse: true);
         }
 
-        private void ignoreAllWhitespaceChangesToolStripMenuItem_Click(object sender, EventArgs e)
+        private void IgnoreAllWhitespaceChangesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var newIgnoreValue = !ignoreAllWhitespaces.Checked;
-            ignoreAllWhitespaces.Checked = newIgnoreValue;
-            ignoreAllWhitespaceChangesToolStripMenuItem.Checked = newIgnoreValue;
-            AppSettings.IgnoreAllWhitespaceChanges = newIgnoreValue;
+            if (IgnoreWhitespace == IgnoreWhitespaceKind.AllSpace)
+            {
+                IgnoreWhitespace = IgnoreWhitespaceKind.None;
+            }
+            else
+            {
+                IgnoreWhitespace = IgnoreWhitespaceKind.AllSpace;
+            }
+
+            OnIgnoreWhitespaceChanged();
             OnExtraDiffArgumentsChanged();
         }
 
@@ -1429,6 +1522,25 @@ namespace GitUI.Editor
             public ToolStripMenuItem CopyToolStripMenuItem => _fileViewer.copyToolStripMenuItem;
 
             public FileViewerInternal FileViewerInternal => _fileViewer.internalFileViewer;
+
+            public IgnoreWhitespaceKind IgnoreWhitespace
+            {
+                get => _fileViewer.IgnoreWhitespace;
+                set => _fileViewer.IgnoreWhitespace = value;
+            }
+
+            internal void IgnoreWhitespaceAtEolToolStripMenuItem_Click(object sender, EventArgs e) => _fileViewer.IgnoreWhitespaceAtEolToolStripMenuItem_Click(sender, e);
+            internal void IgnoreWhitespaceChangesToolStripMenuItemClick(object sender, EventArgs e) => _fileViewer.IgnoreWhitespaceChangesToolStripMenuItemClick(sender, e);
+            internal void IgnoreAllWhitespaceChangesToolStripMenuItem_Click(object sender, EventArgs e) => _fileViewer.IgnoreAllWhitespaceChangesToolStripMenuItem_Click(sender, e);
+
+            public ToolStripButton IgnoreWhitespaceAtEolButton => _fileViewer.ignoreWhitespaceAtEol;
+            public ToolStripMenuItem IgnoreWhitespaceAtEolMenuItem => _fileViewer.ignoreWhitespaceAtEolToolStripMenuItem;
+
+            public ToolStripButton IgnoreWhiteSpacesButton => _fileViewer.ignoreWhiteSpaces;
+            public ToolStripMenuItem IgnoreWhiteSpacesMenuItem => _fileViewer.ignoreWhitespaceChangesToolStripMenuItem;
+
+            public ToolStripButton IgnoreAllWhitespacesButton => _fileViewer.ignoreAllWhitespaces;
+            public ToolStripMenuItem IgnoreAllWhitespacesMenuItem => _fileViewer.ignoreAllWhitespaceChangesToolStripMenuItem;
         }
     }
 }

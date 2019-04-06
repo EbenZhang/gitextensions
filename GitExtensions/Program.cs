@@ -5,6 +5,7 @@ using System.IO;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Utils;
+using GitExtUtils.GitUI;
 using GitUI;
 using GitUI.CommandsDialogs.SettingsDialog;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
@@ -24,6 +25,8 @@ namespace GitExtensions
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            HighDpiMouseCursors.Enable();
 
             try
             {
@@ -227,8 +230,8 @@ namespace GitExtensions
                             {
                                 Directory.Delete(localSettingsPath, true); // deletes all application settings not just for this instance - but should work
 
-                                // Restart GitExtensions with the same arguments after old config is deleted?
-                                if (DialogResult.OK.Equals(MessageBox.Show(string.Format("Files have been deleted.{0}{0}Would you like to attempt to restart GitExtensions?", Environment.NewLine), "Configuration Error", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)))
+                                // Restart Git Extensions with the same arguments after old config is deleted?
+                                if (DialogResult.OK.Equals(MessageBox.Show(string.Format("Files have been deleted.{0}{0}Would you like to attempt to restart Git Extensions?", Environment.NewLine), "Configuration Error", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)))
                                 {
                                     var args = Environment.GetCommandLineArgs();
                                     var p = new System.Diagnostics.Process { StartInfo = { FileName = args[0] } };

@@ -17,8 +17,8 @@ namespace GitUI.CommandsDialogs
 {
     public partial class FormRemotes : GitModuleForm
     {
-        private IGitRemoteManager _remoteManager;
-        private GitRemote _selectedRemote;
+        private IConfigFileRemoteSettingsManager _remotesManager;
+        private ConfigFileRemote _selectedRemote;
         private readonly ListViewGroup _lvgEnabled;
         private readonly ListViewGroup _lvgDisabled;
 
@@ -82,6 +82,12 @@ Inactive remote is completely invisible to git.");
 
         private readonly TranslationString _lvgDisabledHeader =
             new TranslationString("Inactive");
+
+        private readonly TranslationString _enabledRemoteAlreadyExists =
+            new TranslationString("An active remote named \"{0}\" already exists.");
+
+        private readonly TranslationString _disabledRemoteAlreadyExists =
+            new TranslationString("An inactive remote named \"{0}\" already exists.");
         #endregion
 
         [Obsolete("For VS designer and translation test only. Do not remove.")]
@@ -119,12 +125,20 @@ Inactive remote is completely invisible to git.");
         /// If this is not null before showing the dialog the given
         /// remote name will be preselected in the listbox
         /// </summary>
+        /// <remarks>exclusive of <see cref="PreselectLocalOnLoad"/></remarks>
         public string PreselectRemoteOnLoad { get; set; }
+
+        /// <summary>
+        /// If this is not null before showing the dialog tab "Default push behvaior" is opened
+        /// and the given local name will be preselected in the listbox
+        /// </summary>
+        /// <remarks>exclusive of <see cref="PreselectRemoteOnLoad"/></remarks>
+        public string PreselectLocalOnLoad { get; set; }
 
         /// <summary>
         /// Gets the list of remotes configured in .git/config file.
         /// </summary>
-        private List<GitRemote> UserGitRemotes { get; set; }
+        private List<ConfigFileRemote> UserGitRemotes { get; set; }
 
         private void BindRemotes(string preselectRemote)
         {
@@ -148,7 +162,7 @@ Inactive remote is completely invisible to git.");
                     if (lvi != null)
                     {
                         lvi.Selected = true;
-                        flpnlRemoteManagement.Enabled = !((GitRemote)lvi.Tag).Disabled;
+                        flpnlRemoteManagement.Enabled = !((ConfigFileRemote)lvi.Tag).Disabled;
                     }
                 }
 
@@ -159,6 +173,7 @@ Inactive remote is completely invisible to git.");
                     group.Items[0].Selected = true;
                 }
 
+                Remotes.FocusedItem = Remotes.SelectedItems[0];
                 Remotes.Select();
             }
             else
@@ -193,13 +208,24 @@ Inactive remote is completely invisible to git.");
             return head;
         }
 
-        private void Initialize(string preselectRemote = null)
+        private void Initialize(string preselectRemote = null, string preselectLocal = null)
         {
             // refresh registered git remotes
-            UserGitRemotes = _remoteManager.LoadRemotes(true).ToList();
+            UserGitRemotes = _remotesManager.LoadRemotes(true).ToList();
 
             InitialiseTabRemotes(preselectRemote);
-            InitialiseTabBehaviors();
+
+            if (preselectLocal != null && UserGitRemotes.Count != 0)
+            {
+                ActivateTabDefaultPullBehaviors();
+            }
+
+            InitialiseTabDefaultPullBehaviors(preselectLocal);
+        }
+
+        private void ActivateTabDefaultPullBehaviors()
+        {
+            tabControl1.SelectedTab = tabPage2;
         }
 
         private void InitialiseTabRemotes(string preselectRemote = null)
@@ -235,19 +261,24 @@ Inactive remote is completely invisible to git.");
                 finally
                 {
                     Remotes.EndUpdate();
+                    if (Remotes.SelectedIndices.Count > 0)
+                    {
+                        Remotes.EnsureVisible(Remotes.SelectedIndices[0]);
+                    }
+
                     Url.EndUpdate();
                     comboBoxPushUrl.EndUpdate();
                 }
             });
         }
 
-        private void InitialiseTabBehaviors()
+        private void InitialiseTabDefaultPullBehaviors(string preselectLocal = null)
         {
-            var heads = Module.GetRefs(false, true);
+            var heads = Module.GetRefs(false, true).OrderBy(r => r.LocalName).ToList();
 
             RemoteRepositoryCombo.Sorted = false;
-            RemoteRepositoryCombo.DataSource = new[] { new GitRemote() }.Union(UserGitRemotes).ToList();
-            RemoteRepositoryCombo.DisplayMember = nameof(GitRemote.Name);
+            RemoteRepositoryCombo.DataSource = new[] { new ConfigFileRemote() }.Union(UserGitRemotes).ToList();
+            RemoteRepositoryCombo.DisplayMember = nameof(ConfigFileRemote.Name);
 
             RemoteBranches.AutoGenerateColumns = false;
             RemoteBranches.SelectionChanged -= RemoteBranchesSelectionChanged;
@@ -255,8 +286,13 @@ Inactive remote is completely invisible to git.");
             RemoteBranches.DataSource = heads;
             RemoteBranches.ClearSelection();
             RemoteBranches.SelectionChanged += RemoteBranchesSelectionChanged;
-
-            if (RemoteBranches.Rows.Count > 0)
+            var preselectLocalRow = RemoteBranches.Rows.Cast<DataGridViewRow>().
+                FirstOrDefault(r => r.DataBoundItem is IGitRef gitRef ? gitRef.LocalName == preselectLocal : false);
+            if (preselectLocalRow != null)
+            {
+                preselectLocalRow.Selected = true;
+            }
+            else if (RemoteBranches.Rows.Count > 0)
             {
                 RemoteBranches.Rows[0].Selected = true;
             }
@@ -300,6 +336,13 @@ Inactive remote is completely invisible to git.");
             // we need this event only once, so unwire
             Application.Idle -= application_Idle;
 
+            // make sure only single load option is given
+            if (PreselectRemoteOnLoad != null && PreselectLocalOnLoad != null)
+            {
+                throw new ArgumentException($"Only one option allowed:" +
+                    $" Either {nameof(PreselectRemoteOnLoad)} or {nameof(PreselectLocalOnLoad)}");
+            }
+
             pnlMgtPuttySsh.Visible = GitCommandHelpers.Plink();
 
             // if Putty SSH isn't enabled, reduce the minimum height of the form
@@ -313,10 +356,10 @@ Inactive remote is completely invisible to git.");
             label2.MinimumSize = label2.MaximumSize = widestLabelMinSize;        // Url
             labelPushUrl.MinimumSize = labelPushUrl.MaximumSize = widestLabelMinSize;  // Push URL
 
-            _remoteManager = new GitRemoteManager(() => Module);
+            _remotesManager = new ConfigFileRemoteSettingsManager(() => Module);
 
             // load the data for the very first time
-            Initialize(PreselectRemoteOnLoad);
+            Initialize(PreselectRemoteOnLoad, PreselectLocalOnLoad);
         }
 
         private void btnToggleState_Click(object sender, EventArgs e)
@@ -328,9 +371,28 @@ Inactive remote is completely invisible to git.");
             }
 
             _selectedRemote.Disabled = !_selectedRemote.Disabled;
-            _remoteManager.ToggleRemoteState(_selectedRemote.Name, _selectedRemote.Disabled);
-            BindBtnToggleState(_selectedRemote.Disabled);
-            BindRemotes(_selectedRemote.Name);
+            _remotesManager.ToggleRemoteState(_selectedRemote.Name, _selectedRemote.Disabled);
+
+            Initialize(_selectedRemote.Name);
+        }
+
+        private bool ValidateRemoteDoesNotExist(string remote)
+        {
+            if (_remotesManager.EnabledRemoteExists(remote))
+            {
+                MessageBox.Show(this, string.Format(_enabledRemoteAlreadyExists.Text, remote), _gitMessage.Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+
+                return false;
+            }
+
+            if (_remotesManager.DisabledRemoteExists(remote))
+            {
+                MessageBox.Show(this, string.Format(_disabledRemoteAlreadyExists.Text, remote), _gitMessage.Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+
+                return false;
+            }
+
+            return true;
         }
 
         private void SaveClick(object sender, EventArgs e)
@@ -343,6 +405,8 @@ Inactive remote is completely invisible to git.");
             var remote = RemoteName.Text.Trim();
             var remoteUrl = Url.Text.Trim();
             var remotePushUrl = comboBoxPushUrl.Text.Trim();
+            bool creatingNew = _selectedRemote == null;
+
             try
             {
                 // disable the control while saving
@@ -354,8 +418,13 @@ Inactive remote is completely invisible to git.");
                     checkBoxSepPushUrl.Checked = false;
                 }
 
+                if (creatingNew && !ValidateRemoteDoesNotExist(remote))
+                {
+                    return;
+                }
+
                 // update all other remote properties
-                var result = _remoteManager.SaveRemote(_selectedRemote,
+                var result = _remotesManager.SaveRemote(_selectedRemote,
                                                        remote,
                                                        remoteUrl,
                                                        checkBoxSepPushUrl.Checked ? remotePushUrl : null,
@@ -363,7 +432,8 @@ Inactive remote is completely invisible to git.");
 
                 if (!string.IsNullOrEmpty(result.UserMessage))
                 {
-                    MessageBox.Show(this, result.UserMessage, _gitMessage.Text);
+                    MessageBox.Show(this, result.UserMessage, _gitMessage.Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    return;
                 }
                 else
                 {
@@ -391,8 +461,10 @@ Inactive remote is completely invisible to git.");
                         _questionAutoPullBehaviourCaption.Text,
                         MessageBoxButtons.YesNo) == DialogResult.Yes)
                 {
-                    FormRemoteProcess.ShowDialog(this, "remote update");
-                    _remoteManager.ConfigureRemotes(remote);
+                    UICommands.StartPullDialogAndPullImmediately(
+                        remote: remote,
+                        pullAction: AppSettings.PullAction.Fetch);
+                    _remotesManager.ConfigureRemotes(remote);
                     UICommands.RepoChangedNotifier.Notify();
                 }
             }
@@ -422,7 +494,7 @@ Inactive remote is completely invisible to git.");
                                 _questionDeleteRemoteCaption.Text,
                                 MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                var output = _remoteManager.RemoveRemote(_selectedRemote);
+                var output = _remotesManager.RemoveRemote(_selectedRemote);
                 if (!string.IsNullOrEmpty(output))
                 {
                     MessageBox.Show(this, output, _gitMessage.Text);
@@ -471,16 +543,6 @@ Inactive remote is completely invisible to git.");
             ThreadHelper.JoinableTaskFactory
                 .RunAsync(() => new Plink().ConnectAsync(url))
                 .FileAndForget();
-        }
-
-        private void PruneClick(object sender, EventArgs e)
-        {
-            if (_selectedRemote == null)
-            {
-                return;
-            }
-
-            FormRemoteProcess.ShowDialog(this, "remote prune " + _selectedRemote.Name);
         }
 
         private void RemoteBranchesDataError(object sender, DataGridViewDataErrorEventArgs e)
@@ -599,7 +661,7 @@ Inactive remote is completely invisible to git.");
             }
 
             // reset all controls and disable all buttons until we have a selection
-            _selectedRemote = Remotes.SelectedItems[0].Tag as GitRemote;
+            _selectedRemote = Remotes.SelectedItems[0].Tag as ConfigFileRemote;
             if (_selectedRemote == null)
             {
                 return;
@@ -615,11 +677,6 @@ Inactive remote is completely invisible to git.");
             BindBtnToggleState(_selectedRemote.Disabled);
             btnToggleState.Visible = true;
             flpnlRemoteManagement.Enabled = !_selectedRemote.Disabled;
-        }
-
-        private void UpdateBranchClick(object sender, EventArgs e)
-        {
-            FormRemoteProcess.ShowDialog(this, "remote update");
         }
 
         private void checkBoxSepPushUrl_CheckedChanged(object sender, EventArgs e)

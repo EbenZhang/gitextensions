@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Git;
 using GitCommands.Utils;
 using GitUI.CommandsDialogs.ResolveConflictsDialog;
 using GitUI.Hotkey;
@@ -152,7 +153,7 @@ namespace GitUI.CommandsDialogs
                     oldSelectedRow = ConflictedFiles.SelectedRows[0].Index;
                 }
 
-                ConflictedFiles.DataSource = Module.GetConflicts();
+                ConflictedFiles.DataSource = ThreadHelper.JoinableTaskFactory.Run(() => Module.GetConflictsAsync());
                 ConflictedFiles.Columns[0].DataPropertyName = nameof(ConflictData.Filename);
                 if (ConflictedFiles.Rows.Count > oldSelectedRow)
                 {
@@ -588,7 +589,7 @@ namespace GitUI.CommandsDialogs
                 }
                 else
                 {
-                    if (string.IsNullOrWhiteSpace(_mergetoolCmd) || string.IsNullOrWhiteSpace(_mergetoolPath))
+                    if (string.IsNullOrWhiteSpace(_mergetoolCmd) && string.IsNullOrWhiteSpace(_mergetoolPath))
                     {
                         MessageBox.Show(this, _noMergeToolConfigured.Text);
                         return false;
@@ -900,7 +901,7 @@ namespace GitUI.CommandsDialogs
                         "--",
                         item.Filename.QuoteNE()
                     };
-                    Module.RunGitCmd(args);
+                    Module.GitExecutable.GetOutput(args);
                 }
 
                 if (frm.KeepLocal)
@@ -952,7 +953,7 @@ namespace GitUI.CommandsDialogs
                         "--",
                         item.Filename.QuoteNE()
                     };
-                    Module.RunGitCmd(args);
+                    Module.GitExecutable.GetOutput(args);
                 }
 
                 if (frm.KeepRemote)
@@ -1004,7 +1005,7 @@ namespace GitUI.CommandsDialogs
                         "--",
                         item.Filename.QuoteNE()
                     };
-                    Module.RunGitCmd(args);
+                    Module.GitExecutable.GetOutput(args);
                 }
             }
 
@@ -1157,7 +1158,8 @@ namespace GitUI.CommandsDialogs
 
         private void DisableInvalidEntriesInConflictedFilesContextMenu(string fileName)
         {
-            var conflictedFileNames = Module.GetConflict(fileName);
+            var conflictedFileNames = ThreadHelper.JoinableTaskFactory.Run(() =>
+                Module.GetConflictAsync(fileName));
             if (conflictedFileNames.Local.Filename.IsNullOrEmpty())
             {
                 ContextSaveLocalAs.Enabled = false;
@@ -1204,7 +1206,7 @@ namespace GitUI.CommandsDialogs
                     "--",
                     filename.QuoteNE()
                 };
-                string output = Module.RunGitCmd(args);
+                string output = Module.GitExecutable.GetOutput(args);
                 form.AddMessageLine(output);
                 form.Done(isSuccess: string.IsNullOrWhiteSpace(output));
             }
@@ -1242,7 +1244,7 @@ namespace GitUI.CommandsDialogs
             ChooseBase = 4
         }
 
-        protected override bool ExecuteCommand(int cmd)
+        protected override CommandStatus ExecuteCommand(int cmd)
         {
             var command = (Commands)cmd;
 

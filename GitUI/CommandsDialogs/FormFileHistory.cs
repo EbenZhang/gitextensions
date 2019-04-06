@@ -8,7 +8,6 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.Utils;
 using GitExtUtils.GitUI;
 using GitUI.Properties;
 using JetBrains.Annotations;
@@ -27,6 +26,7 @@ namespace GitUI.CommandsDialogs
         private readonly FilterBranchHelper _filterBranchHelper;
         private readonly FormBrowseMenus _formBrowseMenus;
         private readonly IFullPathResolver _fullPathResolver;
+        private readonly FormFileHistoryController _controller = new FormFileHistoryController();
 
         private BuildReportTabPageExtension _buildReportTabPageExtension;
 
@@ -55,6 +55,11 @@ namespace GitUI.CommandsDialogs
 
             _commitDataManager = new CommitDataManager(() => Module);
             _fullPathResolver = new FullPathResolver(() => Module.WorkingDir);
+
+            CommitDiff.EscapePressed += Close;
+            View.EscapePressed += Close;
+            Diff.EscapePressed += Close;
+            Blame.EscapePressed += Close;
 
             copyToClipboardToolStripMenuItem.SetRevisionFunc(() => FileChanges.GetSelectedRevisions());
 
@@ -107,8 +112,14 @@ namespace GitUI.CommandsDialogs
             bool blameTabExists = tabControl1.Contains(BlameTab);
 
             UpdateFollowHistoryMenuItems();
+
             fullHistoryToolStripMenuItem.Checked = AppSettings.FullHistoryInFileHistory;
-            ShowFullHistory.Checked = AppSettings.FullHistoryInFileHistory;
+            showFullHistoryToolStripMenuItem.Checked = AppSettings.FullHistoryInFileHistory;
+            simplifyMergesToolStripMenuItem.Checked = AppSettings.SimplifyMergesInFileHistory;
+            simplifyMergesToolStripMenuItem.Enabled = AppSettings.FullHistoryInFileHistory;
+            simplifyMergesContextMenuItem.Checked = AppSettings.SimplifyMergesInFileHistory;
+            simplifyMergesContextMenuItem.Enabled = AppSettings.FullHistoryInFileHistory;
+
             loadHistoryOnShowToolStripMenuItem.Checked = AppSettings.LoadFileHistoryOnShow;
             loadBlameOnShowToolStripMenuItem.Checked = AppSettings.LoadBlameOnShow && blameTabExists;
             saveAsToolStripMenuItem.Visible = !isSubmodule;
@@ -190,37 +201,18 @@ namespace GitUI.CommandsDialogs
             {
                 var fileName = FileName;
 
-                // Replace windows path separator to Linux path separator.
-                // This is needed to keep the file history working when started from file tree in
-                // browse dialog.
-                fileName = fileName.ToPosixPath();
-
                 // we will need this later to look up proper casing for the file
                 var fullFilePath = _fullPathResolver.Resolve(fileName);
 
-                // The section below contains native windows (kernel32) calls
-                // and breaks on Linux. Only use it on Windows. Casing is only
-                // a Windows problem anyway.
-                if (EnvUtils.RunningOnWindows() && File.Exists(fullFilePath))
-                {
-                    // grab the 8.3 file path
-                    var shortPath = new StringBuilder(4096);
-                    NativeMethods.GetShortPathName(fullFilePath, shortPath, shortPath.Capacity);
-
-                    // use 8.3 file path to get properly cased full file path
-                    var longPath = new StringBuilder(4096);
-                    NativeMethods.GetLongPathName(shortPath.ToString(), longPath, longPath.Capacity);
-
-                    // remove the working directory and now we have a properly cased file name.
-                    fileName = longPath.ToString().Substring(Module.WorkingDir.Length).ToPosixPath();
-                }
-
-                if (fileName.StartsWith(Module.WorkingDir, StringComparison.InvariantCultureIgnoreCase))
+                if (_controller.TryGetExactPath(fullFilePath, out fileName))
                 {
                     fileName = fileName.Substring(Module.WorkingDir.Length);
                 }
 
-                FileName = fileName;
+                // Replace windows path separator to Linux path separator.
+                // This is needed to keep the file history working when started from file tree in
+                // browse dialog.
+                FileName = fileName.ToPosixPath();
 
                 var res = (revision: (string)null, path: $" \"{fileName}\"");
 
@@ -239,7 +231,6 @@ namespace GitUI.CommandsDialogs
                     {
                         "--format=\"%n\"",
                         "--name-only",
-                        "--format",
                         GitCommandHelpers.FindRenamesAndCopiesOpts(),
                         "--",
                         fileName.Quote()
@@ -250,7 +241,7 @@ namespace GitUI.CommandsDialogs
                     // keep a set of the file names already seen
                     var setOfFileNames = new HashSet<string> { fileName };
 
-                    var lines = Module.GetGitOutputLines(args, GitModule.LosslessEncoding);
+                    var lines = Module.GitExecutable.GetOutputLines(args, outputEncoding: GitModule.LosslessEncoding);
 
                     foreach (var line in lines.Select(GitModule.ReEncodeFileNameFromLossless))
                     {
@@ -280,7 +271,7 @@ namespace GitUI.CommandsDialogs
 
                 if (AppSettings.FullHistoryInFileHistory)
                 {
-                    res.revision = string.Concat(" --full-history --simplify-merges ", res.revision);
+                    res.revision = string.Concat(" --full-history ", AppSettings.SimplifyMergesInFileHistory ? "--simplify-merges " : string.Empty, res.revision);
                 }
 
                 return res;
@@ -385,7 +376,7 @@ namespace GitUI.CommandsDialogs
 
             if (_buildReportTabPageExtension == null)
             {
-                _buildReportTabPageExtension = new BuildReportTabPageExtension(tabControl1, _buildReportTabCaption.Text);
+                _buildReportTabPageExtension = new BuildReportTabPageExtension(() => Module, tabControl1, _buildReportTabCaption.Text);
             }
 
             _buildReportTabPageExtension.FillBuildReport(selectedRevisions.Count == 1 ? revision : null);
@@ -463,21 +454,47 @@ namespace GitUI.CommandsDialogs
             followFileHistoryRenamesToolStripMenuItem.Checked = AppSettings.FollowRenamesInFileHistoryExactOnly;
         }
 
+        private void showFullHistoryToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ToggleFullHistoryFlag();
+        }
+
         private void fullHistoryToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ToggleFullHistoryFlag();
         }
 
-        private void ShowFullHistory_Click(object sender, EventArgs e)
+        private void simplifyMergesContextMenuItem_Click(object sender, EventArgs e)
         {
-            ToggleFullHistoryFlag();
+            ToggleSimplifyMergesFlag();
+        }
+
+        private void simplifyMergesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ToggleSimplifyMergesFlag();
+        }
+
+        private void ToggleSimplifyMergesFlag()
+        {
+            AppSettings.SimplifyMergesInFileHistory = !AppSettings.SimplifyMergesInFileHistory;
+            simplifyMergesToolStripMenuItem.Checked = AppSettings.SimplifyMergesInFileHistory;
+            simplifyMergesContextMenuItem.Checked = AppSettings.SimplifyMergesInFileHistory;
+
+            if (AppSettings.FullHistoryInFileHistory)
+            {
+                LoadFileHistory();
+            }
         }
 
         private void ToggleFullHistoryFlag()
         {
             AppSettings.FullHistoryInFileHistory = !AppSettings.FullHistoryInFileHistory;
             fullHistoryToolStripMenuItem.Checked = AppSettings.FullHistoryInFileHistory;
-            ShowFullHistory.Checked = AppSettings.FullHistoryInFileHistory;
+            showFullHistoryToolStripMenuItem.Checked = AppSettings.FullHistoryInFileHistory;
+
+            simplifyMergesContextMenuItem.Enabled = AppSettings.FullHistoryInFileHistory;
+            simplifyMergesToolStripMenuItem.Enabled = AppSettings.FullHistoryInFileHistory;
+
             LoadFileHistory();
         }
 

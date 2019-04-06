@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace GitCommands
     public static class ExecutableExtensions
     {
         private static readonly Regex _ansiCodePattern = new Regex(@"\u001B[\u0040-\u005F].*?[\u0040-\u007E]", RegexOptions.Compiled);
-        private static readonly Encoding _defaultOutputEncoding = GitModule.SystemEncoding;
+        private static readonly Lazy<Encoding> _defaultOutputEncoding = new Lazy<Encoding>(() => GitModule.SystemEncoding, false);
 
         /// <summary>
         /// Launches a process for the executable and returns its output.
@@ -68,7 +69,7 @@ namespace GitCommands
         {
             if (outputEncoding == null)
             {
-                outputEncoding = _defaultOutputEncoding;
+                outputEncoding = _defaultOutputEncoding.Value;
             }
 
             if (cache != null && cache.TryGet(arguments, out var output, out var error))
@@ -183,11 +184,9 @@ namespace GitCommands
             Encoding outputEncoding = null,
             bool stripAnsiEscapeCodes = true)
         {
-            // TODO make this method async, maybe via IAsyncEnumerable<...>?
-
             if (outputEncoding == null)
             {
-                outputEncoding = _defaultOutputEncoding;
+                outputEncoding = _defaultOutputEncoding.Value;
             }
 
             using (var process = executable.Start(arguments, createWindow: false, redirectInput: input != null, redirectOutput: true, outputEncoding))
@@ -224,6 +223,27 @@ namespace GitCommands
 
                 process.WaitForExit();
             }
+        }
+
+        /// <summary>
+        /// Launches a process for the executable and returns output lines as they become available.
+        /// </summary>
+        /// <param name="executable">The executable from which to launch a process.</param>
+        /// <param name="arguments">The arguments to pass to the executable</param>
+        /// <param name="writeInput">A callback that writes bytes to the process's standard input stream, or <c>null</c> if no input is required.</param>
+        /// <param name="outputEncoding">The text encoding to use when decoding bytes read from the process's standard output and standard error streams, or <c>null</c> if the default encoding is to be used.</param>
+        /// <param name="stripAnsiEscapeCodes">A flag indicating whether ANSI escape codes should be removed from output strings.</param>
+        /// <returns>An enumerable sequence of lines that yields lines as they become available. Lines from standard output are returned first, followed by lines from standard error.</returns>
+        [MustUseReturnValue("If output lines are not required, use " + nameof(RunCommand) + " instead")]
+        public static async Task<IEnumerable<string>> GetOutputLinesAsync(
+            this IExecutable executable,
+            ArgumentString arguments = default,
+            Action<StreamWriter> writeInput = null,
+            Encoding outputEncoding = null,
+            bool stripAnsiEscapeCodes = true)
+        {
+            var result = await executable.ExecuteAsync(arguments, writeInput, outputEncoding, stripAnsiEscapeCodes);
+            return result.StandardOutput.SplitLines().Concat(result.StandardError.SplitLines());
         }
 
         /// <summary>
@@ -270,7 +290,7 @@ namespace GitCommands
         {
             if (outputEncoding == null)
             {
-                outputEncoding = _defaultOutputEncoding;
+                outputEncoding = _defaultOutputEncoding.Value;
             }
 
             using (var process = executable.Start(arguments, createWindow: false, redirectInput: writeInput != null, redirectOutput: true, outputEncoding))

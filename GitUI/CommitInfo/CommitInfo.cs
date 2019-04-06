@@ -44,14 +44,15 @@ namespace GitUI.CommitInfo
             }
         }
 
-        private readonly TranslationString _containedInBranches = new TranslationString("Contained in branches:");
-        private readonly TranslationString _containedInNoBranch = new TranslationString("Contained in no branch");
-        private readonly TranslationString _containedInTags = new TranslationString("Contained in tags:");
-        private readonly TranslationString _containedInNoTag = new TranslationString("Contained in no tag");
-        private readonly TranslationString _trsLinksRelatedToRevision = new TranslationString("Related links:");
-        private readonly TranslationString _derivesFromTag = new TranslationString("Derives from tag:");
-        private readonly TranslationString _derivesFromNoTag = new TranslationString("Derives from no tag");
-        private readonly TranslationString _plusCommits = new TranslationString("commits");
+        private static readonly TranslationString _copyLink = new TranslationString("Copy &link ({0})");
+        private static readonly TranslationString _containedInBranches = new TranslationString("Contained in branches:");
+        private static readonly TranslationString _containedInNoBranch = new TranslationString("Contained in no branch");
+        private static readonly TranslationString _containedInTags = new TranslationString("Contained in tags:");
+        private static readonly TranslationString _containedInNoTag = new TranslationString("Contained in no tag");
+        private static readonly TranslationString _trsLinksRelatedToRevision = new TranslationString("Related links:");
+        private static readonly TranslationString _derivesFromTag = new TranslationString("Derives from tag:");
+        private static readonly TranslationString _derivesFromNoTag = new TranslationString("Derives from no tag");
+        private static readonly TranslationString _plusCommits = new TranslationString("commits");
 
         private const int MaximumDisplayedRefs = 20;
         private readonly ILinkFactory _linkFactory = new LinkFactory();
@@ -61,7 +62,7 @@ namespace GitUI.CommitInfo
         private readonly IConfiguredLinkDefinitionsProvider _effectiveLinkDefinitionsProvider;
         private readonly IGitRevisionExternalLinksParser _gitRevisionExternalLinksParser;
         private readonly IExternalLinkRevisionParser _externalLinkRevisionParser;
-        private readonly IGitRemoteManager _gitRemoteManager;
+        private readonly IConfigFileRemoteSettingsManager _remotesManager;
         private readonly GitDescribeProvider _gitDescribeProvider;
         private readonly CancellationTokenSequence _asyncLoadCancellation = new CancellationTokenSequence();
 
@@ -78,7 +79,7 @@ namespace GitUI.CommitInfo
         private List<string> _branches;
         private string _branchInfo;
         private string _gitDescribeInfo;
-        [CanBeNull] private IList<string> _sortedRefs;
+        [CanBeNull] private IDictionary<string, int> _refsOrderDict;
         private int _revisionInfoHeight;
         private int _commitMessageHeight;
 
@@ -90,15 +91,23 @@ namespace GitUI.CommitInfo
             InitializeComponent();
             InitializeComplete();
 
-            UICommandsSourceSet += delegate { this.InvokeAsync(() => ReloadCommitInfo()).FileAndForget(); };
+            UICommandsSourceSet += delegate
+            {
+                this.InvokeAsync(() =>
+                {
+                    UICommandsSource.UICommandsChanged += UICommandsSource_UICommandsChanged;
+                    RefreshSortedRefs();
+                    ReloadCommitInfo();
+                }).FileAndForget();
+            };
 
             _commitDataManager = new CommitDataManager(() => Module);
 
             _commitDataBodyRenderer = new CommitDataBodyRenderer(() => Module, _linkFactory);
             _externalLinksStorage = new ExternalLinksStorage();
             _effectiveLinkDefinitionsProvider = new ConfiguredLinkDefinitionsProvider(_externalLinksStorage);
-            _gitRemoteManager = new GitRemoteManager(() => Module);
-            _externalLinkRevisionParser = new ExternalLinkRevisionParser(_gitRemoteManager);
+            _remotesManager = new ConfigFileRemoteSettingsManager(() => Module);
+            _externalLinkRevisionParser = new ExternalLinkRevisionParser(_remotesManager);
             _gitRevisionExternalLinksParser = new GitRevisionExternalLinksParser(_effectiveLinkDefinitionsProvider, _externalLinkRevisionParser);
             _gitDescribeProvider = new GitDescribeProvider(() => Module);
 
@@ -122,6 +131,21 @@ namespace GitUI.CommitInfo
                     .Throttle(TimeSpan.FromMilliseconds(100))
                     .ObserveOn(MainThreadScheduler.Instance)
                     .Subscribe(_ => handler(_.EventArgs));
+
+            commitInfoHeader.SetContextMenuStrip(commitInfoContextMenuStrip);
+        }
+
+        private void UICommandsSource_UICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
+        {
+            RefreshSortedRefs();
+        }
+
+        private void RefreshSortedRefs()
+        {
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await LoadSortedRefsAsync();
+            }).FileAndForget();
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -176,6 +200,30 @@ namespace GitUI.CommitInfo
             ReloadCommitInfo();
         }
 
+        private async Task LoadSortedRefsAsync()
+        {
+            ThreadHelper.AssertOnUIThread();
+            _refsOrderDict = null;
+
+            await TaskScheduler.Default.SwitchTo();
+            var refsOrderDict = ToDictionary(Module.GetSortedRefs());
+
+            await this.SwitchToMainThreadAsync();
+            _refsOrderDict = refsOrderDict;
+            UpdateRevisionInfo();
+
+            IDictionary<string, int> ToDictionary(IReadOnlyList<string> list)
+            {
+                var dict = new Dictionary<string, int>();
+                for (int i = 0; i < list.Count; i++)
+                {
+                    dict.Add(list[i], i);
+                }
+
+                return dict;
+            }
+        }
+
         private void ReloadCommitInfo()
         {
             showContainedInBranchesToolStripMenuItem.Checked = AppSettings.CommitInfoShowContainedInBranchesLocal;
@@ -208,10 +256,11 @@ namespace GitUI.CommitInfo
             {
                 var data = _commitDataManager.CreateFromRevision(_revision, _children);
 
-                if (_revision != null && _revision.Body == null)
+                if (_revision != null && (_revision.Body == null || (AppSettings.ShowGitNotes && !_revision.HasNotes)))
                 {
                     _commitDataManager.UpdateBody(data, out _);
                     _revision.Body = data.Body;
+                    _revision.HasNotes = true;
                 }
 
                 var commitMessage = _commitDataBodyRenderer.Render(data, showRevisionsAsLinks: CommandClickedEvent != null);
@@ -226,11 +275,6 @@ namespace GitUI.CommitInfo
                 var cancellationToken = _asyncLoadCancellation.Next();
 
                 ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadLinksForRevisionAsync(_revision)).FileAndForget();
-
-                if (_sortedRefs == null)
-                {
-                    ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadSortedRefsAsync()).FileAndForget();
-                }
 
                 // No branch/tag data for artificial commands
 
@@ -290,15 +334,6 @@ namespace GitUI.CommitInfo
 
                         return $"{WebUtility.HtmlEncode(_trsLinksRelatedToRevision.Text)} {result}";
                     }
-                }
-
-                async Task LoadSortedRefsAsync()
-                {
-                    await TaskScheduler.Default.SwitchTo(alwaysYield: true);
-                    _sortedRefs = Module.GetSortedRefs().ToList();
-
-                    await this.SwitchToMainThreadAsync(cancellationToken);
-                    UpdateRevisionInfo();
                 }
 
                 async Task LoadAnnotatedTagInfoAsync(IReadOnlyList<IGitRef> refs)
@@ -429,7 +464,7 @@ namespace GitUI.CommitInfo
 
         private void UpdateRevisionInfo()
         {
-            if (_sortedRefs != null)
+            if (_refsOrderDict != null)
             {
                 if (_annotatedTagsMessages != null &&
                     _annotatedTagsMessages.Count > 0 &&
@@ -445,13 +480,13 @@ namespace GitUI.CommitInfo
                         .Select(r => r.LocalName)
                         .ToList();
 
-                    thisRevisionTagNames.Sort(new ItemTpComparer(_sortedRefs, "refs/tags/"));
+                    thisRevisionTagNames.Sort(new ItemTpComparer(_refsOrderDict, "refs/tags/"));
                     _annotatedTagsInfo = GetAnnotatedTagsInfo(thisRevisionTagNames, _annotatedTagsMessages);
                 }
 
                 if (_tags != null && string.IsNullOrEmpty(_tagInfo))
                 {
-                    _tags.Sort(new ItemTpComparer(_sortedRefs, "refs/tags/"));
+                    _tags.Sort(new ItemTpComparer(_refsOrderDict, "refs/tags/"));
                     if (_tags.Count > MaximumDisplayedRefs)
                     {
                         _tags[MaximumDisplayedRefs - 2] = "…";
@@ -464,7 +499,7 @@ namespace GitUI.CommitInfo
 
                 if (_branches != null && string.IsNullOrEmpty(_branchInfo))
                 {
-                    _branches.Sort(new ItemTpComparer(_sortedRefs, "refs/heads/"));
+                    _branches.Sort(new ItemTpComparer(_refsOrderDict, "refs/heads/"));
                     if (_branches.Count > MaximumDisplayedRefs)
                     {
                         _branches[MaximumDisplayedRefs - 2] = "…";
@@ -573,6 +608,27 @@ namespace GitUI.CommitInfo
             }
         }
 
+        private void commitInfoContextMenuStrip_Opening(object sender, CancelEventArgs e)
+        {
+            var rtb = (sender as ContextMenuStrip)?.SourceControl as RichTextBox;
+            if (rtb == null)
+            {
+                copyLinkToolStripMenuItem.Visible = false;
+                return;
+            }
+
+            int charIndex = rtb.GetCharIndexFromPosition(rtb.PointToClient(MousePosition));
+            string link = rtb.GetLink(charIndex);
+            copyLinkToolStripMenuItem.Visible = link != null;
+            copyLinkToolStripMenuItem.Text = string.Format(_copyLink.Text, link);
+            copyLinkToolStripMenuItem.Tag = link;
+        }
+
+        private void copyLinkToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ClipboardUtil.TrySetText(copyLinkToolStripMenuItem.Tag as string);
+        }
+
         private void showContainedInBranchesToolStripMenuItem_Click(object sender, EventArgs e)
         {
             AppSettings.CommitInfoShowContainedInBranchesLocal = !AppSettings.CommitInfoShowContainedInBranchesLocal;
@@ -618,6 +674,8 @@ namespace GitUI.CommitInfo
         private void addNoteToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Module.EditNotes(_revision.ObjectId);
+            _revision.HasNotes = false;
+            _revision.Body = null;
             ReloadCommitInfo();
         }
 
@@ -712,12 +770,12 @@ namespace GitUI.CommitInfo
 
         private sealed class ItemTpComparer : IComparer<string>
         {
-            private readonly IList<string> _otherList;
+            private readonly IDictionary<string, int> _orderDict;
             private readonly string _prefix;
 
-            public ItemTpComparer(IList<string> otherList, string prefix)
+            public ItemTpComparer(IDictionary<string, int> orderDict, string prefix)
             {
-                _otherList = otherList;
+                _orderDict = orderDict;
                 _prefix = prefix;
             }
 
@@ -727,21 +785,18 @@ namespace GitUI.CommitInfo
 
                 int IndexOf(string s)
                 {
-                    var head = s.StartsWith("remotes/") ? "refs/" : _prefix;
-                    var tail = s;
-                    var headLength = head.Length;
-                    var length = headLength + s.Length;
-
-                    for (var i = 0; i < _otherList.Count; i++)
+                    if (s.StartsWith("remotes/"))
                     {
-                        var other = _otherList[i];
+                        s = "refs/" + s;
+                    }
+                    else
+                    {
+                        s = _prefix + s;
+                    }
 
-                        if (other.Length == length &&
-                            other.StartsWith(head) &&
-                            other.IndexOf(tail, headLength) == headLength)
-                        {
-                            return i;
-                        }
+                    if (_orderDict.TryGetValue(s, out var index))
+                    {
+                        return index;
                     }
 
                     return -1;

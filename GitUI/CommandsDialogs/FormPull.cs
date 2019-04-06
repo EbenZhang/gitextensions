@@ -97,11 +97,13 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _formTitleFetch = new TranslationString("Fetch ({0})");
         private readonly TranslationString _buttonPull = new TranslationString("&Pull");
         private readonly TranslationString _buttonFetch = new TranslationString("&Fetch");
+
+        private readonly TranslationString _pullFetchPruneAllConfirmation = new TranslationString("Warning! The fetch with prune will remove all the remote-tracking references which no longer exist on remotes. Do you want to proceed?");
         #endregion
 
         private const string AllRemotes = "[ All ]";
 
-        private readonly IGitRemoteManager _remoteManager;
+        private readonly IConfigFileRemoteSettingsManager _remotesManager;
         private readonly IFullPathResolver _fullPathResolver;
         private readonly string _branch;
 
@@ -125,7 +127,7 @@ namespace GitUI.CommandsDialogs
             helpImageDisplayUserControl1.Visible = !AppSettings.DontShowHelpImages;
             helpImageDisplayUserControl1.IsOnHoverShowImage2NoticeText = _hoverShowImageLabelText.Text;
 
-            _remoteManager = new GitRemoteManager(() => Module);
+            _remotesManager = new ConfigFileRemoteSettingsManager(() => Module);
             _branch = Module.GetSelectedBranch();
             BindRemotesDropDown(defaultRemote);
 
@@ -154,7 +156,15 @@ namespace GitUI.CommandsDialogs
                 case AppSettings.PullAction.FetchPruneAll:
                     Fetch.Checked = true;
                     Prune.Checked = true;
-                    _NO_TRANSLATE_Remotes.Text = AllRemotes;
+                    if (defaultRemote.IsNullOrEmpty())
+                    {
+                        _NO_TRANSLATE_Remotes.Text = AllRemotes;
+                    }
+                    else
+                    {
+                        _NO_TRANSLATE_Remotes.Text = defaultRemote;
+                    }
+
                     break;
                 case AppSettings.PullAction.Default:
                     Debug.Assert(false, "pullAction is not a valid action");
@@ -185,11 +195,11 @@ namespace GitUI.CommandsDialogs
         private void BindRemotesDropDown(string selectedRemoteName)
         {
             // refresh registered git remotes
-            var remotes = _remoteManager.LoadRemotes(false);
+            var remotes = _remotesManager.LoadRemotes(false);
 
             _NO_TRANSLATE_Remotes.Sorted = false;
-            _NO_TRANSLATE_Remotes.DataSource = new[] { new GitRemote { Name = AllRemotes } }.Union(remotes).ToList();
-            _NO_TRANSLATE_Remotes.DisplayMember = nameof(GitRemote.Name);
+            _NO_TRANSLATE_Remotes.DataSource = new[] { new ConfigFileRemote { Name = AllRemotes } }.Union(remotes).ToList();
+            _NO_TRANSLATE_Remotes.DisplayMember = nameof(ConfigFileRemote.Name);
             _NO_TRANSLATE_Remotes.SelectedIndex = -1;
             _NO_TRANSLATE_Remotes.ResizeDropDownWidth(AppSettings.BranchDropDownMinWidth, AppSettings.BranchDropDownMaxWidth);
 
@@ -216,8 +226,34 @@ namespace GitUI.CommandsDialogs
             }
         }
 
-        public DialogResult PullAndShowDialogWhenFailed(IWin32Window owner)
+        public DialogResult PullAndShowDialogWhenFailed(IWin32Window owner, string remote, AppSettings.PullAction pullAction)
         {
+            // Special case for "Fetch and prune" and "Fetch and prune all" to make sure user confirms the action.
+            if (pullAction == AppSettings.PullAction.FetchPruneAll)
+            {
+                string messageBoxTitle = null;
+                if (remote.IsNullOrEmpty())
+                {
+                    messageBoxTitle = string.Format(_pruneFromCaption.Text, AllRemotes);
+                }
+                else
+                {
+                    messageBoxTitle = string.Format(_pruneFromCaption.Text, remote);
+                }
+
+                bool isActionConfirmed = AppSettings.DontConfirmFetchAndPruneAll
+                                         || MessageBox.Show(
+                                             this,
+                                             _pullFetchPruneAllConfirmation.Text,
+                                             messageBoxTitle,
+                                             MessageBoxButtons.YesNo) == DialogResult.Yes;
+
+                if (!isActionConfirmed)
+                {
+                    return DialogResult.Cancel;
+                }
+            }
+
             DialogResult result = PullChanges(owner);
 
             if (result == DialogResult.No)
@@ -730,7 +766,7 @@ namespace GitUI.CommandsDialogs
                     "--name-only",
                     remoteBranchName.QuoteNE()
                 };
-                remoteBranchName = Module.RunGitCmd(args).Trim();
+                remoteBranchName = Module.GitExecutable.GetOutput(args).Trim();
             }
 
             return remoteBranchName;
@@ -779,7 +815,7 @@ namespace GitUI.CommandsDialogs
 
                 if (IsPullAll())
                 {
-                    foreach (var remote in (IEnumerable<GitRemote>)_NO_TRANSLATE_Remotes.DataSource)
+                    foreach (var remote in (IEnumerable<ConfigFileRemote>)_NO_TRANSLATE_Remotes.DataSource)
                     {
                         if (!remote.Name.IsNullOrWhiteSpace() && remote.Name != AllRemotes)
                         {
@@ -999,6 +1035,9 @@ namespace GitUI.CommandsDialogs
                 _form = form;
             }
 
+            public string Title => _form.Text;
+            public string FetchTitleText => _form._formTitleFetch.Text;
+            public string PullTitleText => _form._formTitlePull.Text;
             public RadioButton Merge => _form.Merge;
             public RadioButton Rebase => _form.Rebase;
             public RadioButton Fetch => _form.Fetch;

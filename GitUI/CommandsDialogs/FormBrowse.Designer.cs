@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using System.Drawing;
+using System.Windows.Forms;
 
 namespace GitUI.CommandsDialogs
 {
@@ -51,7 +52,7 @@ namespace GitUI.CommandsDialogs
             this.fetchAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fetchPruneAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setDefaultPullButtonActionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripButtonPush = new System.Windows.Forms.ToolStripButton();
+            this.toolStripButtonPush = new GitUI.CommandsDialogs.ToolStripPushButton();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripFileExplorer = new System.Windows.Forms.ToolStripButton();
             this.GitBash = new System.Windows.Forms.ToolStripButton();
@@ -284,7 +285,7 @@ namespace GitUI.CommandsDialogs
             this.RefreshButton.Name = "RefreshButton";
             this.RefreshButton.Size = new System.Drawing.Size(23, 22);
             this.RefreshButton.ToolTipText = "Refresh";
-            this.RefreshButton.Click += new System.EventHandler(this.RefreshButtonClick);
+            this.RefreshButton.Click += new System.EventHandler(this.RefreshToolStripMenuItemClick);
             // 
             // toolStripSeparator0
             // 
@@ -448,10 +449,12 @@ namespace GitUI.CommandsDialogs
             // toolStripButtonCommit
             // 
             this.toolStripButtonCommit.Image = global::GitUI.Properties.Images.RepoStateClean;
+            this.toolStripButtonCommit.ImageAlign = ContentAlignment.MiddleLeft;
             this.toolStripButtonCommit.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonCommit.Name = "toolStripButtonCommit";
             this.toolStripButtonCommit.Size = new System.Drawing.Size(71, 22);
             this.toolStripButtonCommit.Text = "Commit";
+            this.toolStripButtonCommit.TextAlign = ContentAlignment.MiddleLeft;
             this.toolStripButtonCommit.Click += new System.EventHandler(this.CommitToolStripMenuItemClick);
             // 
             // toolStripButtonPull
@@ -1028,7 +1031,7 @@ namespace GitUI.CommandsDialogs
             this.manageSubmodulesToolStripMenuItem.Image = global::GitUI.Properties.Images.SubmodulesManage;
             this.manageSubmodulesToolStripMenuItem.Name = "manageSubmodulesToolStripMenuItem";
             this.manageSubmodulesToolStripMenuItem.Size = new System.Drawing.Size(221, 22);
-            this.manageSubmodulesToolStripMenuItem.Text = "Submodules...";
+            this.manageSubmodulesToolStripMenuItem.Text = "Manage submodules...";
             this.manageSubmodulesToolStripMenuItem.Click += new System.EventHandler(this.ManageSubmodulesToolStripMenuItemClick);
             // 
             // updateAllSubmodulesToolStripMenuItem
@@ -1805,7 +1808,7 @@ namespace GitUI.CommandsDialogs
         private ToolStripButton RefreshButton;
         private ToolStripSeparator toolStripSeparator5;
         private ToolStripTextBox toolStripRevisionFilterTextBox;
-        private ToolStripButton toolStripButtonPush;
+        private ToolStripPushButton toolStripButtonPush;
         private ToolStripLabel toolStripRevisionFilterLabel;
         private ToolStripSplitButton toolStripSplitStash;
         private ToolStripMenuItem stashChangesToolStripMenuItem;

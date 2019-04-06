@@ -3,7 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using GitCommands;
+using GitCommands.Git;
+using GitUI;
 using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 using NUnit.Framework;
 
 namespace GitCommandsTests
@@ -313,8 +316,10 @@ namespace GitCommandsTests
         [Test]
         public void GetRemotes()
         {
-            var lines = new[]
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
+                var lines = new[]
+                {
                 "RussKie\tgit://github.com/RussKie/gitextensions.git (fetch)",
                 "RussKie\tgit://github.com/RussKie/gitextensions.git (push)",
                 "origin\tgit@github.com:drewnoakes/gitextensions.git (fetch)",
@@ -327,32 +332,33 @@ namespace GitCommandsTests
                 "with-space\tc:\\Bare Repo (push)"
             };
 
-            using (_executable.StageOutput("remote -v", string.Join("\n", lines)))
-            {
-                var remotes = _gitModule.GetRemotes();
+                using (_executable.StageOutput("remote -v", string.Join("\n", lines)))
+                {
+                    var remotes = await _gitModule.GetRemotesAsync();
 
-                Assert.AreEqual(5, remotes.Count);
+                    Assert.AreEqual(5, remotes.Count);
 
-                Assert.AreEqual("RussKie", remotes[0].Name);
-                Assert.AreEqual("git://github.com/RussKie/gitextensions.git", remotes[0].FetchUrl);
-                Assert.AreEqual("git://github.com/RussKie/gitextensions.git", remotes[0].PushUrl);
+                    Assert.AreEqual("RussKie", remotes[0].Name);
+                    Assert.AreEqual("git://github.com/RussKie/gitextensions.git", remotes[0].FetchUrl);
+                    Assert.AreEqual("git://github.com/RussKie/gitextensions.git", remotes[0].PushUrl);
 
-                Assert.AreEqual("origin", remotes[1].Name);
-                Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[1].FetchUrl);
-                Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[1].PushUrl);
+                    Assert.AreEqual("origin", remotes[1].Name);
+                    Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[1].FetchUrl);
+                    Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[1].PushUrl);
 
-                Assert.AreEqual("upstream", remotes[2].Name);
-                Assert.AreEqual("git@github.com:gitextensions/gitextensions.git", remotes[2].FetchUrl);
-                Assert.AreEqual("git@github.com:gitextensions/gitextensions.git", remotes[2].PushUrl);
+                    Assert.AreEqual("upstream", remotes[2].Name);
+                    Assert.AreEqual("git@github.com:gitextensions/gitextensions.git", remotes[2].FetchUrl);
+                    Assert.AreEqual("git@github.com:gitextensions/gitextensions.git", remotes[2].PushUrl);
 
-                Assert.AreEqual("asymmetrical", remotes[3].Name);
-                Assert.AreEqual("https://github.com/gitextensions/fetch.git", remotes[3].FetchUrl);
-                Assert.AreEqual("https://github.com/gitextensions/push.git", remotes[3].PushUrl);
+                    Assert.AreEqual("asymmetrical", remotes[3].Name);
+                    Assert.AreEqual("https://github.com/gitextensions/fetch.git", remotes[3].FetchUrl);
+                    Assert.AreEqual("https://github.com/gitextensions/push.git", remotes[3].PushUrl);
 
-                Assert.AreEqual("with-space", remotes[4].Name);
-                Assert.AreEqual("c:\\Bare Repo", remotes[4].FetchUrl);
-                Assert.AreEqual("c:\\Bare Repo", remotes[4].PushUrl);
-            }
+                    Assert.AreEqual("with-space", remotes[4].Name);
+                    Assert.AreEqual("c:\\Bare Repo", remotes[4].FetchUrl);
+                    Assert.AreEqual("c:\\Bare Repo", remotes[4].PushUrl);
+                }
+            });
         }
 
         [Test]
@@ -468,7 +474,7 @@ namespace GitCommandsTests
                 foreach (var helper in moduleTestHelpers)
                 {
                     // Submodules require at least one commit
-                    helper.Module.RunGitCmd(@"commit --allow-empty -m ""Initial commit""");
+                    helper.Module.GitExecutable.GetOutput(@"commit --allow-empty -m ""Initial commit""");
                 }
 
                 for (int i = numModules - 1; i > 0; --i)
@@ -477,13 +483,13 @@ namespace GitCommandsTests
                     var child = moduleTestHelpers[i];
 
                     // Add child as submodule of parent
-                    parent.Module.RunGitCmd(GitCommandHelpers.AddSubmoduleCmd(child.Module.WorkingDir.ToPosixPath(), $"repo{i}", null, true));
-                    parent.Module.RunGitCmd(@"commit -am ""Add submodule""");
+                    parent.Module.GitExecutable.GetOutput(GitCommandHelpers.AddSubmoduleCmd(child.Module.WorkingDir.ToPosixPath(), $"repo{i}", null, true));
+                    parent.Module.GitExecutable.GetOutput(@"commit -am ""Add submodule""");
                 }
 
                 // Init all modules of root
                 var root = moduleTestHelpers[0];
-                root.Module.RunGitCmd(@"submodule update --init --recursive");
+                root.Module.GitExecutable.GetOutput(@"submodule update --init --recursive");
 
                 var paths = root.Module.GetSubmodulesLocalPaths(recursive: true);
                 Assert.AreEqual(3, paths.Count);
@@ -500,6 +506,88 @@ namespace GitCommandsTests
                     helper.Dispose();
                 }
             }
+        }
+
+        [Test]
+        public void GetSuperprojectCurrentCheckout()
+        {
+            // Create super and sub repo
+            using (CommonTestUtils.GitModuleTestHelper moduleTestHelperSuper = new CommonTestUtils.GitModuleTestHelper("super repo"),
+                                                       moduleTestHelperSub = new CommonTestUtils.GitModuleTestHelper("sub repo"))
+            {
+                // Inital commit in super project
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"commit --allow-empty -m ""Initial commit""");
+
+                // Submodules require at least one commit
+                moduleTestHelperSub.Module.GitExecutable.GetOutput(@"commit --allow-empty -m ""Empty commit""");
+
+                // Add submodule
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(GitCommandHelpers.AddSubmoduleCmd(moduleTestHelperSub.Module.WorkingDir.ToPosixPath(), "sub repo", null, true));
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"commit -am ""Add submodule""");
+                GitModule moduleSub = new GitModule(Path.Combine(moduleTestHelperSuper.Module.WorkingDir, "sub repo").ToPosixPath());
+
+                // Init submodule
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"submodule update --init --recursive");
+
+                // Commit in submodule
+                moduleSub.GitExecutable.GetOutput(@"commit --allow-empty -am ""First commit""");
+                string commitRef = moduleSub.GitExecutable.GetOutput("show HEAD").Split('\n')[0].Split(' ')[1];
+
+                // Update ref in superproject
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"add ""sub repo""");
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"commit -am ""Update submodule ref""");
+
+                // Assert
+                ThreadHelper.JoinableTaskFactory.Run(async () =>
+                {
+                    (char code, ObjectId commitId) = await moduleSub.GetSuperprojectCurrentCheckoutAsync();
+                    Assert.AreEqual(32, code);
+                    Assert.AreEqual(commitRef, commitId.ToString());
+                });
+            }
+        }
+
+        [TestCase(false, @"stash list")]
+        [TestCase(true, @"--no-optional-locks stash list")]
+        public void GetStashesCmd(bool noLocks, string expected)
+        {
+            Assert.AreEqual(expected, _gitModule.GetStashesCmd(noLocks).ToString());
+        }
+
+        [TestCase(@"-c diff.submodule=short -c diff.noprefix=false diff --no-color -M -C --cached extra -- ""new"" ""old""", "new", "old", true, "extra", false)]
+        [TestCase(@"-c diff.submodule=short -c diff.noprefix=false diff --no-color extra -- ""new""", "new", "old", false, "extra", false)]
+        [TestCase(@"--no-optional-locks -c diff.submodule=short -c diff.noprefix=false diff --no-color -M -C --cached extra -- ""new"" ""old""", "new", "old", true, "extra", true)]
+        public void GetCurrentChangesCmd(string expected, string fileName, [CanBeNull] string oldFileName, bool staged,
+            string extraDiffArguments, bool noLocks)
+        {
+            Assert.AreEqual(expected, _gitModule.GetCurrentChangesCmd(fileName, oldFileName, staged,
+                extraDiffArguments, noLocks).ToString());
+        }
+
+        [TestCase(@"for-each-ref --sort=-committerdate --format=""%(objectname) %(refname)"" refs/heads/", false)]
+        [TestCase(@"--no-optional-locks for-each-ref --sort=-committerdate --format=""%(objectname) %(refname)"" refs/heads/", true)]
+        public void GetSortedRefsCommand(string expected, bool noLocks)
+        {
+            Assert.AreEqual(expected, _gitModule.GetSortedRefsCommand(noLocks).ToString());
+        }
+
+        [TestCase(@"show-ref --dereference", true, true, false)]
+        [TestCase(@"show-ref --tags", true, false, false)]
+        [TestCase(@"for-each-ref --sort=-committerdate refs/heads/ --format=""%(objectname) %(refname)""", false, true, false)]
+        [TestCase(@"--no-optional-locks for-each-ref --sort=-committerdate refs/heads/ --format=""%(objectname) %(refname)""", false, true, true)]
+        public void GetRefsCmd(string expected, bool tags, bool branches, bool noLocks)
+        {
+            Assert.AreEqual(expected, _gitModule.GetRefsCmd(tags, branches, noLocks).ToString());
+        }
+
+        [TestCase(false, @"-c core.safecrlf=false update-index --add --stdin")]
+        [TestCase(true, @"update-index --add --stdin")]
+        public void UpdateIndexCmd_should_add_core_safecrlf(bool showErrorsWhenStagingFiles, string expected)
+        {
+            var accessor = _gitModule.GetTestAccessor();
+
+            var actual = accessor.UpdateIndexCmd(showErrorsWhenStagingFiles).ToString();
+            Assert.AreEqual(expected, actual);
         }
     }
 }

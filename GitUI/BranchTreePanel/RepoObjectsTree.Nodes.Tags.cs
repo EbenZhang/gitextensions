@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitUI.BranchTreePanel.Interfaces;
 using GitUI.CommandsDialogs;
 using GitUI.Properties;
 using GitUIPluginInterfaces;
@@ -13,7 +14,7 @@ namespace GitUI.BranchTreePanel
 {
     partial class RepoObjectsTree
     {
-        private class TagNode : BaseBranchNode
+        private class TagNode : BaseBranchNode, IGitRefActions, ICanDelete
         {
             private readonly IGitRef _tagInfo;
 
@@ -38,14 +39,19 @@ namespace GitUI.BranchTreePanel
                 CreateBranch();
             }
 
-            public void CreateBranch()
+            public bool CreateBranch()
             {
-                UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, _tagInfo.ObjectId);
+                return UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, _tagInfo.ObjectId);
             }
 
-            public void Delete()
+            public bool Delete()
             {
-                UICommands.StartDeleteTagDialog(TreeViewNode.TreeView, _tagInfo.Name);
+                return UICommands.StartDeleteTagDialog(TreeViewNode.TreeView, _tagInfo.Name);
+            }
+
+            public bool Merge()
+            {
+                return UICommands.StartMergeBranchDialog(TreeViewNode.TreeView, FullPath);
             }
 
             protected override void ApplyStyle()
@@ -54,64 +60,65 @@ namespace GitUI.BranchTreePanel
                 TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = nameof(Images.TagHorizontal);
             }
 
-            public void Checkout()
+            public bool Checkout()
             {
                 using (var form = new FormCheckoutRevision(UICommands))
                 {
                     form.SetRevision(FullPath);
-                    form.ShowDialog(TreeViewNode.TreeView);
+                    return form.ShowDialog(TreeViewNode.TreeView) != DialogResult.Cancel;
                 }
             }
         }
 
-        private class TagTree : Tree
+        private sealed class TagTree : Tree
         {
             public TagTree(TreeNode treeNode, IGitUICommandsSource uiCommands)
                 : base(treeNode, uiCommands)
             {
-                uiCommands.UICommandsChanged += OnUICommandsChanged;
             }
 
-            private void OnUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
+            protected override Task OnAttachedAsync()
             {
-                if (TreeViewNode?.TreeView == null)
-                {
-                    return;
-                }
-
-                TreeViewNode.TreeView.SelectedNode = null;
+                return ReloadNodesAsync(LoadNodesAsync);
             }
 
-            protected override async Task LoadNodesAsync(CancellationToken token)
+            protected override Task PostRepositoryChangedAsync()
+            {
+                return ReloadNodesAsync(LoadNodesAsync);
+            }
+
+            private async Task<Nodes> LoadNodesAsync(CancellationToken token)
             {
                 await TaskScheduler.Default;
                 token.ThrowIfCancellationRequested();
-                FillTagTree(Module.GetTagRefs(GitModule.GetTagRefsSortOrder.ByName), token);
+                return FillTagTree(Module.GetTagRefs(GitModule.GetTagRefsSortOrder.ByName), token);
             }
 
-            private void FillTagTree(IEnumerable<IGitRef> tags, CancellationToken token)
+            private Nodes FillTagTree(IEnumerable<IGitRef> tags, CancellationToken token)
             {
-                var nodes = new Dictionary<string, BaseBranchNode>();
+                var nodes = new Nodes(this);
+                var pathToNodes = new Dictionary<string, BaseBranchNode>();
                 foreach (var tag in tags)
                 {
                     token.ThrowIfCancellationRequested();
                     var branchNode = new TagNode(this, tag.Name, tag);
-                    var parent = branchNode.CreateRootNode(nodes,
+                    var parent = branchNode.CreateRootNode(pathToNodes,
                         (tree, parentPath) => new BasePathNode(tree, parentPath));
                     if (parent != null)
                     {
-                        Nodes.AddNode(parent);
+                        nodes.AddNode(parent);
                     }
                 }
+
+                return nodes;
             }
 
-            protected override void FillTreeViewNode()
+            protected override void PostFillTreeViewNode(bool firstTime)
             {
-                base.FillTreeViewNode();
-
-                TreeViewNode.Text = $@"{Strings.Tags} ({Nodes.Count})";
-
-                TreeViewNode.Collapse();
+                if (firstTime)
+                {
+                    TreeViewNode.Collapse();
+                }
             }
         }
     }

@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.Git;
-using GitUI.CommandsDialogs;
-using GitUI.HelperDialogs;
+using GitCommands.Remotes;
+using GitUI.BranchTreePanel.Interfaces;
 using GitUI.Properties;
 using Microsoft.VisualStudio.Threading;
+using ResourceManager;
 
 namespace GitUI.BranchTreePanel
 {
@@ -17,26 +18,43 @@ namespace GitUI.BranchTreePanel
     {
         private sealed class RemoteBranchTree : Tree
         {
+            private readonly TranslationString _inactiveRemoteNodeLabel = new TranslationString("Inactive");
+
             public RemoteBranchTree(TreeNode treeNode, IGitUICommandsSource uiCommands)
                 : base(treeNode, uiCommands)
             {
-                // TODO unsubscribe this event as needed
-                uiCommands.UICommandsChanged += delegate { TreeViewNode.TreeView.SelectedNode = null; };
             }
 
-            protected override async Task LoadNodesAsync(CancellationToken token)
+            protected override Task OnAttachedAsync()
+            {
+                return ReloadNodesAsync(LoadNodesAsync);
+            }
+
+            protected override Task PostRepositoryChangedAsync()
+            {
+                return ReloadNodesAsync(LoadNodesAsync);
+            }
+
+            private async Task<Nodes> LoadNodesAsync(CancellationToken token)
             {
                 await TaskScheduler.Default;
                 token.ThrowIfCancellationRequested();
-                var nodes = new Dictionary<string, BaseBranchNode>();
+                var nodes = new Nodes(this);
+                var pathToNodes = new Dictionary<string, BaseBranchNode>();
 
-                var branches = Module.GetRefs()
+                var branches = Module.GetRefs(tags: true, branches: true, noLocks: true)
                     .Where(branch => branch.IsRemote && !branch.IsTag)
                     .OrderBy(branch => branch.Name)
                     .Select(branch => branch.Name);
 
                 token.ThrowIfCancellationRequested();
-                var remoteByName = Module.GetRemotes().ToDictionary(r => r.Name);
+
+                var enabledRemoteRepoNodes = new List<RemoteRepoNode>();
+                var remoteByName = (await Module.GetRemotesAsync().ConfigureAwaitRunInline()).ToDictionary(r => r.Name);
+
+                var remotesManager = new ConfigFileRemoteSettingsManager(() => Module);
+
+                // Create nodes for enabled remotes with branches
                 foreach (var branchPath in branches)
                 {
                     token.ThrowIfCancellationRequested();
@@ -45,36 +63,97 @@ namespace GitUI.BranchTreePanel
                     {
                         var remoteBranchNode = new RemoteBranchNode(this, branchPath);
                         var parent = remoteBranchNode.CreateRootNode(
-                            nodes,
+                            pathToNodes,
                             (tree, parentPath) => CreateRemoteBranchPathNode(tree, parentPath, remote));
+
                         if (parent != null)
                         {
-                            Nodes.AddNode(parent);
+                            enabledRemoteRepoNodes.Add((RemoteRepoNode)parent);
                         }
                     }
                 }
 
-                return;
+                // Create nodes for enabled remotes without branches
+                var enabledRemotesNoBranches = remotesManager.GetEnabledRemoteNamesWithoutBranches();
+                foreach (var remoteName in enabledRemotesNoBranches)
+                {
+                    if (remoteByName.TryGetValue(remoteName, out var remote))
+                    {
+                        var node = new RemoteRepoNode(this, remoteName, remotesManager, remote, true);
+                        enabledRemoteRepoNodes.Add(node);
+                    }
+                }
+
+                // Add enabled remote nodes in order
+                enabledRemoteRepoNodes
+                    .OrderBy(node => node.FullPath)
+                    .ForEach(node => nodes.AddNode(node));
+
+                // Add disabled remotes, if any
+                var disabledRemotes = remotesManager.GetDisabledRemotes();
+                if (disabledRemotes.Count > 0)
+                {
+                    var disabledRemoteRepoNodes = new List<RemoteRepoNode>();
+                    foreach (var remote in disabledRemotes.OrderBy(remote => remote.Name))
+                    {
+                        var node = new RemoteRepoNode(this, remote.Name, remotesManager, remote, false);
+                        disabledRemoteRepoNodes.Add(node);
+                    }
+
+                    var disabledFolderNode = new RemoteRepoFolderNode(this, _inactiveRemoteNodeLabel.Text);
+                    disabledRemoteRepoNodes
+                        .OrderBy(node => node.FullPath)
+                        .ForEach(node => disabledFolderNode.Nodes.AddNode(node));
+
+                    nodes.AddNode(disabledFolderNode);
+                }
+
+                return nodes;
 
                 BaseBranchNode CreateRemoteBranchPathNode(Tree tree, string parentPath, Remote remote)
                 {
                     if (parentPath == remote.Name)
                     {
-                        return new RemoteRepoNode(tree, parentPath, remote);
+                        return new RemoteRepoNode(tree, parentPath, remotesManager, remote, true);
                     }
 
                     return new BasePathNode(tree, parentPath);
                 }
             }
 
-            protected override void FillTreeViewNode()
+            protected override void PostFillTreeViewNode(bool firstTime)
             {
-                base.FillTreeViewNode();
-                TreeViewNode.Expand();
+                if (firstTime)
+                {
+                    TreeViewNode.Expand();
+                }
+            }
+
+            internal void PopupManageRemotesForm(string remoteName)
+            {
+                UICommands.StartRemotesDialog(TreeViewNode.TreeView, remoteName);
+            }
+
+            internal bool FetchAll()
+            {
+                UICommands.StartPullDialogAndPullImmediately(
+                    out bool pullCompleted,
+                    TreeViewNode.TreeView,
+                    pullAction: AppSettings.PullAction.FetchAll);
+                return pullCompleted;
+            }
+
+            internal bool FetchPruneAll()
+            {
+                UICommands.StartPullDialogAndPullImmediately(
+                    out bool pullCompleted,
+                    TreeViewNode.TreeView,
+                    pullAction: AppSettings.PullAction.FetchPruneAll);
+                return pullCompleted;
             }
         }
 
-        private sealed class RemoteBranchNode : BaseBranchNode
+        private sealed class RemoteBranchNode : BaseBranchNode, IGitRefActions, ICanDelete, ICanRename
         {
             public RemoteBranchNode(Tree tree, string fullPath) : base(tree, fullPath)
             {
@@ -91,16 +170,16 @@ namespace GitUI.BranchTreePanel
                 SelectRevision();
             }
 
-            public void Fetch()
+            public bool Fetch()
             {
                 var remoteBranchInfo = GetRemoteBranchInfo();
-                var cmd = Module.FetchCmd(remoteBranchInfo.Remote, remoteBranchInfo.BranchName,
-                    null, null);
-                var ret = FormRemoteProcess.ShowDialog(TreeViewNode.TreeView, Module, cmd);
-                if (ret)
-                {
-                    UICommands.RepoChangedNotifier.Notify();
-                }
+                UICommands.StartPullDialogAndPullImmediately(
+                    out bool pullCompleted,
+                    TreeViewNode.TreeView,
+                    remoteBranch: remoteBranchInfo.BranchName,
+                    remote: remoteBranchInfo.Remote,
+                    pullAction: AppSettings.PullAction.Fetch);
+                return pullCompleted;
             }
 
             private readonly struct RemoteBranchInfo
@@ -122,37 +201,30 @@ namespace GitUI.BranchTreePanel
                 return new RemoteBranchInfo(remote, branch);
             }
 
-            public void CreateBranch()
+            public bool CreateBranch()
             {
-                var objectId = Module.RevParse(FullPath);
-
-                if (objectId == null)
-                {
-                    MessageBox.Show($"Branch \"{FullPath}\" could not be resolved.");
-                }
-                else
-                {
-                    UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, objectId);
-                }
+                return UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, FullPath);
             }
 
-            public void Delete()
+            public bool Delete()
             {
                 var remoteBranchInfo = GetRemoteBranchInfo();
-                var cmd = new GitDeleteRemoteBranchesCmd(remoteBranchInfo.Remote, new[] { remoteBranchInfo.BranchName });
-                if (MessageBoxes.ConfirmDeleteRemoteBranch(TreeViewNode.TreeView,
-                    remoteBranchInfo.BranchName, remoteBranchInfo.Remote))
-                {
-                    UICommands.StartCommandLineProcessDialog(null, cmd);
-                }
+                return UICommands.StartDeleteRemoteBranchDialog(TreeViewNode.TreeView, remoteBranchInfo.Remote + '/' + remoteBranchInfo.BranchName);
             }
 
-            public void Checkout()
+            public bool Rename()
             {
-                using (var form = new FormCheckoutBranch(UICommands, FullPath, remote: true))
-                {
-                    form.ShowDialog(TreeViewNode.TreeView);
-                }
+                return UICommands.StartRenameDialog(TreeViewNode.TreeView, FullPath);
+            }
+
+            public bool Checkout()
+            {
+                return UICommands.StartCheckoutRemoteBranch(TreeViewNode.TreeView, FullPath);
+            }
+
+            public bool Merge()
+            {
+                return UICommands.StartMergeBranchDialog(TreeViewNode.TreeView, FullPath);
             }
 
             internal override void OnDoubleClick()
@@ -160,37 +232,24 @@ namespace GitUI.BranchTreePanel
                 Checkout();
             }
 
-            public void Merge()
+            public bool FetchAndMerge()
             {
-                using (var form = new FormMergeBranch(UICommands, FullPath))
-                {
-                    form.ShowDialog(TreeViewNode.TreeView);
-                }
+                return Fetch() && Merge();
             }
 
-            public void Rebase()
+            public bool FetchAndCheckout()
             {
-                using (var form = new FormRebase(UICommands, FullPath))
-                {
-                    form.ShowDialog(TreeViewNode.TreeView);
-                }
+                return Fetch() && Checkout();
             }
 
-            public void Reset()
+            public bool FetchAndCreateBranch()
             {
-                var objectId = Module.RevParse(FullPath);
+                return Fetch() && CreateBranch();
+            }
 
-                if (objectId == null)
-                {
-                    MessageBox.Show($"Branch \"{FullPath}\" could not be resolved.");
-                }
-                else
-                {
-                    using (var form = new FormResetCurrentBranch(UICommands, Module.GetRevision(objectId)))
-                    {
-                        form.ShowDialog(TreeViewNode.TreeView);
-                    }
-                }
+            public bool FetchAndRebase()
+            {
+                return Fetch() && Rebase();
             }
 
             protected override void ApplyStyle()
@@ -203,20 +262,50 @@ namespace GitUI.BranchTreePanel
         private sealed class RemoteRepoNode : BaseBranchNode
         {
             private readonly Remote _remote;
+            private readonly IConfigFileRemoteSettingsManager _remotesManager;
 
-            public RemoteRepoNode(Tree tree, string fullPath, Remote remote) : base(tree, fullPath)
+            public RemoteRepoNode(Tree tree, string fullPath, IConfigFileRemoteSettingsManager remotesManager, Remote remote, bool isEnabled)
+                : base(tree, fullPath)
             {
                 _remote = remote;
+                Enabled = isEnabled;
+                _remotesManager = remotesManager;
             }
 
-            public void Fetch()
-            {
-                var cmd = Module.FetchCmd(FullPath, null, null, null);
+            public bool Enabled { get; private set; }
 
-                if (FormRemoteProcess.ShowDialog(TreeViewNode.TreeView, Module, cmd))
+            public bool Fetch()
+            {
+                Trace.Assert(Enabled);
+                return DoFetch();
+            }
+
+            public bool Prune()
+            {
+                Trace.Assert(Enabled);
+                return DoPrune();
+            }
+
+            public void Enable(bool fetch)
+            {
+                Trace.Assert(!Enabled);
+                _remotesManager.ToggleRemoteState(Name, disabled: false);
+                if (fetch)
+                {
+                    // DoFetch invokes UICommands.RepoChangedNotifier.Notify
+                    DoFetch();
+                }
+                else
                 {
                     UICommands.RepoChangedNotifier.Notify();
                 }
+            }
+
+            public void Disable()
+            {
+                Trace.Assert(Enabled);
+                _remotesManager.ToggleRemoteState(Name, disabled: true);
+                UICommands.RepoChangedNotifier.Notify();
             }
 
             protected override void ApplyStyle()
@@ -246,6 +335,54 @@ namespace GitUI.BranchTreePanel
                 }
 
                 TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = imageKey;
+            }
+
+            internal override void OnDoubleClick()
+            {
+                PopupManageRemotesForm();
+            }
+
+            internal void PopupManageRemotesForm()
+            {
+                ((RemoteBranchTree)Tree).PopupManageRemotesForm(FullPath);
+            }
+
+            private bool DoFetch()
+            {
+                UICommands.StartPullDialogAndPullImmediately(
+                    out bool pullCompleted,
+                    TreeViewNode.TreeView,
+                    remote: FullPath,
+                    pullAction: AppSettings.PullAction.Fetch);
+                return pullCompleted;
+            }
+
+            private bool DoPrune()
+            {
+                UICommands.StartPullDialogAndPullImmediately(
+                    out bool pullCompleted,
+                    TreeViewNode.TreeView,
+                    remote: FullPath,
+                    pullAction: AppSettings.PullAction.FetchPruneAll);
+                return pullCompleted;
+            }
+        }
+
+        private sealed class RemoteRepoFolderNode : BaseBranchNode
+        {
+            public RemoteRepoFolderNode(Tree tree, string name) : base(tree, name)
+            {
+            }
+
+            protected override void ApplyStyle()
+            {
+                base.ApplyStyle();
+                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = nameof(Images.FolderClosed);
+            }
+
+            protected override string DisplayText()
+            {
+                return Name;
             }
         }
     }

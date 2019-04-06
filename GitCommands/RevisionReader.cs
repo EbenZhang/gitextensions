@@ -104,13 +104,15 @@ namespace GitCommands
 
             var arguments = BuildArguments(refFilterOptions, branchFilter, revisionFilter, pathFilter);
 
+#if TRACE
             var sw = Stopwatch.StartNew();
+#endif
 
             // This property is relatively expensive to call for every revision, so
             // cache it for the duration of the loop.
             var logOutputEncoding = module.LogOutputEncoding;
 
-            using (var process = module.RunGitCmdDetached(arguments, redirectOutput: true, outputEncoding: GitModule.LosslessEncoding))
+            using (var process = module.GitCommandRunner.RunDetached(arguments, redirectOutput: true, outputEncoding: GitModule.LosslessEncoding))
             {
                 token.ThrowIfCancellationRequested();
 
@@ -148,7 +150,9 @@ namespace GitCommands
                     }
                 }
 
+#if TRACE
                 Trace.WriteLine($"**** [{nameof(RevisionReader)}] Emitted {revisionCount} revisions in {sw.Elapsed.TotalMilliseconds:#,##0.#} ms. bufferSize={buffer.Length} poolCount={stringPool.Count}");
+#endif
             }
 
             if (!token.IsCancellationRequested)
@@ -426,7 +430,8 @@ namespace GitCommands
                 MessageEncoding = encodingName,
                 Subject = subject,
                 Body = body,
-                HasMultiLineMessage = !ReferenceEquals(subject, body)
+                HasMultiLineMessage = !ReferenceEquals(subject, body),
+                HasNotes = false
             };
 
             return true;

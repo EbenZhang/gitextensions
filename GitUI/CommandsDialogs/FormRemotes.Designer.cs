@@ -64,25 +64,22 @@ namespace GitUI.CommandsDialogs
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.Remotes = new UserControls.NativeListView();
+            this.Remotes = new GitUI.UserControls.NativeListView();
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
-            this.splitContainer3 = new System.Windows.Forms.SplitContainer();
+            this.panelDetails = new System.Windows.Forms.Panel();
+            this.label4 = new System.Windows.Forms.Label();
+            this.label5 = new System.Windows.Forms.Label();
+            this.label6 = new System.Windows.Forms.Label();
+            this.DefaultMergeWithCombo = new System.Windows.Forms.ComboBox();
+            this.RemoteRepositoryCombo = new System.Windows.Forms.ComboBox();
+            this.LocalBranchNameEdit = new System.Windows.Forms.TextBox();
+            this.SaveDefaultPushPull = new System.Windows.Forms.Button();
             this.RemoteBranches = new System.Windows.Forms.DataGridView();
             this.BranchName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.RemoteCombo = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.MergeWith = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.SaveDefaultPushPull = new System.Windows.Forms.Button();
-            this.LocalBranchNameEdit = new System.Windows.Forms.TextBox();
-            this.RemoteRepositoryCombo = new System.Windows.Forms.ComboBox();
-            this.DefaultMergeWithCombo = new System.Windows.Forms.ComboBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
-            this.UpdateBranch = new System.Windows.Forms.Button();
-            this.Prune = new System.Windows.Forms.Button();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.flpnlRemoteManagement.SuspendLayout();
             this.flowLayoutPanel2.SuspendLayout();
@@ -99,12 +96,8 @@ namespace GitUI.CommandsDialogs
             this.panel1.SuspendLayout();
             this.tabPage2.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer3)).BeginInit();
-            this.splitContainer3.Panel1.SuspendLayout();
-            this.splitContainer3.Panel2.SuspendLayout();
-            this.splitContainer3.SuspendLayout();
+            this.panelDetails.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.RemoteBranches)).BeginInit();
-            this.flowLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // flpnlRemoteManagement
@@ -117,7 +110,7 @@ namespace GitUI.CommandsDialogs
             this.flpnlRemoteManagement.Controls.Add(this.pnlMgtPuttySsh, 0, 1);
             this.flpnlRemoteManagement.Controls.Add(this.pnlMgtDetails, 0, 0);
             this.flpnlRemoteManagement.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flpnlRemoteManagement.Location = new System.Drawing.Point(3, 17);
+            this.flpnlRemoteManagement.Location = new System.Drawing.Point(3, 16);
             this.flpnlRemoteManagement.Name = "flpnlRemoteManagement";
             this.flpnlRemoteManagement.RowCount = 3;
             this.flpnlRemoteManagement.RowStyles.Add(new System.Windows.Forms.RowStyle());
@@ -195,7 +188,7 @@ namespace GitUI.CommandsDialogs
             | System.Windows.Forms.AnchorStyles.Right)));
             this.PuttySshKey.Location = new System.Drawing.Point(109, 3);
             this.PuttySshKey.Name = "PuttySshKey";
-            this.PuttySshKey.Size = new System.Drawing.Size(248, 21);
+            this.PuttySshKey.Size = new System.Drawing.Size(248, 20);
             this.PuttySshKey.TabIndex = 1;
             // 
             // SshBrowse
@@ -271,7 +264,7 @@ namespace GitUI.CommandsDialogs
             this.lblMgtPuttyPanelHeader.AutoSize = true;
             this.lblMgtPuttyPanelHeader.Location = new System.Drawing.Point(8, 0);
             this.lblMgtPuttyPanelHeader.Name = "lblMgtPuttyPanelHeader";
-            this.lblMgtPuttyPanelHeader.Size = new System.Drawing.Size(59, 13);
+            this.lblMgtPuttyPanelHeader.Size = new System.Drawing.Size(66, 13);
             this.lblMgtPuttyPanelHeader.TabIndex = 0;
             this.lblMgtPuttyPanelHeader.Text = "PuTTY SSH";
             // 
@@ -423,7 +416,7 @@ namespace GitUI.CommandsDialogs
             this.RemoteName.Dock = System.Windows.Forms.DockStyle.Fill;
             this.RemoteName.Location = new System.Drawing.Point(109, 3);
             this.RemoteName.Name = "RemoteName";
-            this.RemoteName.Size = new System.Drawing.Size(248, 21);
+            this.RemoteName.Size = new System.Drawing.Size(248, 20);
             this.RemoteName.TabIndex = 1;
             this.RemoteName.TextChanged += new System.EventHandler(this.RemoteName_TextChanged);
             // 
@@ -434,7 +427,7 @@ namespace GitUI.CommandsDialogs
             this.pnlManagementContainer.Location = new System.Drawing.Point(197, 3);
             this.pnlManagementContainer.Name = "pnlManagementContainer";
             this.pnlManagementContainer.Padding = new System.Windows.Forms.Padding(8, 4, 8, 8);
-            this.pnlManagementContainer.Size = new System.Drawing.Size(536, 293);
+            this.pnlManagementContainer.Size = new System.Drawing.Size(536, 299);
             this.pnlManagementContainer.TabIndex = 0;
             // 
             // gbMgtPanel
@@ -445,7 +438,7 @@ namespace GitUI.CommandsDialogs
             this.gbMgtPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.gbMgtPanel.Location = new System.Drawing.Point(8, 4);
             this.gbMgtPanel.Name = "gbMgtPanel";
-            this.gbMgtPanel.Size = new System.Drawing.Size(520, 294);
+            this.gbMgtPanel.Size = new System.Drawing.Size(520, 293);
             this.gbMgtPanel.TabIndex = 0;
             this.gbMgtPanel.TabStop = false;
             this.gbMgtPanel.Text = "Create New Remote";
@@ -462,7 +455,7 @@ namespace GitUI.CommandsDialogs
             this.panelButtons.Margin = new System.Windows.Forms.Padding(8);
             this.panelButtons.Name = "panelButtons";
             this.panelButtons.Padding = new System.Windows.Forms.Padding(4, 0, 0, 0);
-            this.panelButtons.Size = new System.Drawing.Size(36, 277);
+            this.panelButtons.Size = new System.Drawing.Size(36, 283);
             this.panelButtons.TabIndex = 1;
             // 
             // New
@@ -513,10 +506,10 @@ namespace GitUI.CommandsDialogs
             // 
             this.tabPage1.Controls.Add(this.pnlManagementContainer);
             this.tabPage1.Controls.Add(this.panel1);
-            this.tabPage1.Location = new System.Drawing.Point(4, 28);
+            this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(736, 299);
+            this.tabPage1.Size = new System.Drawing.Size(736, 305);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Remote repositories";
             this.tabPage1.UseVisualStyleBackColor = true;
@@ -529,7 +522,7 @@ namespace GitUI.CommandsDialogs
             this.panel1.Location = new System.Drawing.Point(3, 3);
             this.panel1.Name = "panel1";
             this.panel1.Padding = new System.Windows.Forms.Padding(8);
-            this.panel1.Size = new System.Drawing.Size(194, 293);
+            this.panel1.Size = new System.Drawing.Size(194, 299);
             this.panel1.TabIndex = 0;
             // 
             // Remotes
@@ -549,7 +542,7 @@ namespace GitUI.CommandsDialogs
             this.Remotes.Location = new System.Drawing.Point(8, 8);
             this.Remotes.MultiSelect = false;
             this.Remotes.Name = "Remotes";
-            this.Remotes.Size = new System.Drawing.Size(142, 277);
+            this.Remotes.Size = new System.Drawing.Size(142, 283);
             this.Remotes.TabIndex = 1;
             this.Remotes.TileSize = new System.Drawing.Size(136, 18);
             this.Remotes.UseCompatibleStateImageBehavior = false;
@@ -564,10 +557,10 @@ namespace GitUI.CommandsDialogs
             // tabPage2
             // 
             this.tabPage2.Controls.Add(this.tableLayoutPanel2);
-            this.tabPage2.Location = new System.Drawing.Point(4, 28);
+            this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(736, 299);
+            this.tabPage2.Size = new System.Drawing.Size(736, 305);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Default pull behavior (fetch & merge)";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -576,39 +569,107 @@ namespace GitUI.CommandsDialogs
             // 
             this.tableLayoutPanel2.ColumnCount = 1;
             this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel2.Controls.Add(this.splitContainer3, 0, 0);
-            this.tableLayoutPanel2.Controls.Add(this.flowLayoutPanel1, 0, 1);
+            this.tableLayoutPanel2.Controls.Add(this.panelDetails, 0, 1);
+            this.tableLayoutPanel2.Controls.Add(this.RemoteBranches, 0, 0);
             this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel2.Location = new System.Drawing.Point(3, 3);
             this.tableLayoutPanel2.Name = "tableLayoutPanel2";
             this.tableLayoutPanel2.RowCount = 2;
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel2.Size = new System.Drawing.Size(730, 293);
+            this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
+            this.tableLayoutPanel2.Size = new System.Drawing.Size(730, 299);
             this.tableLayoutPanel2.TabIndex = 12;
             // 
-            // splitContainer3
+            // panelDetails
             // 
-            this.splitContainer3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer3.Location = new System.Drawing.Point(3, 3);
-            this.splitContainer3.Name = "splitContainer3";
+            this.panelDetails.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.panelDetails.Controls.Add(this.label4);
+            this.panelDetails.Controls.Add(this.label5);
+            this.panelDetails.Controls.Add(this.label6);
+            this.panelDetails.Controls.Add(this.DefaultMergeWithCombo);
+            this.panelDetails.Controls.Add(this.RemoteRepositoryCombo);
+            this.panelDetails.Controls.Add(this.LocalBranchNameEdit);
+            this.panelDetails.Controls.Add(this.SaveDefaultPushPull);
+            this.panelDetails.Location = new System.Drawing.Point(3, 175);
+            this.panelDetails.Name = "panelDetails";
+            this.panelDetails.Size = new System.Drawing.Size(724, 121);
+            this.panelDetails.TabIndex = 0;
             // 
-            // splitContainer3.Panel1
+            // label4
             // 
-            this.splitContainer3.Panel1.Controls.Add(this.RemoteBranches);
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(36, 11);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(98, 13);
+            this.label4.TabIndex = 0;
+            this.label4.Text = "Local branch name";
             // 
-            // splitContainer3.Panel2
+            // label5
             // 
-            this.splitContainer3.Panel2.Controls.Add(this.SaveDefaultPushPull);
-            this.splitContainer3.Panel2.Controls.Add(this.LocalBranchNameEdit);
-            this.splitContainer3.Panel2.Controls.Add(this.RemoteRepositoryCombo);
-            this.splitContainer3.Panel2.Controls.Add(this.DefaultMergeWithCombo);
-            this.splitContainer3.Panel2.Controls.Add(this.label6);
-            this.splitContainer3.Panel2.Controls.Add(this.label5);
-            this.splitContainer3.Panel2.Controls.Add(this.label4);
-            this.splitContainer3.Size = new System.Drawing.Size(724, 250);
-            this.splitContainer3.SplitterDistance = 370;
-            this.splitContainer3.TabIndex = 0;
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(36, 37);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(92, 13);
+            this.label5.TabIndex = 1;
+            this.label5.Text = "Remote repository";
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(36, 64);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(95, 13);
+            this.label6.TabIndex = 2;
+            this.label6.Text = "Default merge with";
+            // 
+            // DefaultMergeWithCombo
+            // 
+            this.DefaultMergeWithCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.DefaultMergeWithCombo.FormattingEnabled = true;
+            this.DefaultMergeWithCombo.Location = new System.Drawing.Point(158, 61);
+            this.DefaultMergeWithCombo.Name = "DefaultMergeWithCombo";
+            this.DefaultMergeWithCombo.Size = new System.Drawing.Size(513, 21);
+            this.DefaultMergeWithCombo.TabIndex = 2;
+            this.DefaultMergeWithCombo.DropDown += new System.EventHandler(this.DefaultMergeWithComboDropDown);
+            this.DefaultMergeWithCombo.Validated += new System.EventHandler(this.DefaultMergeWithComboValidated);
+            // 
+            // RemoteRepositoryCombo
+            // 
+            this.RemoteRepositoryCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.RemoteRepositoryCombo.FormattingEnabled = true;
+            this.RemoteRepositoryCombo.Location = new System.Drawing.Point(158, 34);
+            this.RemoteRepositoryCombo.Name = "RemoteRepositoryCombo";
+            this.RemoteRepositoryCombo.Size = new System.Drawing.Size(513, 21);
+            this.RemoteRepositoryCombo.TabIndex = 1;
+            this.RemoteRepositoryCombo.Validated += new System.EventHandler(this.RemoteRepositoryComboValidated);
+            // 
+            // LocalBranchNameEdit
+            // 
+            this.LocalBranchNameEdit.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.LocalBranchNameEdit.Location = new System.Drawing.Point(158, 8);
+            this.LocalBranchNameEdit.Name = "LocalBranchNameEdit";
+            this.LocalBranchNameEdit.Size = new System.Drawing.Size(513, 20);
+            this.LocalBranchNameEdit.TabIndex = 0;
+            // 
+            // SaveDefaultPushPull
+            // 
+            this.SaveDefaultPushPull.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.SaveDefaultPushPull.Image = global::GitUI.Properties.Images.Save;
+            this.SaveDefaultPushPull.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.SaveDefaultPushPull.Location = new System.Drawing.Point(541, 88);
+            this.SaveDefaultPushPull.Name = "SaveDefaultPushPull";
+            this.SaveDefaultPushPull.Size = new System.Drawing.Size(130, 25);
+            this.SaveDefaultPushPull.TabIndex = 3;
+            this.SaveDefaultPushPull.Text = "Save changes";
+            this.SaveDefaultPushPull.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
+            this.SaveDefaultPushPull.UseVisualStyleBackColor = true;
+            this.SaveDefaultPushPull.Click += new System.EventHandler(this.SaveDefaultPushPullClick);
             // 
             // RemoteBranches
             // 
@@ -625,13 +686,13 @@ namespace GitUI.CommandsDialogs
             this.MergeWith});
             this.RemoteBranches.Dock = System.Windows.Forms.DockStyle.Fill;
             this.RemoteBranches.GridColor = System.Drawing.SystemColors.ControlLight;
-            this.RemoteBranches.Location = new System.Drawing.Point(0, 0);
+            this.RemoteBranches.Location = new System.Drawing.Point(3, 3);
             this.RemoteBranches.MultiSelect = false;
             this.RemoteBranches.Name = "RemoteBranches";
             this.RemoteBranches.ReadOnly = true;
             this.RemoteBranches.RowHeadersVisible = false;
             this.RemoteBranches.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.RemoteBranches.Size = new System.Drawing.Size(370, 250);
+            this.RemoteBranches.Size = new System.Drawing.Size(724, 166);
             this.RemoteBranches.TabIndex = 0;
             this.RemoteBranches.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.RemoteBranchesDataError);
             // 
@@ -652,114 +713,6 @@ namespace GitUI.CommandsDialogs
             this.MergeWith.HeaderText = "Default merge with";
             this.MergeWith.Name = "MergeWith";
             this.MergeWith.ReadOnly = true;
-            // 
-            // SaveDefaultPushPull
-            // 
-            this.SaveDefaultPushPull.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.SaveDefaultPushPull.Image = global::GitUI.Properties.Images.Save;
-            this.SaveDefaultPushPull.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.SaveDefaultPushPull.Location = new System.Drawing.Point(215, 88);
-            this.SaveDefaultPushPull.Name = "SaveDefaultPushPull";
-            this.SaveDefaultPushPull.Size = new System.Drawing.Size(130, 25);
-            this.SaveDefaultPushPull.TabIndex = 3;
-            this.SaveDefaultPushPull.Text = "Save changes";
-            this.SaveDefaultPushPull.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
-            this.SaveDefaultPushPull.UseVisualStyleBackColor = true;
-            this.SaveDefaultPushPull.Click += new System.EventHandler(this.SaveDefaultPushPullClick);
-            // 
-            // LocalBranchNameEdit
-            // 
-            this.LocalBranchNameEdit.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.LocalBranchNameEdit.Location = new System.Drawing.Point(144, 6);
-            this.LocalBranchNameEdit.Name = "LocalBranchNameEdit";
-            this.LocalBranchNameEdit.Size = new System.Drawing.Size(201, 21);
-            this.LocalBranchNameEdit.TabIndex = 0;
-            // 
-            // RemoteRepositoryCombo
-            // 
-            this.RemoteRepositoryCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.RemoteRepositoryCombo.FormattingEnabled = true;
-            this.RemoteRepositoryCombo.Location = new System.Drawing.Point(144, 32);
-            this.RemoteRepositoryCombo.Name = "RemoteRepositoryCombo";
-            this.RemoteRepositoryCombo.Size = new System.Drawing.Size(201, 21);
-            this.RemoteRepositoryCombo.TabIndex = 1;
-            this.RemoteRepositoryCombo.Validated += new System.EventHandler(this.RemoteRepositoryComboValidated);
-            // 
-            // DefaultMergeWithCombo
-            // 
-            this.DefaultMergeWithCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.DefaultMergeWithCombo.FormattingEnabled = true;
-            this.DefaultMergeWithCombo.Location = new System.Drawing.Point(144, 59);
-            this.DefaultMergeWithCombo.Name = "DefaultMergeWithCombo";
-            this.DefaultMergeWithCombo.Size = new System.Drawing.Size(201, 21);
-            this.DefaultMergeWithCombo.TabIndex = 2;
-            this.DefaultMergeWithCombo.DropDown += new System.EventHandler(this.DefaultMergeWithComboDropDown);
-            this.DefaultMergeWithCombo.Validated += new System.EventHandler(this.DefaultMergeWithComboValidated);
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(7, 62);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(98, 13);
-            this.label6.TabIndex = 2;
-            this.label6.Text = "Default merge with";
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(7, 35);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(96, 13);
-            this.label5.TabIndex = 1;
-            this.label5.Text = "Remote repository";
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(7, 9);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(96, 13);
-            this.label4.TabIndex = 0;
-            this.label4.Text = "Local branch name";
-            // 
-            // flowLayoutPanel1
-            // 
-            this.flowLayoutPanel1.AutoSize = true;
-            this.flowLayoutPanel1.Controls.Add(this.UpdateBranch);
-            this.flowLayoutPanel1.Controls.Add(this.Prune);
-            this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
-            this.flowLayoutPanel1.Location = new System.Drawing.Point(3, 259);
-            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(724, 31);
-            this.flowLayoutPanel1.TabIndex = 1;
-            this.flowLayoutPanel1.WrapContents = false;
-            // 
-            // UpdateBranch
-            // 
-            this.UpdateBranch.AutoSize = true;
-            this.UpdateBranch.Location = new System.Drawing.Point(472, 3);
-            this.UpdateBranch.Name = "UpdateBranch";
-            this.UpdateBranch.Size = new System.Drawing.Size(249, 25);
-            this.UpdateBranch.TabIndex = 1;
-            this.UpdateBranch.Text = "Update all remote branch info";
-            this.UpdateBranch.UseVisualStyleBackColor = true;
-            this.UpdateBranch.Click += new System.EventHandler(this.UpdateBranchClick);
-            // 
-            // Prune
-            // 
-            this.Prune.AutoSize = true;
-            this.Prune.Location = new System.Drawing.Point(217, 3);
-            this.Prune.Name = "Prune";
-            this.Prune.Size = new System.Drawing.Size(249, 25);
-            this.Prune.TabIndex = 0;
-            this.Prune.Text = "Prune remote branches";
-            this.Prune.UseVisualStyleBackColor = true;
-            this.Prune.Click += new System.EventHandler(this.PruneClick);
             // 
             // FormRemotes
             // 
@@ -797,15 +750,9 @@ namespace GitUI.CommandsDialogs
             this.panel1.PerformLayout();
             this.tabPage2.ResumeLayout(false);
             this.tableLayoutPanel2.ResumeLayout(false);
-            this.tableLayoutPanel2.PerformLayout();
-            this.splitContainer3.Panel1.ResumeLayout(false);
-            this.splitContainer3.Panel2.ResumeLayout(false);
-            this.splitContainer3.Panel2.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer3)).EndInit();
-            this.splitContainer3.ResumeLayout(false);
+            this.panelDetails.ResumeLayout(false);
+            this.panelDetails.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.RemoteBranches)).EndInit();
-            this.flowLayoutPanel1.ResumeLayout(false);
-            this.flowLayoutPanel1.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -816,8 +763,6 @@ namespace GitUI.CommandsDialogs
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
-        private System.Windows.Forms.Button UpdateBranch;
-        private System.Windows.Forms.Button Prune;
         private System.Windows.Forms.Button LoadSSHKey;
         private System.Windows.Forms.TextBox PuttySshKey;
         private System.Windows.Forms.Button TestConnection;
@@ -835,7 +780,6 @@ namespace GitUI.CommandsDialogs
         private System.Windows.Forms.ComboBox comboBoxPushUrl;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
-        private System.Windows.Forms.SplitContainer splitContainer3;
         private System.Windows.Forms.DataGridView RemoteBranches;
         private System.Windows.Forms.Button SaveDefaultPushPull;
         private System.Windows.Forms.TextBox LocalBranchNameEdit;
@@ -844,7 +788,6 @@ namespace GitUI.CommandsDialogs
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private UserControls.FolderBrowserButton folderBrowserButtonUrl;
         private UserControls.FolderBrowserButton folderBrowserButtonPushUrl;
         private System.Windows.Forms.FlowLayoutPanel panelButtons;
@@ -865,5 +808,6 @@ namespace GitUI.CommandsDialogs
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.Button btnToggleState;
         private System.Windows.Forms.ColumnHeader columnHeader1;
+        private System.Windows.Forms.Panel panelDetails;
     }
 }

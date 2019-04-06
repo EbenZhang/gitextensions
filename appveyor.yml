@@ -108,6 +108,11 @@ for:
           #Push-AppveyorArtifact .\tree.txt
       }
       
+  artifacts:
+    # upload the generated portable archive only
+    - path: 'Setup/GitExtensions-Portable-*.zip'
+    - path: 'Setup/GitExtensions-pdbs-*.zip'
+    - path: 'GitExtensionsVSIX/bin/Release/GitExtensionsVSIX.vsix'
 
 # configuration for release branches ONLY
 -
@@ -155,6 +160,7 @@ for:
           Exit-AppVeyorBuild
           return
       }
+      Push-AppveyorArtifact .\GitExtensionsVSIX\bin\Release\GitExtensionsVSIX.vsix
       # continue on with signing
       & Setup\Sign-Artifacts.ps1
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }

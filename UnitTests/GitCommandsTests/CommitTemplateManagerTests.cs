@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 using CommonTestUtils;
 using FluentAssertions;
 using GitCommands;
@@ -71,20 +73,57 @@ namespace GitCommandsTests
         }
 
         [Test]
-        public void LoadGitCommitTemplate_real_filesystem()
+        public void Register_should_not_add_duplicates()
         {
-            using (var helper = new GitModuleTestHelper())
+            const string templateName = "template1";
+            var count = _manager.RegisteredTemplates.Count();
+            _manager.Register(templateName, () => "text1");
+            _manager.Register(templateName, () => "text2");
+            _manager.RegisteredTemplates.Count().Should().Be(count + 1);
+        }
+
+        [Test]
+        public void RegisteredTemplates_should_be_threadsafe()
+        {
+            _manager.Register("template1", () => "text1");
+            _manager.Register("template2", () => "text2");
+            var i = _manager.RegisteredTemplates.Count() + 1;
+            foreach (var managerRegisteredTemplate in _manager.RegisteredTemplates)
             {
-                var manager = new CommitTemplateManager(helper.Module);
+                _manager.Unregister(managerRegisteredTemplate.Name);
+                _manager.Register($"template{i}", () => "text");
+                i++;
+            }
+        }
 
-                const string content = "line1\r\nline2\rline3\nline4";
+        [Test]
+        public void RegisteredTemplates_should_be_immutable()
+        {
+            _manager.Register("template1", () => "text1");
+            var expectedCount = _manager.RegisteredTemplates.Count();
+            expectedCount.Should().BeGreaterThan(0);
+            ((IList)_manager.RegisteredTemplates).Clear();
+            _manager.RegisteredTemplates.Count().Should().Be(expectedCount);
+        }
 
-                helper.Module.SetSetting("commit.template", "template.txt");
-                helper.CreateRepoFile("template.txt", content);
+        public class IntegrationTests
+        {
+            [Test]
+            public void LoadGitCommitTemplate_real_filesystem()
+            {
+                using (var helper = new GitModuleTestHelper())
+                {
+                    var manager = new CommitTemplateManager(helper.Module);
 
-                var body = manager.LoadGitCommitTemplate();
+                    const string content = "line1\r\nline2\rline3\nline4";
 
-                body.Should().Be(content);
+                    helper.Module.SetSetting("commit.template", "template.txt");
+                    helper.CreateRepoFile("template.txt", content);
+
+                    var body = manager.LoadGitCommitTemplate();
+
+                    body.Should().Be(content);
+                }
             }
         }
     }
