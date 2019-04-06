@@ -2,6 +2,8 @@ version: 3.0.3.{build}
 
 os: Visual Studio 2017
 
+skip_tags: true
+
 branches:
   except:
     - configdata
@@ -72,7 +74,6 @@ test_script:
     #$codecov_version = $packageConfig.SelectSingleNode('/packages/package[@id="Codecov"]').version
     #$codecov = "packages\Codecov.$codecov_version\tools\codecov.exe"
     #&$codecov -f ".\OpenCover.GitExtensions.xml"
-
 
 # here we are going to override common configuration
 for:
@@ -173,5 +174,6 @@ deploy:
   artifact: Setup/GitExtensions-$(APPVEYOR_BUILD_VERSION).msi
   draft: false
   prerelease: true
+  APPVEYOR_REPO_TAG: false
   on:
     branch: /release\/.*/
