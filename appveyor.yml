@@ -92,6 +92,7 @@ artifacts:
   - path: 'Setup/GitExtensions-Portable-*.zip'
   - path: 'Setup/GitExtensions-pdbs-*.zip'
   - path: 'GitExtensionsVSIX/bin/Release/GitExtensionsVSIX.vsix'
+  - path: 'Setup/GitExtensions-$(APPVEYOR_BUILD_VERSION).msi'
 
 deploy:
   release: $(APPVEYOR_BUILD_VERSION)
