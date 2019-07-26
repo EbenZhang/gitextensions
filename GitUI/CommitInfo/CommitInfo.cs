@@ -44,6 +44,7 @@ namespace GitUI.CommitInfo
             }
         }
 
+        private static readonly TranslationString _brokenRefs = new TranslationString("The repository refs seem to be broken:");
         private static readonly TranslationString _copyLink = new TranslationString("Copy &link ({0})");
         private static readonly TranslationString _containedInBranches = new TranslationString("Contained in branches:");
         private static readonly TranslationString _containedInNoBranch = new TranslationString("Contained in no branch");
@@ -53,6 +54,7 @@ namespace GitUI.CommitInfo
         private static readonly TranslationString _derivesFromTag = new TranslationString("Derives from tag:");
         private static readonly TranslationString _derivesFromNoTag = new TranslationString("Derives from no tag");
         private static readonly TranslationString _plusCommits = new TranslationString("commits");
+        private static readonly TranslationString _repoFailure = new TranslationString("Repository failure");
 
         private const int MaximumDisplayedRefs = 20;
         private readonly ILinkFactory _linkFactory = new LinkFactory();
@@ -206,11 +208,21 @@ namespace GitUI.CommitInfo
             _refsOrderDict = null;
 
             await TaskScheduler.Default.SwitchTo();
-            var refsOrderDict = ToDictionary(Module.GetSortedRefs());
+            try
+            {
+                var refsOrderDict = ToDictionary(Module.GetSortedRefs());
 
-            await this.SwitchToMainThreadAsync();
-            _refsOrderDict = refsOrderDict;
-            UpdateRevisionInfo();
+                await this.SwitchToMainThreadAsync();
+                _refsOrderDict = refsOrderDict;
+                UpdateRevisionInfo();
+            }
+            catch (RefsWarningException ex)
+            {
+                await this.SwitchToMainThreadAsync();
+                MessageBox.Show(this, string.Format("{0}{1}{1}{2}", _brokenRefs.Text, Environment.NewLine, ex.Message), _repoFailure.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            return;
 
             IDictionary<string, int> ToDictionary(IReadOnlyList<string> list)
             {
@@ -274,29 +286,37 @@ namespace GitUI.CommitInfo
             {
                 var cancellationToken = _asyncLoadCancellation.Next();
 
-                ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadLinksForRevisionAsync(_revision)).FileAndForget();
+                var initialRevision = _revision;
 
-                // No branch/tag data for artificial commands
+                ThreadHelper.JoinableTaskFactory.RunAsync(async () => { await LoadLinksForRevisionAsync(initialRevision); }).FileAndForget();
 
-                if (AppSettings.CommitInfoShowContainedInBranches)
+                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
-                    ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadBranchInfoAsync(_revision.ObjectId)).FileAndForget();
-                }
+                    // No branch/tag data for artificial commands
+                    if (AppSettings.CommitInfoShowContainedInBranches)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await LoadBranchInfoAsync(initialRevision.ObjectId);
+                    }
 
-                if (AppSettings.ShowAnnotatedTagsMessages)
-                {
-                    ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadAnnotatedTagInfoAsync(_revision.Refs)).FileAndForget();
-                }
+                    if (AppSettings.ShowAnnotatedTagsMessages)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await LoadAnnotatedTagInfoAsync(initialRevision.Refs);
+                    }
 
-                if (AppSettings.CommitInfoShowContainedInTags)
-                {
-                    ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadTagInfoAsync(_revision.ObjectId)).FileAndForget();
-                }
+                    if (AppSettings.CommitInfoShowContainedInTags)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await LoadTagInfoAsync(initialRevision.ObjectId);
+                    }
 
-                if (AppSettings.CommitInfoShowTagThisCommitDerivesFrom)
-                {
-                    ThreadHelper.JoinableTaskFactory.RunAsync(() => LoadDescribeInfoAsync(_revision.ObjectId)).FileAndForget();
-                }
+                    if (AppSettings.CommitInfoShowTagThisCommitDerivesFrom)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await LoadDescribeInfoAsync(initialRevision.ObjectId);
+                    }
+                }).FileAndForget();
 
                 return;
 
@@ -338,7 +358,8 @@ namespace GitUI.CommitInfo
 
                 async Task LoadAnnotatedTagInfoAsync(IReadOnlyList<IGitRef> refs)
                 {
-                    await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+                    await TaskScheduler.Default;
+
                     var annotatedTagsMessages = GetAnnotatedTagsMessages();
 
                     await this.SwitchToMainThreadAsync(cancellationToken);
@@ -400,7 +421,8 @@ namespace GitUI.CommitInfo
 
                 async Task LoadTagInfoAsync(ObjectId objectId)
                 {
-                    await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+                    await TaskScheduler.Default;
+
                     var tags = Module.GetAllTagsWhichContainGivenCommit(objectId).ToList();
 
                     await this.SwitchToMainThreadAsync(cancellationToken);
@@ -410,7 +432,7 @@ namespace GitUI.CommitInfo
 
                 async Task LoadBranchInfoAsync(ObjectId revision)
                 {
-                    await TaskScheduler.Default.SwitchTo(alwaysYield: true);
+                    await TaskScheduler.Default;
 
                     // Include local branches if explicitly requested or when needed to decide whether to show remotes
                     bool getLocal = AppSettings.CommitInfoShowContainedInBranchesLocal ||
@@ -429,6 +451,7 @@ namespace GitUI.CommitInfo
                 async Task LoadDescribeInfoAsync(ObjectId commitId)
                 {
                     await TaskScheduler.Default;
+
                     var info = GetDescribeInfoForRevision();
 
                     await this.SwitchToMainThreadAsync(cancellationToken);

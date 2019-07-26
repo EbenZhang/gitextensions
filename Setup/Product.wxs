@@ -102,6 +102,9 @@
       <Component Id="GitExtUtils.dll" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\GitExtUtils.dll" />
       </Component>
+      <Component Id="AdysTech.CredentialManager.dll" Guid="*">
+        <File Source="..\GitExtensions\bin\$(var.Configuration)\AdysTech.CredentialManager.dll" />
+      </Component>
       <Component Id="GitUI.dll" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\GitUI.dll" />
       </Component>
@@ -149,6 +152,9 @@
       </Component>
       <Component Id="SmartFormat.dll" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\SmartFormat.dll" />
+      </Component>
+      <Component Id="Ben.Demystifier.dll" Guid="*">
+        <File Source="..\GitExtensions\bin\$(var.Configuration)\Ben.Demystifier.dll" />
       </Component>
       <Component Id="System.Reactive.Core.dll" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\System.Reactive.Core.dll" />
@@ -720,7 +726,7 @@
       <Component Id="English.Plugins.xlf" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\Translation\English.Plugins.xlf" />
       </Component>
-      <!-- 
+      <!--
       <Component Id="Czech.xlf" Guid="*">
         <File Source="..\GitUI\Translation\Czech.xlf" />
       </Component>
@@ -730,7 +736,6 @@
       <Component Id="Czech.gif" Guid="*">
         <File Source="..\GitUI\Translation\Czech.gif" />
       </Component>
-      -->
       <Component Id="Dutch.xlf" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\Translation\Dutch.xlf" />
       </Component>
@@ -740,6 +745,7 @@
       <Component Id="Dutch.gif" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\Translation\Dutch.gif" />
       </Component>
+      -->
       <Component Id="French.xlf" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\Translation\French.xlf" />
       </Component>
@@ -768,6 +774,7 @@
       <Component Id="Italian.gif" Guid="*">
         <File Source="..\GitUI\Translation\Italian.gif" />
       </Component>
+      -->
       <Component Id="Japanese.xlf" Guid="*">
         <File Source="..\GitUI\Translation\Japanese.xlf" />
       </Component>
@@ -777,6 +784,7 @@
       <Component Id="Japanese.gif" Guid="*">
         <File Source="..\GitUI\Translation\Japanese.gif" />
       </Component>
+      <!--
       <Component Id="Korean.xlf" Guid="*">
         <File Source="..\GitUI\Translation\Korean.xlf" />
       </Component>
@@ -814,7 +822,6 @@
       <Component Id="SimplifiedChinese.gif" Guid="*">
         <File Source="..\GitExtensions\bin\$(var.Configuration)\Translation\Simplified Chinese.gif" />
       </Component>
-      <!--
       <Component Id="Spanish.xlf" Guid="*">
         <File Source="..\GitUI\Translation\Spanish.xlf" />
       </Component>
@@ -824,6 +831,7 @@
       <Component Id="Spanish.gif" Guid="*">
         <File Source="..\GitUI\Translation\Spanish.gif" />
       </Component>
+      <!--
       <Component Id="TraditionalChinese.xlf" Guid="*">
         <File Source="..\GitUI\Translation\Traditional Chinese.xlf" />
       </Component>
@@ -1540,6 +1548,7 @@
       <ComponentRef Id="GitExtensions.exe.config" />
       <ComponentRef Id="GitCommands.dll" />
       <ComponentRef Id="GitExtUtils.dll" />
+      <ComponentRef Id="AdysTech.CredentialManager.dll" />
       <ComponentRef Id="GitUI.dll" />
       <ComponentRef Id="ConEmu.WinForms.dll" />
       <ComponentRef Id="PSTaskDialog.dll" />
@@ -1553,6 +1562,7 @@
       <ComponentRef Id="System.ValueTuple.dll" />
       <ComponentRef Id="NBug.dll" />
       <ComponentRef Id="SmartFormat.dll" />
+      <ComponentRef Id="Ben.Demystifier.dll" />
       <ComponentRef Id="NetSpell.SpellChecker.dll" />
       <ComponentRef Id="ResourceManager.dll" />
       <ComponentRef Id="GitUIPluginInterfaces.dll" />
@@ -1729,12 +1739,12 @@
           <ComponentRef Id="Czech.Plugins.xlf" />
           <ComponentRef Id="Czech.gif" />
         </Feature>
-        -->
         <Feature Id="Dutch" Title="Dutch" Level="1">
           <ComponentRef Id="Dutch.xlf" />
           <ComponentRef Id="Dutch.Plugins.xlf" />
           <ComponentRef Id="Dutch.gif" />
         </Feature>
+        -->
         <Feature Id="French" Title="French" Level="1">
           <ComponentRef Id="French.xlf" />
           <ComponentRef Id="French.Plugins.xlf" />
@@ -1751,11 +1761,13 @@
           <ComponentRef Id="Italian.Plugins.xlf" />
           <ComponentRef Id="Italian.gif" />
         </Feature>
+        -->
         <Feature Id="Japanese" Title="Japanese" Level="1">
           <ComponentRef Id="Japanese.xlf" />
           <ComponentRef Id="Japanese.Plugins.xlf" />
           <ComponentRef Id="Japanese.gif" />
         </Feature>
+        <!--
         <Feature Id="Korean" Title="Korean" Level="1">
           <ComponentRef Id="Korean.xlf" />
           <ComponentRef Id="Korean.Plugins.xlf" />
@@ -1777,12 +1789,12 @@
           <ComponentRef Id="SimplifiedChinese.Plugins.xlf" />
           <ComponentRef Id="SimplifiedChinese.gif" />
         </Feature>
-        <!--
         <Feature Id="Spanish" Title="Spanish" Level="1">
           <ComponentRef Id="Spanish.xlf" />
           <ComponentRef Id="Spanish.Plugins.xlf" />
           <ComponentRef Id="Spanish.gif" />
         </Feature>
+        <!--
         <Feature Id="TraditionalChinese" Title="Traditional Chinese" Level="1">
           <ComponentRef Id="TraditionalChinese.xlf" />
           <ComponentRef Id="TraditionalChinese.Plugins.xlf" />

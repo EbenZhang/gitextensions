@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -59,6 +58,7 @@ namespace GitUI
             _sortByContextMenu = CreateSortByContextMenuItem();
             SetupUnifiedDiffListSorting();
             lblSplitter.Height = DpiUtil.Scale(1);
+            FilterComboBox.Font = new Font(FilterComboBox.Font, FontStyle.Bold);
             InitializeComplete();
             FilterVisible = false;
 
@@ -430,18 +430,19 @@ namespace GitUI
             }
         }
 
-        private static (Image Image, string Text, int TextStart, int TextWidth, int TextMaxWidth) FormatListViewItem(ListViewItem item, PathFormatter formatter, int itemWidth)
+        private static (Image Image, string Prefix, string Text, string Suffix, int PrefixTextStartX, int TextWidth, int TextMaxWidth)
+            FormatListViewItem(ListViewItem item, PathFormatter formatter, int itemWidth)
         {
             var gitItemStatus = item.Tag<GitItemStatus>();
             var image = item.Image();
             int itemLeft = item.Position.X;
 
-            var textStart = itemLeft + (image?.Width ?? 0);
-            var textMaxWidth = itemWidth - textStart;
-            var (text, textWidth) = formatter.FormatTextForDrawing(textMaxWidth, gitItemStatus.Name, gitItemStatus.OldName);
+            var prefixTextStartX = itemLeft + (image?.Width ?? 0);
+            var textMaxWidth = itemWidth - prefixTextStartX;
+            var (prefix, text, suffix, textWidth) = formatter.FormatTextForDrawing(textMaxWidth, gitItemStatus.Name, gitItemStatus.OldName);
             text = AppendItemSubmoduleStatus(text, gitItemStatus);
 
-            return (image, text, textStart, textWidth, textMaxWidth);
+            return (image, prefix, text, suffix, prefixTextStartX, textWidth, textMaxWidth);
         }
 
         public int GetNextIndex(bool searchBackward, bool loop)
@@ -1034,7 +1035,7 @@ namespace GitUI
                     .Where(item => item.BoundsOrEmpty().IntersectsWith(FileStatusListView.ClientRectangle))
                     .Select(item =>
                     {
-                        (_, _, int textStart, int textWidth, _) = FormatListViewItem(item, pathFormatter, FileStatusListView.ClientSize.Width);
+                        (_, _, _, _, int textStart, int textWidth, _) = FormatListViewItem(item, pathFormatter, FileStatusListView.ClientSize.Width);
                         return textStart + textWidth;
                     })
                     .DefaultIfEmpty(controlWidth)
@@ -1108,7 +1109,7 @@ namespace GitUI
             var item = e.Item;
             var formatter = new PathFormatter(e.Graphics, FileStatusListView.Font);
 
-            var (image, text, textStartX, _, textMaxWidth) = FormatListViewItem(item, formatter, item.Bounds.Width);
+            var (image, prefix, text, suffix, prefixTextStartX, _, textMaxWidth) = FormatListViewItem(item, formatter, item.Bounds.Width);
 
             if (image != null)
             {
@@ -1117,25 +1118,23 @@ namespace GitUI
 
             if (!string.IsNullOrEmpty(text))
             {
-                var slashIndex = text.LastIndexOf('/');
+                var textRect = new Rectangle(prefixTextStartX, item.Bounds.Top, textMaxWidth, item.Bounds.Height);
 
-                var textRect = new Rectangle(textStartX, item.Bounds.Top, textMaxWidth, item.Bounds.Height);
-
-                if (slashIndex == -1 || slashIndex >= text.Length - 1)
+                if (!string.IsNullOrEmpty(prefix))
                 {
-                    formatter.DrawString(text, textRect, SystemColors.ControlText);
-                    return;
+                    DrawString(textRect, prefix, SystemColors.GrayText);
+                    var prefixSize = formatter.MeasureString(prefix);
+                    textRect.Offset(prefixSize.Width, 0);
                 }
 
-                var prefix = text.Substring(0, slashIndex + 1);
-                var tail = text.Substring(slashIndex + 1);
+                DrawString(textRect, text, SystemColors.ControlText);
 
-                var prefixSize = formatter.MeasureString(prefix);
-
-                DrawString(textRect, prefix, SystemColors.GrayText);
-
-                textRect.Offset(prefixSize.Width, 0);
-                DrawString(textRect, tail, SystemColors.ControlText);
+                if (!string.IsNullOrEmpty(suffix))
+                {
+                    var textSize = formatter.MeasureString(text);
+                    textRect.Offset(textSize.Width, 0);
+                    DrawString(textRect, suffix, SystemColors.GrayText);
+                }
             }
 
             void DrawString(Rectangle rect, string s, Color color)
@@ -1339,9 +1338,8 @@ namespace GitUI
 
         private int FilterFiles(string value)
         {
-            _filter = string.IsNullOrEmpty(value)
-                ? null
-                : new Regex(value, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            StoreFilter(value);
+
             UpdateFileStatusListView(updateCausedByFilter: true);
             return FileStatusListView.Items.Count;
         }
@@ -1469,6 +1467,27 @@ namespace GitUI
             FileStatusListView.Sort();
         }
 
+        private void StoreFilter(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                FilterComboBox.BackColor = SystemColors.Window;
+                _filter = null;
+                return;
+            }
+
+            try
+            {
+                _filter = new Regex(value, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                FilterComboBox.BackColor = _activeInputColor;
+            }
+            catch
+            {
+                FilterComboBox.BackColor = _invalidInputColor;
+                throw;
+            }
+        }
+
         private class GitStatusListSorter : Comparer<ListViewItem>
         {
             public IComparer<GitItemStatus> StatusComparer { get; }
@@ -1519,6 +1538,12 @@ namespace GitUI
 
         #endregion
 
+        #region private Color constants
+        //// Do not declare the colors "static" because Color.FromArgb() will not work at their initialization.
+        private readonly Color _activeInputColor = Color.FromArgb(0xC8, 0xFF, 0xC8);
+        private readonly Color _invalidInputColor = Color.FromArgb(0xFF, 0xC8, 0xC8);
+        #endregion
+
         internal TestAccessor GetTestAccessor() => new TestAccessor(this);
 
         internal readonly struct TestAccessor
@@ -1530,9 +1555,13 @@ namespace GitUI
                 _fileStatusList = fileStatusList;
             }
 
+            internal Color ActiveInputColor => _fileStatusList._activeInputColor;
+            internal Color InvalidInputColor => _fileStatusList._invalidInputColor;
             internal ListView FileStatusListView => _fileStatusList.FileStatusListView;
             internal ComboBox FilterComboBox => _fileStatusList.FilterComboBox;
+            internal Regex Filter => _fileStatusList._filter;
             internal bool FilterWatermarkLabelVisible => _fileStatusList.FilterWatermarkLabel.Visible;
+            internal void StoreFilter(string value) => _fileStatusList.StoreFilter(value);
         }
     }
 }

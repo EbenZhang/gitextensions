@@ -6,8 +6,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Atlassian.Jira;
+using GitExtUtils.GitUI;
 using GitUI;
 using GitUIPluginInterfaces;
+using GitUIPluginInterfaces.UserControls;
 using JiraCommitHintPlugin.Properties;
 using NString;
 using ResourceManager;
@@ -19,8 +21,7 @@ namespace JiraCommitHintPlugin
     {
         private static readonly string EnablePluginLabel = new TranslationString("Jira hint plugin enabled").Text;
         private static readonly string JiraUrlLabel = new TranslationString("Jira URL").Text;
-        private static readonly string JiraUserLabel = new TranslationString("Jira user").Text;
-        private static readonly string JiraPasswordLabel = new TranslationString("Jira password").Text;
+        private static readonly string JiraCredentialsLabel = new TranslationString("Jira credentials").Text;
         private static readonly string JiraQueryLabel = new TranslationString("JQL Query").Text;
         private static readonly string MessageTemplateLabel = new TranslationString("Message Template").Text;
         private static readonly string JiraFieldsLabel = new TranslationString("Jira fields").Text;
@@ -39,14 +40,14 @@ namespace JiraCommitHintPlugin
         private string _stringTemplate = defaultFormat;
         private readonly BoolSetting _enabledSettings = new BoolSetting("Jira hint plugin enabled", EnablePluginLabel, false);
         private readonly StringSetting _urlSettings = new StringSetting("Jira URL", JiraUrlLabel, @"https://jira.atlassian.com");
-        private readonly StringSetting _userSettings = new StringSetting("Jira user", JiraUserLabel, string.Empty);
-        private readonly PasswordSetting _passwordSettings = new PasswordSetting("Jira password", JiraPasswordLabel, string.Empty);
+        private readonly CredentialsSetting _credentialsSettings;
 
         // For compatibility reason, the setting key is kept to "JDL Query" even if the label is, rightly, "JQL Query" (for "Jira Query Language")
-        private readonly StringSetting _jqlQuerySettings = new StringSetting("JDL Query", JiraQueryLabel, "assignee = currentUser() and resolution is EMPTY ORDER BY updatedDate DESC");
-        private readonly StringSetting _stringTemplateSetting = new StringSetting("Jira Message Template", MessageTemplateLabel, defaultFormat);
+        private readonly StringSetting _jqlQuerySettings = new StringSetting("JDL Query", JiraQueryLabel, "assignee = currentUser() and resolution is EMPTY ORDER BY updatedDate DESC", true);
+        private readonly StringSetting _stringTemplateSetting = new StringSetting("Jira Message Template", MessageTemplateLabel, defaultFormat, true);
         private readonly StringSetting _jiraFields = new StringSetting("Jira fields", JiraFieldsLabel, $"{{{string.Join("} {", typeof(Issue).GetProperties().Where(i => i.CanRead).Select(i => i.Name).OrderBy(i => i).ToArray())}}}");
         private readonly StringSetting _jiraQueryHelpLink = new StringSetting("    ", "");
+        private IGitModule _gitModule;
         private JiraTaskDTO[] _currentMessages;
         private Button _btnPreview;
 
@@ -55,6 +56,8 @@ namespace JiraCommitHintPlugin
             SetNameAndDescription(description);
             Translate();
             Icon = Resources.IconJira;
+
+            _credentialsSettings = new CredentialsSetting("JiraCredentials", JiraCredentialsLabel, () => _gitModule?.WorkingDir);
         }
 
         public override bool Execute(GitUIEventArgs args)
@@ -87,27 +90,46 @@ namespace JiraCommitHintPlugin
             _urlSettings.CustomControl = new TextBox();
             yield return _urlSettings;
 
-            _userSettings.CustomControl = new TextBox();
-            yield return _userSettings;
-
-            _passwordSettings.CustomControl = new TextBox { UseSystemPasswordChar = true };
-            yield return _passwordSettings;
+            _credentialsSettings.CustomControl = new CredentialsControl();
+            yield return _credentialsSettings;
 
             _jqlQuerySettings.CustomControl = new TextBox();
             yield return _jqlQuerySettings;
 
-            var queryHelperLink = new LinkLabel { Text = QueryHelperLinkText, Width = 300 };
+            var queryHelperLink = new LinkLabel { Text = QueryHelperLinkText, Width = DpiUtil.Scale(300) };
             queryHelperLink.Click += QueryHelperLink_Click;
-            var txtJiraQueryHelpLink = new TextBox { ReadOnly = true, BorderStyle = BorderStyle.None, Width = 300 };
+            var txtJiraQueryHelpLink = new TextBox { ReadOnly = true, BorderStyle = BorderStyle.None, Width = DpiUtil.Scale(300) };
             txtJiraQueryHelpLink.Controls.Add(queryHelperLink);
             _jiraQueryHelpLink.CustomControl = txtJiraQueryHelpLink;
             yield return _jiraQueryHelpLink;
 
-            _jiraFields.CustomControl = new TextBox { ReadOnly = true, Multiline = true, Height = 55, BorderStyle = BorderStyle.None };
+            _jiraFields.CustomControl = new TextBox
+            {
+                ReadOnly = true,
+                Multiline = true,
+                Height = DpiUtil.Scale(55),
+                BorderStyle = BorderStyle.None,
+                Text = _jiraFields.DefaultValue
+            };
             yield return _jiraFields;
 
-            var txtTemplate = new TextBox { Height = 75, Multiline = true, ScrollBars = ScrollBars.Horizontal };
-            _btnPreview = new Button { Text = PreviewButtonText, Top = 45, Anchor = AnchorStyles.Right };
+            var txtTemplate = new TextBox
+            {
+                Height = DpiUtil.Scale(75),
+                Multiline = true,
+                ScrollBars = ScrollBars.Horizontal
+            };
+            txtTemplate.SizeChanged += (s, e) =>
+            {
+                _btnPreview.Left = txtTemplate.Width - _btnPreview.Width - DpiUtil.Scale(8);
+            };
+            _btnPreview = new Button
+            {
+                Text = PreviewButtonText,
+                Top = DpiUtil.Scale(45),
+                Anchor = AnchorStyles.Right
+            };
+            _btnPreview.Size = DpiUtil.Scale(_btnPreview.Size);
             _btnPreview.Click += btnPreviewClick;
             txtTemplate.Controls.Add(_btnPreview);
             _stringTemplateSetting.CustomControl = txtTemplate;
@@ -136,7 +158,10 @@ namespace JiraCommitHintPlugin
         {
             try
             {
-                var localJira = Jira.CreateRestClient(_urlSettings.CustomControl.Text, _userSettings.CustomControl.Text, _passwordSettings.CustomControl.Text);
+                _btnPreview.Enabled = false;
+
+                var localJira = Jira.CreateRestClient(_urlSettings.CustomControl.Text, _credentialsSettings.CustomControl.UserName,
+                    _credentialsSettings.CustomControl.Password);
                 var localQuery = _jqlQuerySettings.CustomControl.Text;
                 var localStringTemplate = _stringTemplateSetting.CustomControl.Text;
 
@@ -146,18 +171,23 @@ namespace JiraCommitHintPlugin
                         var message = await GetMessageToCommitAsync(localJira, localQuery, localStringTemplate);
                         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                         var preview = message.FirstOrDefault();
+
                         MessageBox.Show(null, preview == null ? EmptyQueryResultMessage : preview.Text, EmptyQueryResultCaption);
+
+                        _btnPreview.Enabled = true;
                     });
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.ToString());
+                _btnPreview.Enabled = true;
             }
         }
 
         public override void Register(IGitUICommands gitUiCommands)
         {
             base.Register(gitUiCommands);
+            _gitModule = gitUiCommands.GitModule;
             gitUiCommands.PostSettings += gitUiCommands_PostSettings;
             gitUiCommands.PreCommit += gitUiCommands_PreCommit;
             gitUiCommands.PostCommit += gitUiCommands_PostRepositoryChanged;
@@ -173,15 +203,14 @@ namespace JiraCommitHintPlugin
             }
 
             var url = _urlSettings.ValueOrDefault(Settings);
-            var userName = _userSettings.ValueOrDefault(Settings);
-            var password = _passwordSettings.ValueOrDefault(Settings);
+            var credentials = _credentialsSettings.GetValueOrDefault(Settings);
 
-            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(userName))
+            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(credentials.UserName))
             {
                 return;
             }
 
-            _jira = Jira.CreateRestClient(url, userName, password);
+            _jira = Jira.CreateRestClient(url, credentials.UserName, credentials.Password);
             _query = _jqlQuerySettings.ValueOrDefault(Settings);
             _stringTemplate = _stringTemplateSetting.ValueOrDefault(Settings);
             if (_btnPreview == null)

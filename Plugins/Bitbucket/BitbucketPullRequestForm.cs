@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using GitCommands.Git;
 using GitExtUtils;
 using GitUI;
+using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 using Microsoft.VisualStudio.Threading;
 using ResourceManager;
@@ -19,13 +22,15 @@ namespace Bitbucket
         private readonly TranslationString _success = new TranslationString("Success");
         private readonly TranslationString _error = new TranslationString("Error");
         private readonly TranslationString _linkLabelToolTip = new TranslationString("Right-click to copy link");
-        private readonly string _NO_TRANSLATE_LinkCreatePull = "{0}/projects/{1}/repos/{2}/pull-requests?create";
-        private readonly string _NO_TRANSLATE_LinkViewPull = "{0}/projects/{1}/repos/{2}/pull-requests";
+        private readonly string _NO_TRANSLATE_RepoUrl = "{0}/projects/{1}/repos/{2}/";
+        private readonly string _NO_TRANSLATE_LinkCreatePull = "compare/commits?sourceBranch={0}";
+        private readonly string _NO_TRANSLATE_LinkCreatePullNoBranch = "pull-requests?create";
+        private readonly string _NO_TRANSLATE_LinkViewPull = "pull-requests";
 
         [CanBeNull] private readonly Settings _settings;
         private readonly BindingList<BitbucketUser> _reviewers = new BindingList<BitbucketUser>();
 
-        public BitbucketPullRequestForm([CanBeNull] Settings settings)
+        public BitbucketPullRequestForm([CanBeNull] Settings settings, IGitModule module)
         {
             InitializeComponent();
 
@@ -41,13 +46,21 @@ namespace Bitbucket
                 ReloadRepositories();
             };
 
-            _NO_TRANSLATE_lblLinkCreatePull.Text = string.Format(_NO_TRANSLATE_LinkCreatePull,
-                                      _settings.BitbucketUrl, _settings.ProjectKey, _settings.RepoSlug);
-            toolTipLink.SetToolTip(_NO_TRANSLATE_lblLinkCreatePull, _linkLabelToolTip.Text);
+            if (module != null)
+            {
+                var repoUrl = _NO_TRANSLATE_RepoUrl = string.Format(_NO_TRANSLATE_RepoUrl,
+                                          _settings.BitbucketUrl, _settings.ProjectKey, _settings.RepoSlug);
+                var branch = GitCommands.GitRefName.GetFullBranchName(module.GetSelectedBranch());
 
-            _NO_TRANSLATE_lblLinkViewPull.Text = string.Format(_NO_TRANSLATE_LinkViewPull,
-                _settings.BitbucketUrl, _settings.ProjectKey, _settings.RepoSlug);
-            toolTipLink.SetToolTip(_NO_TRANSLATE_lblLinkViewPull, _linkLabelToolTip.Text);
+                _NO_TRANSLATE_lblLinkCreatePull.Text = repoUrl +
+                    ((branch.IsNullOrEmpty() || branch.Equals(DetachedHeadParser.DetachedBranch)) ?
+                    _NO_TRANSLATE_LinkCreatePullNoBranch :
+                    string.Format(_NO_TRANSLATE_LinkCreatePull, branch));
+                toolTipLink.SetToolTip(_NO_TRANSLATE_lblLinkCreatePull, _linkLabelToolTip.Text);
+
+                _NO_TRANSLATE_lblLinkViewPull.Text = repoUrl + _NO_TRANSLATE_LinkViewPull;
+                toolTipLink.SetToolTip(_NO_TRANSLATE_lblLinkViewPull, _linkLabelToolTip.Text);
+            }
 
             InitializeComplete();
         }

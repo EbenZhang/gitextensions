@@ -1,18 +1,22 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using FluentAssertions;
 using GitCommands;
 using GitCommands.Git;
 using GitUI;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
+using NSubstitute;
 using NUnit.Framework;
 
 namespace GitCommandsTests
 {
     [TestFixture]
-    public sealed class GitModuleTest
+    public sealed class GitModuleTests
     {
         private static readonly ObjectId Sha1 = ObjectId.Parse("3183d1e95383c44302d4b25a7c647ee169765bd8");
         private static readonly ObjectId Sha2 = ObjectId.Parse("d12782217535ef00f4f84773d5d33691bbf81d00");
@@ -26,7 +30,7 @@ namespace GitCommandsTests
         {
             _executable = new MockExecutable();
 
-            _gitModule = new GitModule("", _executable);
+            _gitModule = GetGitModuleWithExecutable(executable: _executable);
         }
 
         [TearDown]
@@ -313,24 +317,117 @@ namespace GitCommandsTests
             Assert.AreSame(_gitModule, refs[3].Module);
         }
 
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("\t")]
+        public void RevParse_should_return_null_if_invalid(string revisionExpression)
+        {
+            _gitModule.RevParse(revisionExpression).Should().BeNull();
+        }
+
         [Test]
-        public void GetRemotes()
+        public void RevParse_should_return_null_if_revisionExpression_exceeds_260_symbols()
+        {
+            var revisionExpression = new string('a', 261);
+            _gitModule.RevParse(revisionExpression).Should().BeNull();
+        }
+
+        [Test]
+        public void RevParse_should_return_ObjectId_if_revisionExpression_is_valid_hash()
+        {
+            var revisionExpression = new string('1', ObjectId.Sha1CharCount);
+            _gitModule.RevParse(revisionExpression).Should().Be(ObjectId.WorkTreeId);
+        }
+
+        [Test]
+        public void RevParse_should_query_git_and_return_ObjectId_if_get_valid_hash()
+        {
+            var revisionExpression = "11111";
+            using (_executable.StageOutput($"rev-parse \"{revisionExpression}~0\"", new string('1', ObjectId.Sha1CharCount), 0))
+            {
+                _gitModule.RevParse(revisionExpression).Should().Be(ObjectId.WorkTreeId);
+            }
+        }
+
+        [Test]
+        public void RevParse_should_query_git_and_return_null_if_invalid_response()
+        {
+            var revisionExpression = "11111";
+            using (_executable.StageOutput($"rev-parse \"{revisionExpression}~0\"", "foo bar", 0))
+            {
+                _gitModule.RevParse(revisionExpression).Should().BeNull();
+            }
+        }
+
+        [TestCase("fatal: not a git repository (or any of the parent directories): .git")] // git version 2.20.1 (Apple Git-117)
+        [TestCase("fatal: Not a git repository (or any of the parent directories): .git")] // git version 2.16.1.windows.4
+        public void GetRemotes_should_return_empty_list_not_inside_git_repo(string warning)
+        {
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                using (_executable.StageOutput("remote -v", warning))
+                {
+                    var remotes = await _gitModule.GetRemotesAsync();
+
+                    remotes.Should().BeEmpty();
+                }
+            });
+        }
+
+        [TestCase("fatal: not a git repository (or any of the parent directories): .git")] // git version 2.20.1 (Apple Git-117)
+        [TestCase("fatal: Not a git repository (or any of the parent directories): .git")] // git version 2.16.1.windows.4
+        public void GetRemotes_should_not_throw_if_not_inside_git_repo(string warning)
+        {
+            using (_executable.StageOutput("remote -v", warning))
+            {
+                Assert.DoesNotThrowAsync(async () => await _gitModule.GetRemotesAsync());
+            }
+        }
+
+        [TestCase("fatal: not a git repository:")]
+        [TestCase("error: something went wrong")]
+        [TestCase("HEAD")]
+        [TestCase("master")]
+        public void GetCurrentCheckout_should_query_git_and_return_null_if_response_is_not_sha(string msg)
+        {
+            using (_executable.StageOutput($"rev-parse HEAD", msg, 0))
+            {
+                _gitModule.GetCurrentCheckout().Should().BeNull();
+            }
+        }
+
+        [Test]
+        public void GetCurrentCheckout_should_query_git_and_return_sha_for_HEAD()
+        {
+            ObjectId objectId;
+            var headId = "69a7c7a40230346778e7eebed809773a6bc45268";
+
+            using (_executable.StageOutput("rev-parse HEAD", headId))
+            {
+                objectId = _gitModule.GetCurrentCheckout();
+            }
+
+            Assert.AreEqual(headId, objectId.ToString());
+        }
+
+        [Test]
+        public void GetRemotes_should_parse_correctly_configured_remotes()
         {
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
                 var lines = new[]
                 {
-                "RussKie\tgit://github.com/RussKie/gitextensions.git (fetch)",
-                "RussKie\tgit://github.com/RussKie/gitextensions.git (push)",
-                "origin\tgit@github.com:drewnoakes/gitextensions.git (fetch)",
-                "origin\tgit@github.com:drewnoakes/gitextensions.git (push)",
-                "upstream\tgit@github.com:gitextensions/gitextensions.git (fetch)",
-                "upstream\tgit@github.com:gitextensions/gitextensions.git (push)",
-                "asymmetrical\thttps://github.com/gitextensions/fetch.git (fetch)",
-                "asymmetrical\thttps://github.com/gitextensions/push.git (push)",
-                "with-space\tc:\\Bare Repo (fetch)",
-                "with-space\tc:\\Bare Repo (push)"
-            };
+                    "RussKie\tgit://github.com/RussKie/gitextensions.git (fetch)",
+                    "RussKie\tgit://github.com/RussKie/gitextensions.git (push)",
+                    "origin\tgit@github.com:drewnoakes/gitextensions.git (fetch)",
+                    "origin\tgit@github.com:drewnoakes/gitextensions.git (push)",
+                    "upstream\tgit@github.com:gitextensions/gitextensions.git (fetch)",
+                    "upstream\tgit@github.com:gitextensions/gitextensions.git (push)",
+                    "asymmetrical\thttps://github.com/gitextensions/fetch.git (fetch)",
+                    "asymmetrical\thttps://github.com/gitextensions/push.git (push)",
+                    "with-space\tc:\\Bare Repo (fetch)",
+                    "with-space\tc:\\Bare Repo (push)"
+                };
 
                 using (_executable.StageOutput("remote -v", string.Join("\n", lines)))
                 {
@@ -571,6 +668,21 @@ namespace GitCommandsTests
             Assert.AreEqual(expected, _gitModule.GetSortedRefsCommand(noLocks).ToString());
         }
 
+        [Test]
+        public void GetSortedRefs_should_throw_on_git_warning()
+        {
+            GitModule module = GetGitModuleWithMockedResultOfGitCommand("refs/heads/master\nwarning: message");
+            ((Action)(() => module.GetSortedRefs())).Should().Throw<RefsWarningException>();
+        }
+
+        [Test]
+        public void GetSortedRefs_should_split_output_if_no_warning()
+        {
+            string output = "refs/remotes/origin/master\nrefs/heads/master\nrefs/heads/warning"; // does not contain "warning:"
+            GitModule module = GetGitModuleWithMockedResultOfGitCommand(output);
+            module.GetSortedRefs().Should().BeEquivalentTo(output.Split());
+        }
+
         [TestCase(@"show-ref --dereference", true, true, false)]
         [TestCase(@"show-ref --tags", true, false, false)]
         [TestCase(@"for-each-ref --sort=-committerdate refs/heads/ --format=""%(objectname) %(refname)""", false, true, false)]
@@ -588,6 +700,51 @@ namespace GitCommandsTests
 
             var actual = accessor.UpdateIndexCmd(showErrorsWhenStagingFiles).ToString();
             Assert.AreEqual(expected, actual);
+        }
+
+        [TestCase(new object[] { "123", "567", "output.file", null })]
+        [TestCase(new object[] { "123", "567", "output.file", 1 })]
+        [TestCase(new object[] { "123", "567", "output.file", 2 })]
+        public void Test_FormatPatch(string from, string to, string outputFile, int? start)
+        {
+            var arguments = new StringBuilder();
+            arguments.Append("format-patch -M -C -B");
+            if (start != null)
+            {
+                arguments.AppendFormat(" --start-number {0}", start);
+            }
+
+            arguments.AppendFormat(" \"{0}\"..\"{1}\" -o \"{2}\"", from, to, outputFile);
+
+            string dummyCommandOutput = "The answer is 42. Just check that the Git arguments are as expected.";
+
+            _executable.StageOutput(arguments.ToString(), dummyCommandOutput);
+            _gitModule.FormatPatch(from, to, outputFile, start).Should().Be(dummyCommandOutput);
+        }
+
+        private GitModule GetGitModuleWithMockedResultOfGitCommand(string result)
+        {
+            var executable = Substitute.For<IExecutable>();
+            executable.GetOutput(Arg.Any<ArgumentString>()).Returns(x => result);
+            return GetGitModuleWithExecutable(executable: executable);
+        }
+
+        /// <summary>
+        /// Create a GitModule with mockable GitExecutable
+        /// </summary>
+        /// <param name="path">Path to the module</param>
+        /// <param name="executable">The mock executable</param>
+        /// <returns>The GitModule</returns>
+        private GitModule GetGitModuleWithExecutable(IExecutable executable, string path = "")
+        {
+            var module = new GitModule(path);
+            typeof(GitModule).GetField("_gitExecutable", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(module, executable);
+            var cmdRunner = new GitCommandRunner(executable, () => GitModule.SystemEncoding);
+            typeof(GitModule).GetField("_gitCommandRunner", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(module, cmdRunner);
+
+            return module;
         }
     }
 }

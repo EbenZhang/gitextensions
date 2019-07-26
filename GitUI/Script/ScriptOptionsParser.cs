@@ -191,6 +191,7 @@ namespace GitUI.Script
                 if (revisionGrid == null)
                 {
                     var currentRevisionGuid = module.GetCurrentCheckout();
+                    currentRevision = new GitRevision(currentRevisionGuid);
                     refs = module.GetRefs(true, true).Where(gitRef => gitRef.ObjectId == currentRevisionGuid).ToList();
                 }
                 else
@@ -348,7 +349,8 @@ namespace GitUI.Script
                         remote = selectedRemotes.Count == 1
                             ? selectedRemotes[0]
                             : AskToSpecify(selectedRemotes, revisionGrid);
-                        newString = module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote));
+                        url = module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote));
+                        newString = GetRemotePath(url);
                     }
 
                     break;

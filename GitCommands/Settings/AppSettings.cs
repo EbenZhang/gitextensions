@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 using GitCommands.Settings;
+using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 using Microsoft.Win32;
 using StringSetting = GitCommands.Settings.StringSetting;
@@ -81,7 +82,7 @@ namespace GitCommands
                 }
             });
 
-            SettingsContainer = new RepoDistSettings(null, GitExtSettingsCache.FromCache(SettingsFilePath));
+            SettingsContainer = new RepoDistSettings(null, GitExtSettingsCache.FromCache(SettingsFilePath), SettingLevel.Unknown);
 
             if (!File.Exists(SettingsFilePath))
             {
@@ -696,10 +697,22 @@ namespace GitCommands
             Default
         }
 
+        /// <summary>
+        /// Gets or sets the default pull action that is performed by the toolbar icon when it is clicked on.
+        /// </summary>
         public static PullAction DefaultPullAction
         {
             get => GetEnum("DefaultPullAction", PullAction.Merge);
             set => SetEnum("DefaultPullAction", value);
+        }
+
+        /// <summary>
+        /// Gets or sets the default pull action as configured in the FormPull dialog.
+        /// </summary>
+        public static PullAction FormPullAction
+        {
+            get => GetEnum("FormPullAction", PullAction.Merge);
+            set => SetEnum("FormPullAction", value);
         }
 
         public static string SmtpServer

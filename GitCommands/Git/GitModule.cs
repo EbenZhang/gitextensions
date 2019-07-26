@@ -41,13 +41,13 @@ namespace GitCommands
         private readonly IGitCommandRunner _gitCommandRunner;
         private readonly IExecutable _gitExecutable;
 
-        public GitModule([CanBeNull] string workingDir, [CanBeNull] IExecutable executable = null)
+        public GitModule([CanBeNull] string workingDir)
         {
-            WorkingDir = (workingDir ?? "").EnsureTrailingPathSeparator();
+            WorkingDir = (workingDir ?? "").NormalizePath().EnsureTrailingPathSeparator();
             WorkingDirGitDir = GitDirectoryResolverInstance.Resolve(WorkingDir);
             _indexLockManager = new IndexLockManager(this);
             _commitDataManager = new CommitDataManager(() => this);
-            _gitExecutable = executable ?? new Executable(() => AppSettings.GitCommand, WorkingDir);
+            _gitExecutable = new Executable(() => AppSettings.GitCommand, WorkingDir);
             _gitCommandRunner = new GitCommandRunner(_gitExecutable, () => SystemEncoding);
 
             // If this is a submodule, populate relevant properties.
@@ -219,7 +219,7 @@ namespace GitCommands
                     {
                         if (_localSettings == null)
                         {
-                            _localSettings = new RepoDistSettings(null, EffectiveSettings.SettingsCache);
+                            _localSettings = new RepoDistSettings(null, EffectiveSettings.SettingsCache, SettingLevel.Local);
                         }
                     }
                 }
@@ -250,7 +250,7 @@ namespace GitCommands
             }
         }
 
-        public ConfigFileSettings LocalConfigFile => new ConfigFileSettings(null, EffectiveConfigFile.SettingsCache);
+        public ConfigFileSettings LocalConfigFile => new ConfigFileSettings(null, EffectiveConfigFile.SettingsCache, SettingLevel.Local);
 
         IConfigFileSettings IGitModule.LocalConfigFile => LocalConfigFile;
 
@@ -758,7 +758,12 @@ namespace GitCommands
                 "refs/"
             };
 
-            var tree = _gitExecutable.GetOutput(args);
+            string tree = _gitExecutable.GetOutput(args);
+            int warningPos = tree.IndexOf("warning:");
+            if (warningPos >= 0)
+            {
+                throw new RefsWarningException(tree.Substring(warningPos).SplitLines()[0]);
+            }
 
             return tree.Split();
         }
@@ -862,16 +867,6 @@ namespace GitCommands
             return
                 (removed > 0 ? ("-" + removed) : "") +
                 (added > 0 ? ("+" + added) : "");
-        }
-
-        public string GetMergeMessage()
-        {
-            var file = GetGitDirectory() + "MERGE_MSG";
-
-            return
-                File.Exists(file)
-                    ? File.ReadAllText(file)
-                    : "";
         }
 
         public void RunGitK()
@@ -1138,32 +1133,17 @@ namespace GitCommands
 
         /// <summary>
         /// Gets the commit ID of the currently checked out commit.
-        /// If the repo is bare or has no commits, <c>null</c> is returned.
+        /// If the repo is bare, has no commits or is corrupt, <c>null</c> is returned.
         /// </summary>
         [CanBeNull]
         public ObjectId GetCurrentCheckout()
         {
             var args = new GitArgumentBuilder("rev-parse") { "HEAD" };
-            var output = _gitExecutable.GetOutput(args).TrimEnd();
+            var result = _gitExecutable.Execute(args);
 
-            if (output.StartsWith("HEAD"))
-            {
-                // A bare repo returns:
-                //
-                // HEAD
-                //
-                // A repository with no commits returns:
-                //
-                // HEAD
-                //
-                // fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
-                // Use '--' to separate paths from revisions, like this:
-                // 'git <command> [<revision>...] -- [<file>...]'
-
-                return null;
-            }
-
-            return ObjectId.Parse(output);
+            return result.ExitCode == 0 && ObjectId.TryParse(result.StandardOutput, offset: 0, out var objectId)
+                ? objectId
+                : null;
         }
 
         public bool TryResolvePartialCommitId(string objectIdPrefix, out ObjectId objectId)
@@ -1413,7 +1393,7 @@ namespace GitCommands
                 new GitArgumentBuilder("format-patch")
                 {
                     "-M -C -B",
-                    { start != null, $"-- start-number {start}" },
+                    { start != null, $"--start-number {start}" },
                     $"{from.Quote()}..{to.Quote()}",
                     $"-o {output.ToPosixPath().Quote()}"
                 });
@@ -2194,7 +2174,7 @@ namespace GitCommands
                         var fetchLine = enumerator.Current;
 
                         // An invalid module is not an error; we simply return an empty list of remotes
-                        if (fetchLine.Contains("not a git repository"))
+                        if (fetchLine.IndexOf("not a git repository", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             return remotes;
                         }
@@ -3510,6 +3490,11 @@ namespace GitCommands
         [CanBeNull]
         public ObjectId RevParse(string revisionExpression)
         {
+            if (string.IsNullOrWhiteSpace(revisionExpression) || revisionExpression.Length > 260)
+            {
+                return null;
+            }
+
             if (ObjectId.TryParse(revisionExpression, out var objectId))
             {
                 return objectId;
