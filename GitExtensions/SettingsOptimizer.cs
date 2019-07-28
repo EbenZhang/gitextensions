@@ -51,6 +51,8 @@ namespace GitExtensions
             Optimize(nameof(AppSettings.DontConfirmResolveConflicts), true, x => AppSettings.DontConfirmResolveConflicts = x);
             Optimize(nameof(AppSettings.DontConfirmSecondAbortConfirmation), true, x => AppSettings.DontConfirmSecondAbortConfirmation = x);
             Optimize(nameof(AppSettings.ConEmuStyle), "<Ubuntu>", x => AppSettings.ConEmuStyle.Value = x);
+            Optimize(nameof(AppSettings.StartWithRecentWorkingDir), true, x => AppSettings.StartWithRecentWorkingDir = x);
+            Optimize(nameof(AppSettings.DefaultPullAction), AppSettings.PullAction.Fetch, x => AppSettings.DefaultPullAction = x);
 
             if (_hasChange)
             {
