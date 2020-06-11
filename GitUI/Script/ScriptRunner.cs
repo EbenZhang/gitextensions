@@ -32,7 +32,7 @@ namespace GitUI.Script
         public static CommandStatus RunScript(IWin32Window owner, IGitModule module, string scriptKey, IGitUICommands uiCommands, RevisionGridControl revisionGrid)
         {
             return RunScript(owner, module, scriptKey, uiCommands, revisionGrid,
-                msg => MessageBox.Show(owner, msg, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
+                msg => MessageBox.Show(owner, msg, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
 
         public static CommandStatus RunScript(IWin32Window owner, IGitModule module, string scriptKey, IGitUICommands uiCommands,
@@ -103,12 +103,16 @@ namespace GitUI.Script
             if (command.StartsWith(PluginPrefix))
             {
                 command = command.Replace(PluginPrefix, "");
-                foreach (var plugin in PluginRegistry.Plugins)
+
+                lock (PluginRegistry.Plugins)
                 {
-                    if (plugin.Description.ToLower().Equals(command, StringComparison.CurrentCultureIgnoreCase))
+                    foreach (var plugin in PluginRegistry.Plugins)
                     {
-                        var eventArgs = new GitUIEventArgs(owner, uiCommands);
-                        return new CommandStatus(executed: true, needsGridRefresh: plugin.Execute(eventArgs));
+                        if (plugin.Description.ToLower().Equals(command, StringComparison.CurrentCultureIgnoreCase))
+                        {
+                            var eventArgs = new GitUIEventArgs(owner, uiCommands);
+                            return new CommandStatus(executed: true, needsGridRefresh: plugin.Execute(eventArgs));
+                        }
                     }
                 }
 
@@ -123,7 +127,7 @@ namespace GitUI.Script
                 }
 
                 command = command.Replace(NavigateToPrefix, string.Empty);
-                if (!command.IsNullOrEmpty())
+                if (!string.IsNullOrEmpty(command))
                 {
                     var revisionRef = new Executable(command, module.WorkingDir).GetOutputLines(argument).FirstOrDefault();
 
@@ -148,7 +152,10 @@ namespace GitUI.Script
                 }
                 else
                 {
-                    new Executable(command, module.WorkingDir).Start(argument);
+                    // It is totally valid to have a command without an argument, e.g.:
+                    //    Command  : myscript.cmd
+                    //    Arguments: <blank>
+                    new Executable(command, module.WorkingDir).Start(argument ?? string.Empty);
                 }
             }
 

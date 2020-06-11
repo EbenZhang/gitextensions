@@ -82,6 +82,8 @@ namespace ResourceManager
             sb.AppendLine("Submodule " + name);
             sb.AppendLine();
             GitModule module = superproject.GetSubmodule(name);
+
+            // Submodule directory must exist to run commands, unknown otherwise
             if (module.IsValidGitWorkingDir())
             {
                 // TEMP, will be moved in the follow up refactor
@@ -138,36 +140,45 @@ namespace ResourceManager
             // TEMP, will be moved in the follow up refactor
             ICommitDataManager commitDataManager = new CommitDataManager(() => gitModule);
 
-            sb.AppendLine();
-            sb.AppendLine("From:\t" + (status.OldCommit?.ToString() ?? "null"));
             CommitData oldCommitData = null;
-            if (gitModule.IsValidGitWorkingDir())
-            {
-                if (status.OldCommit != null)
-                {
-                    oldCommitData = commitDataManager.GetCommitData(status.OldCommit.ToString(), out _);
-                }
-
-                if (oldCommitData != null)
-                {
-                    sb.AppendLine("\t\t\t\t\t" + GetRelativeDateString(DateTime.UtcNow, oldCommitData.CommitDate.UtcDateTime) + " (" + GetFullDateString(oldCommitData.CommitDate) + ")");
-                    var delimiter = new[] { '\n', '\r' };
-                    var lines = oldCommitData.Body.Trim(delimiter).Split(new[] { "\r\n" }, 0);
-                    foreach (var line in lines)
-                    {
-                        sb.AppendLine("\t\t" + line);
-                    }
-                }
-            }
-            else
+            if (status.OldCommit != status.Commit)
             {
                 sb.AppendLine();
+                sb.AppendLine("From:\t" + (status.OldCommit?.ToString() ?? "null"));
+
+                // Submodule directory must exist to run commands, unknown otherwise
+                if (gitModule.IsValidGitWorkingDir())
+                {
+                    if (status.OldCommit != null)
+                    {
+                        oldCommitData = commitDataManager.GetCommitData(status.OldCommit.ToString(), out _);
+                    }
+
+                    if (oldCommitData != null)
+                    {
+                        sb.AppendLine("\t\t\t\t\t" + GetRelativeDateString(DateTime.UtcNow, oldCommitData.CommitDate.UtcDateTime) + " (" +
+                                      GetFullDateString(oldCommitData.CommitDate) + ")");
+                        var delimiter = new[] { '\n', '\r' };
+                        var lines = oldCommitData.Body.Trim(delimiter).Split(new[] { "\r\n" }, 0);
+                        foreach (var line in lines)
+                        {
+                            sb.AppendLine("\t\t" + line);
+                        }
+                    }
+                }
+                else
+                {
+                    sb.AppendLine();
+                }
             }
 
             sb.AppendLine();
             string dirty = !status.IsDirty ? "" : " (dirty)";
-            sb.AppendLine("To:\t\t" + (status.Commit?.ToString() ?? "null") + dirty);
+            sb.Append(status.OldCommit != status.Commit ? "To:\t" : "Commit:\t");
+            sb.AppendLine((status.Commit?.ToString() ?? "null") + dirty);
             CommitData commitData = null;
+
+            // Submodule directory must exist to run commands, unknown otherwise
             if (gitModule.IsValidGitWorkingDir())
             {
                 if (status.Commit != null)
@@ -177,13 +188,19 @@ namespace ResourceManager
 
                 if (commitData != null)
                 {
-                    sb.AppendLine("\t\t\t\t\t" + GetRelativeDateString(DateTime.UtcNow, commitData.CommitDate.UtcDateTime) + " (" + GetFullDateString(commitData.CommitDate) + ")");
+                    sb.AppendLine("\t\t\t\t\t" + GetRelativeDateString(DateTime.UtcNow, commitData.CommitDate.UtcDateTime) + " (" +
+                                  GetFullDateString(commitData.CommitDate) + ")");
                     var delimiter = new[] { '\n', '\r' };
                     var lines = commitData.Body.Trim(delimiter).Split(new[] { "\r\n" }, 0);
                     foreach (var line in lines)
                     {
                         sb.AppendLine("\t\t" + line);
                     }
+                }
+
+                if (status.OldCommit == status.Commit)
+                {
+                    oldCommitData = commitData;
                 }
             }
             else
@@ -215,7 +232,8 @@ namespace ResourceManager
                     sb.AppendLine("Same commit time");
                     break;
                 default:
-                    sb.AppendLine("Unknown");
+                    sb.AppendLine(status.IsDirty ? "Dirty" : "Unknown");
+
                     break;
             }
 

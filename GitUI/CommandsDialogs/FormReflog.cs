@@ -125,9 +125,17 @@ namespace GitUI.CommandsDialogs
 
             DataGridViewRow GetSelectedRow()
             {
-                return gridReflog.SelectedRows.Count > 0
-                    ? gridReflog.SelectedRows[0]
-                    : gridReflog.Rows[gridReflog.SelectedCells[0].RowIndex];
+                if (gridReflog.SelectedRows.Count > 0)
+                {
+                    return gridReflog.SelectedRows[0];
+                }
+
+                if (gridReflog.SelectedCells.Count > 0)
+                {
+                    return gridReflog.Rows[gridReflog.SelectedCells[0].RowIndex];
+                }
+
+                return gridReflog.CurrentRow;
             }
         }
 
@@ -137,7 +145,7 @@ namespace GitUI.CommandsDialogs
             {
                 if (MessageBox.Show(this, _continueResetCurrentBranchEvenWithChangesText.Text,
                         _continueResetCurrentBranchCaptionText.Text,
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.No)
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.No)
                 {
                     return;
                 }
@@ -147,10 +155,8 @@ namespace GitUI.CommandsDialogs
             var resetType = _isDirtyDir ? FormResetCurrentBranch.ResetType.Soft : FormResetCurrentBranch.ResetType.Hard;
             UICommands.DoActionOnRepo(() =>
             {
-                using (var form = new FormResetCurrentBranch(UICommands, gitRevision, resetType))
-                {
-                    return form.ShowDialog(this) == DialogResult.OK;
-                }
+                using var form = FormResetCurrentBranch.Create(UICommands, gitRevision, resetType);
+                return form.ShowDialog(this) == DialogResult.OK;
             });
         }
 

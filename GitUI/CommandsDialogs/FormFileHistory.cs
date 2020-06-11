@@ -11,6 +11,8 @@ using GitCommands;
 using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.Properties;
+using GitUI.UserControls;
+using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 using ResourceManager;
 
@@ -66,13 +68,15 @@ namespace GitUI.CommandsDialogs
 
             InitializeComplete();
 
+            Blame.ConfigureRepositoryHostPlugin(PluginRegistry.TryGetGitHosterForModule(Module));
+
             return;
 
             void ConfigureTabControl()
             {
                 tabControl1.ImageList = new ImageList
                 {
-                    ColorDepth = ColorDepth.Depth8Bit,
+                    ColorDepth = ColorDepth.Depth32Bit,
                     ImageSize = DpiUtil.Scale(new Size(16, 16)),
                     Images =
                     {
@@ -132,6 +136,7 @@ namespace GitUI.CommandsDialogs
                 detectMoveAndCopyInAllFilesToolStripMenuItem.Checked = AppSettings.DetectCopyInAllOnBlame;
                 detectMoveAndCopyInThisFileToolStripMenuItem.Checked = AppSettings.DetectCopyInFileOnBlame;
                 displayAuthorFirstToolStripMenuItem.Checked = AppSettings.BlameDisplayAuthorFirst;
+                showAuthorAvatarToolStripMenuItem.Checked = AppSettings.BlameShowAuthorAvatar;
                 showAuthorToolStripMenuItem.Checked = AppSettings.BlameShowAuthor;
                 showAuthorDateToolStripMenuItem.Checked = AppSettings.BlameShowAuthorDate;
                 showAuthorTimeToolStripMenuItem.Checked = AppSettings.BlameShowAuthorTime;
@@ -139,7 +144,7 @@ namespace GitUI.CommandsDialogs
                 showOriginalFilePathToolStripMenuItem.Checked = AppSettings.BlameShowOriginalFilePath;
             }
 
-            if (filterByRevision && revision?.Guid != null)
+            if (filterByRevision && revision?.ObjectId != null)
             {
                 _filterBranchHelper.SetBranchFilter(revision.Guid, false);
             }
@@ -290,7 +295,7 @@ namespace GitUI.CommandsDialogs
                 .Append("File History - ")
                 .Append(FileName);
 
-            if (!alternativeFileName.IsNullOrEmpty() && alternativeFileName != FileName)
+            if (!string.IsNullOrEmpty(alternativeFileName) && alternativeFileName != FileName)
             {
                 str.Append(" (").Append(alternativeFileName).Append(')');
             }
@@ -358,7 +363,13 @@ namespace GitUI.CommandsDialogs
             else if (tabControl1.SelectedTab == ViewTab)
             {
                 View.Encoding = Diff.Encoding;
-                View.ViewGitItemRevisionAsync(fileName, revision.ObjectId);
+                var file = new GitItemStatus
+                {
+                    IsTracked = true,
+                    Name = fileName,
+                    IsSubmodule = GitModule.IsValidGitWorkingDir(_fullPathResolver.Resolve(fileName))
+                };
+                View.ViewGitItemRevisionAsync(file, revision.ObjectId);
             }
             else if (tabControl1.SelectedTab == DiffTab)
             {
@@ -368,7 +379,9 @@ namespace GitUI.CommandsDialogs
                     Name = fileName,
                     IsSubmodule = GitModule.IsValidGitWorkingDir(_fullPathResolver.Resolve(fileName))
                 };
-                Diff.ViewChangesAsync(FileChanges.GetSelectedRevisions(), file, "You need to select at least one revision to view diff.");
+                var revisions = FileChanges.GetSelectedRevisions();
+                var item = new FileStatusItem(firstRev: revisions.Skip(1).LastOrDefault(), secondRev: revisions.FirstOrDefault(), file);
+                Diff.ViewChangesAsync(item, defaultText: "You need to select at least one revision to view diff.");
             }
             else if (tabControl1.SelectedTab == CommitInfoTabPage)
             {
@@ -522,7 +535,7 @@ namespace GitUI.CommandsDialogs
             var selectedRevisions = FileChanges.GetSelectedRevisions();
 
             diffToolRemoteLocalStripMenuItem.Enabled =
-                selectedRevisions.Count == 1 && selectedRevisions[0].Guid != GitRevision.WorkTreeGuid &&
+                selectedRevisions.Count == 1 && selectedRevisions[0].ObjectId != ObjectId.WorkTreeId &&
                 File.Exists(_fullPathResolver.Resolve(FileName));
             openWithDifftoolToolStripMenuItem.Enabled =
                 selectedRevisions.Count >= 1 && selectedRevisions.Count <= 2;
@@ -555,7 +568,7 @@ namespace GitUI.CommandsDialogs
             loadBlameOnShowToolStripMenuItem.Checked = AppSettings.LoadBlameOnShow;
         }
 
-        private void Blame_CommandClick(object sender, CommitInfo.CommandEventArgs e)
+        private void Blame_CommandClick(object sender, ResourceManager.CommandEventArgs e)
         {
             if (e.Command == "gotocommit")
             {
@@ -569,7 +582,7 @@ namespace GitUI.CommandsDialogs
                 CommitData commit = _commitDataManager.GetCommitData(e.Data, out _);
                 if (commit != null)
                 {
-                    FileChanges.SetSelectedRevision(new GitRevision(commit.ObjectId));
+                    FileChanges.SetSelectedRevision(commit.ObjectId);
                 }
             }
             else if (e.Command == "navigatebackward")
@@ -689,6 +702,13 @@ namespace GitUI.CommandsDialogs
         {
             AppSettings.BlameShowOriginalFilePath = !AppSettings.BlameShowOriginalFilePath;
             showOriginalFilePathToolStripMenuItem.Checked = AppSettings.BlameShowOriginalFilePath;
+            UpdateSelectedFileViewers(true);
+        }
+
+        private void showAuthorAvatarToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppSettings.BlameShowAuthorAvatar = !AppSettings.BlameShowAuthorAvatar;
+            showAuthorAvatarToolStripMenuItem.Checked = AppSettings.BlameShowAuthorAvatar;
             UpdateSelectedFileViewers(true);
         }
     }

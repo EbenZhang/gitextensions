@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using GitCommands.Git;
@@ -25,14 +25,15 @@ namespace GitCommands.Submodules
         /// <param name="workingDirectory">Current module working directory</param>
         /// <param name="noBranchText">The text where no branch is checked out for the submodule</param>
         /// <param name="updateStatus">Update the detailed submodule status (set when current module is not top project)</param>
-        void UpdateSubmodulesStructure(string workingDirectory, string noBranchText, bool updateStatus);
+        Task UpdateSubmodulesStructureAsync(string workingDirectory, string noBranchText, bool updateStatus);
 
         /// <summary>
         /// Update the submodule status
         /// </summary>
         /// <param name="workingDirectory">Current module working directory</param>
         /// <param name="gitStatus">The Git status for the changes (also other than submodules)</param>
-        void UpdateSubmodulesStatus(string workingDirectory, [CanBeNull] IReadOnlyList<GitItemStatus> gitStatus);
+        /// <param name="forceUpdate">Suppress the usual delay of 15 seconds between consecutive updates</param>
+        Task UpdateSubmodulesStatusAsync(string workingDirectory, [CanBeNull] IReadOnlyList<GitItemStatus> gitStatus, bool forceUpdate = false);
     }
 
     public sealed class SubmoduleStatusProvider : ISubmoduleStatusProvider
@@ -64,72 +65,84 @@ namespace GitCommands.Submodules
         }
 
         /// <inheritdoc />
-        public void UpdateSubmodulesStructure(string workingDirectory, string noBranchText, bool updateStatus)
+        public async Task UpdateSubmodulesStructureAsync(string workingDirectory, string noBranchText, bool updateStatus)
         {
             _submoduleInfoResult = null;
             _gitStatusWhileUpdatingStructure = null;
             _submoduleInfos.Clear();
-            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+
+            // Cancel any previous async activities:
+            var cancelToken = _submodulesStatusSequence.Next();
+
+            // Do not throttle next status update
+            _previousSubmoduleUpdateTime = DateTime.MinValue;
+
+            OnStatusUpdating();
+
+            await TaskScheduler.Default;
+
+            // Start gathering new submodule structure asynchronously.
+            var currentModule = new GitModule(workingDirectory);
+            var result = new SubmoduleInfoResult
             {
-                // Cancel any previous async activities:
-                var cancelToken = _submodulesStatusSequence.Next();
+                Module = currentModule
+            };
 
-                // Do not throttle next status update
-                _previousSubmoduleUpdateTime = DateTime.MinValue;
+            // Add all submodules inside the current repository:
+            GetRepositorySubmodulesStructure(result, noBranchText);
+            GetSuperProjectRepositorySubmodulesStructure(currentModule, result, noBranchText);
 
-                OnStatusUpdating();
+            // Structure is updated
+            OnStatusUpdated(result, cancelToken);
 
-                await TaskScheduler.Default;
+            // Prepare info for status updates (normally triggered by StatusMonitor)
+            foreach (var info in result.OurSubmodules)
+            {
+                _submoduleInfos[info.Path] = info;
+            }
 
-                // Start gathering new submodule structure asynchronously.
-                var currentModule = new GitModule(workingDirectory);
-                var result = new SubmoduleInfoResult
+            // Note in 3.4: Overwrites info for OurSubmodules
+            foreach (var info in result.SuperSubmodules)
+            {
+                _submoduleInfos[info.Path] = info;
+            }
+
+            if (!_submoduleInfos.ContainsKey(result.TopProject.Path))
+            {
+                _submoduleInfos.Add(result.TopProject.Path, result.TopProject);
+            }
+
+            if (updateStatus)
+            {
+                if (result.SuperProject != null)
                 {
-                    Module = currentModule
-                };
+                    // For the topmodule, use git-status information to update the status
+                    // If a submodule is current, update once from top module to give an overview
+                    // The structure _below_ the current module could have been updated from git-status but the current module
+                    // must be updated from its super project to set the ahead/behind information
+                    await GetSubmoduleDetailedStatusAsync(currentModule.GetTopModule(), cancelToken);
 
-                // Add all submodules inside the current repository:
-                GetRepositorySubmodulesStructure(result, noBranchText);
-                GetSuperProjectRepositorySubmodulesStructure(currentModule, result, noBranchText);
+                    // Ignore if possible or at least delay the pending git-status trigger
+                    _gitStatusWhileUpdatingStructure = null;
+                    _previousSubmoduleUpdateTime = DateTime.Now;
+                }
+                else if (_gitStatusWhileUpdatingStructure != null)
+                {
+                    await UpdateSubmodulesStatusAsync(currentModule, _gitStatusWhileUpdatingStructure, cancelToken);
 
-                // Structure is updated
+                    // Ignore if possible or at least delay the pending git-status trigger
+                    _gitStatusWhileUpdatingStructure = null;
+                    _previousSubmoduleUpdateTime = DateTime.Now;
+                }
+
                 OnStatusUpdated(result, cancelToken);
+            }
 
-                // Prepare info for status updates (normally triggered by StatusMonitor)
-                foreach (var info in result.OurSubmodules)
-                {
-                    _submoduleInfos[info.Path] = info;
-                }
-
-                foreach (var info in result.SuperSubmodules)
-                {
-                    _submoduleInfos[info.Path] = info;
-                }
-
-                // Start update status for the submodules
-                if (updateStatus)
-                {
-                    if (result.SuperProject != null)
-                    {
-                        // Update from top module (will stop at current)
-                        await GetSubmoduleDetailedStatusAsync(currentModule.GetTopModule(), cancelToken);
-                    }
-
-                    if (_gitStatusWhileUpdatingStructure != null)
-                    {
-                        // Current module must be updated separetly (not in _submoduleInfos)
-                        await UpdateSubmodulesStatusAsync(currentModule, _gitStatusWhileUpdatingStructure, cancelToken);
-                    }
-
-                    OnStatusUpdated(result, cancelToken);
-                }
-
-                _submoduleInfoResult = result;
-            }).FileAndForget();
+            _submoduleInfoResult = result;
         }
 
         /// <inheritdoc />
-        public void UpdateSubmodulesStatus(string workingDirectory, [CanBeNull] IReadOnlyList<GitItemStatus> gitStatus)
+        public async Task UpdateSubmodulesStatusAsync(string workingDirectory, [CanBeNull] IReadOnlyList<GitItemStatus> gitStatus, bool forceUpdate)
         {
             if (_submoduleInfoResult == null)
             {
@@ -139,22 +152,21 @@ namespace GitCommands.Submodules
 
             // Throttle updates triggered from status updates
             TimeSpan elapsed = DateTime.Now - _previousSubmoduleUpdateTime;
-            if (gitStatus == null || elapsed.TotalSeconds <= 15)
+            if (gitStatus == null || (!forceUpdate && elapsed.TotalSeconds <= 15))
             {
+                Console.WriteLine($"{MethodBase.GetCurrentMethod().Name} called too early again - aborting");
                 return;
             }
 
             var cancelToken = _submodulesStatusSequence.Next();
             _gitStatusWhileUpdatingStructure = null;
-            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-            {
-                await TaskScheduler.Default;
 
-                var currentModule = new GitModule(workingDirectory);
-                await UpdateSubmodulesStatusAsync(currentModule, gitStatus, cancelToken);
+            await TaskScheduler.Default;
 
-                OnStatusUpdated(_submoduleInfoResult, cancelToken);
-            }).FileAndForget();
+            var currentModule = new GitModule(workingDirectory);
+            await UpdateSubmodulesStatusAsync(currentModule, gitStatus, cancelToken);
+
+            OnStatusUpdated(_submoduleInfoResult, cancelToken);
         }
 
         private void OnStatusUpdating()
@@ -174,7 +186,7 @@ namespace GitCommands.Submodules
             {
                 var name = submodule;
                 string path = result.Module.GetSubmoduleFullPath(submodule);
-                if (AppSettings.DashboardShowCurrentBranch && !GitModule.IsBareRepository(path))
+                if (AppSettings.ShowRepoCurrentBranch && !GitModule.IsBareRepository(path))
                 {
                     name = name + " " + GetModuleBranch(path, noBranchText);
                 }
@@ -227,7 +239,7 @@ namespace GitCommands.Submodules
             {
                 var localPath = superprojectModule.WorkingDir.Substring(topProject.WorkingDir.Length);
                 name = Path.GetDirectoryName(localPath).ToPosixPath();
-             }
+            }
 
             string path = superprojectModule.WorkingDir;
             name += GetBranchNameSuffix(path, noBranchText);
@@ -282,7 +294,7 @@ namespace GitCommands.Submodules
 
         private string GetBranchNameSuffix(string repositoryPath, string noBranchText)
         {
-            if (AppSettings.DashboardShowCurrentBranch && !GitModule.IsBareRepository(repositoryPath))
+            if (AppSettings.ShowRepoCurrentBranch && !GitModule.IsBareRepository(repositoryPath))
             {
                 return " " + GetModuleBranch(repositoryPath, noBranchText);
             }
@@ -294,7 +306,7 @@ namespace GitCommands.Submodules
         {
             var branch = GitModule.GetSelectedBranchFast(path);
             var text = DetachedHeadParser.IsDetachedHead(branch) ? noBranchText : branch;
-            return $"[{text}]";
+            return $"({text})";
         }
 
         /// <summary>
@@ -307,19 +319,112 @@ namespace GitCommands.Submodules
         private async Task UpdateSubmodulesStatusAsync(GitModule module, [CanBeNull] IReadOnlyList<GitItemStatus> gitStatus, CancellationToken cancelToken)
         {
             _previousSubmoduleUpdateTime = DateTime.Now;
+            cancelToken.ThrowIfCancellationRequested();
             await TaskScheduler.Default;
 
-            var changedSubmodules = gitStatus.Where(i => i.IsSubmodule);
-            foreach (var submoduleName in module.GetSubmodulesLocalPaths(false).Where(s => !changedSubmodules.Any(i => i.Name == s)))
+            if (!_submoduleInfos.ContainsKey(module.WorkingDir) || _submoduleInfos[module.WorkingDir] == null)
+            {
+                return;
+            }
+
+            // For the current module git-status has information to set and clear the IsDirty flag
+            // but cannot evaluate or change the ahead/behind information
+            // The top module can only be dirty, but a submodule will only update the tree below current module
+            if (gitStatus != null && gitStatus.Count > 0)
+            {
+                // If changes this and all super projects are at least dirty
+                SetModuleAsDirtyUpwards(module);
+            }
+            else if (_submoduleInfos[module.WorkingDir].Detailed != null)
+            {
+                // No Git changes for this module, clear dirty status (but unknown for super projects)
+                if (_submoduleInfos[module.WorkingDir].Detailed.Status == SubmoduleStatus.Unknown)
+                {
+                    _submoduleInfos[module.WorkingDir].Detailed = null;
+                }
+                else
+                {
+                    _submoduleInfos[module.WorkingDir].Detailed.IsDirty = false;
+                }
+            }
+
+            // Recursive update submodules,
+            // git-status can set IsDirty if Unknown remains (but not ahead/behind status)
+            var changedSubmodules = gitStatus?.Where(i => i.IsSubmodule) ?? new List<GitItemStatus>();
+            var unchangedSubmoduleNames = module
+                .GetSubmodulesLocalPaths(false)
+                .Where(s => changedSubmodules.All(i => i.Name != s));
+            foreach (var submoduleName in unchangedSubmoduleNames)
             {
                 SetSubmoduleEmptyDetailedStatus(module, submoduleName);
             }
 
-            foreach (var submoduleName in changedSubmodules)
+            foreach (var status in changedSubmodules)
             {
-                cancelToken.ThrowIfCancellationRequested();
+                if (status.IsDirty && !status.IsChanged)
+                {
+                    // Submodule is only dirty, no further Git command required for this submodule
+                    var path = module.GetSubmoduleFullPath(status.Name);
+                    SetModuleAsDirty(path, true);
 
-                await GetSubmoduleDetailedStatusAsync(module, submoduleName.Name, cancelToken);
+                    // Recursively update submodules below this
+                    var subModule = new GitModule(path);
+                    await GetSubmoduleDetailedStatusAsync(subModule, cancelToken);
+                }
+                else
+                {
+                    cancelToken.ThrowIfCancellationRequested();
+
+                    await GetSubmoduleDetailedStatusAsync(module, status.Name, cancelToken);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Set the module (normally top module) as dirty (if changes in module or any submodule)
+        /// If status is already set, use that (so no change from changed commits to dirty)
+        /// </summary>
+        /// <param name="path">path to the module</param>
+        private void SetModuleAsDirty(string path, bool overRide)
+        {
+            if (!_submoduleInfos.ContainsKey(path) || _submoduleInfos[path] == null)
+            {
+                return;
+            }
+
+            if (overRide || _submoduleInfos[path].Detailed == null)
+            {
+                _submoduleInfos[path].Detailed = new DetailedSubmoduleInfo
+                {
+                    Status = SubmoduleStatus.Unknown,
+                    IsDirty = true,
+                    AddedAndRemovedText = ""
+                };
+            }
+            else
+            {
+                _submoduleInfos[path].Detailed.IsDirty = true;
+            }
+        }
+
+        /// <summary>
+        /// Set the status to 'dirty' recursively to super projects
+        /// </summary>
+        /// <param name="module">module</param>
+        private void SetModuleAsDirtyUpwards(GitModule module)
+        {
+            while (true)
+            {
+                SetModuleAsDirty(module.WorkingDir, false);
+
+                var super = module.SuperprojectModule;
+                if (super != null)
+                {
+                    module = super;
+                    continue;
+                }
+
+                break;
             }
         }
 
@@ -348,7 +453,7 @@ namespace GitCommands.Submodules
         /// <returns>the task</returns>
         private async Task GetSubmoduleDetailedStatusAsync(GitModule superModule, string submoduleName, CancellationToken cancelToken)
         {
-            if (superModule == null || submoduleName.IsNullOrWhiteSpace())
+            if (superModule == null || string.IsNullOrWhiteSpace(submoduleName))
             {
                 return;
             }
@@ -369,18 +474,37 @@ namespace GitCommands.Submodules
                 submoduleStatus.CheckSubmoduleStatus(submoduleStatus.GetSubmodule(superModule));
             }
 
+            // If no changes, set info.Detailed set to null
             info.Detailed = submoduleStatus == null ?
                 null :
-                new DetailedSubmoduleInfo()
+                new DetailedSubmoduleInfo
                 {
                     Status = submoduleStatus.Status,
                     IsDirty = submoduleStatus.IsDirty,
                     AddedAndRemovedText = submoduleStatus.AddedAndRemovedString()
                 };
 
+            if (submoduleStatus != null)
+            {
+                // If any module is changed, top module is dirty
+                // This sets the status but will not clear until a full refresh
+                // v3.4 This will be set for every dirty submodule
+                SetModuleAsDirtyUpwards(superModule.GetTopModule());
+            }
+
             // Recursively update submodules
             var module = new GitModule(path);
-            await GetSubmoduleDetailedStatusAsync(module, cancelToken);
+            if (submoduleStatus != null && submoduleStatus.IsDirty)
+            {
+                await GetSubmoduleDetailedStatusAsync(module, cancelToken);
+                return;
+            }
+
+            // no changes to submodules
+            foreach (var name in module.GetSubmodulesLocalPaths(false))
+            {
+                SetSubmoduleEmptyDetailedStatus(module, name);
+            }
         }
 
         /// <summary>

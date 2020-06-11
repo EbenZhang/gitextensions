@@ -1,18 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitExtUtils;
+using GitExtUtils.GitUI.Theming;
+using GitUI.Avatars;
 using GitUI.BranchTreePanel;
 using GitUI.CommitInfo;
 using GitUI.Editor;
 using GitUI.HelperDialogs;
+using GitUI.Properties;
 using GitUIPluginInterfaces;
+using GitUIPluginInterfaces.RepositoryHosts;
+using ICSharpCode.TextEditor;
 using JetBrains.Annotations;
+using Microsoft.VisualStudio.Threading;
+using ResourceManager;
 
 namespace GitUI.Blame
 {
@@ -26,6 +36,7 @@ namespace GitUI.Blame
         public event Action EscapePressed;
 
         private readonly AsyncLoader _blameLoader = new AsyncLoader();
+        private int _lineIndex;
 
         [CanBeNull] private GitBlameLine _lastBlameLine;
         [CanBeNull] private GitBlameLine _clickedBlameLine;
@@ -39,6 +50,8 @@ namespace GitUI.Blame
         private int _lastTooltipY = -100;
         private GitBlameCommit _tooltipCommit;
         private bool _changingScrollPosition;
+        private IRepositoryHostPlugin _gitHoster;
+        private static readonly IList<Color> AgeBucketGradientColors = GetAgeBucketGradientColors();
 
         public BlameControl()
         {
@@ -64,6 +77,17 @@ namespace GitUI.Blame
             BlameFile.EscapePressed += () => EscapePressed?.Invoke();
 
             CommitInfo.CommandClicked += commitInfo_CommandClicked;
+        }
+
+        public void ConfigureRepositoryHostPlugin(IRepositoryHostPlugin gitHoster)
+        {
+            _gitHoster = gitHoster;
+            if (_gitHoster == null)
+            {
+                return;
+            }
+
+            _gitHoster.ConfigureContextMenu(contextMenu);
         }
 
         public void UpdateShowLineNumbers()
@@ -119,10 +143,10 @@ namespace GitUI.Blame
                 return;
             }
 
-            var lineIndex = BlameAuthor.GetLineFromVisualPosY(e.Y);
+            _lineIndex = BlameAuthor.GetLineFromVisualPosY(e.Y);
 
-            var blameCommit = lineIndex < _blame.Lines.Count
-                ? _blame.Lines[lineIndex].Commit
+            var blameCommit = _lineIndex < _blame.Lines.Count
+                ? _blame.Lines[_lineIndex].Commit
                 : null;
 
             HighlightLinesForCommit(blameCommit);
@@ -267,7 +291,10 @@ namespace GitUI.Blame
 
         private void ProcessBlame(string filename, GitRevision revision, IReadOnlyList<ObjectId> children, Control controlToMask, int lineNumber, int scrollpos)
         {
-            var (gutter, body) = BuildBlameContents(filename);
+            var avatarSize = BlameAuthor.Font.Height + 1;
+            var (gutter, body, avatars) = BuildBlameContents(filename, avatarSize);
+
+            BlameAuthor.SetGitBlameGutter(avatars);
 
             ThreadHelper.JoinableTaskFactory.RunAsync(
                 () => BlameAuthor.ViewTextAsync("committer.txt", gutter));
@@ -291,11 +318,14 @@ namespace GitUI.Blame
             controlToMask?.UnMask();
         }
 
-        private (string gutter, string body) BuildBlameContents(string filename)
+        private (string gutter, string body, List<GitBlameEntry> gitBlameDisplays) BuildBlameContents(string filename, int avatarSize)
         {
             var body = new StringBuilder(capacity: 4096);
 
             GitBlameCommit lastCommit = null;
+
+            bool showAuthorAvatar = AppSettings.BlameShowAuthorAvatar;
+            var gitBlameDisplays = showAuthorAvatar ? CalculateBlameGutterData(_blame.Lines) : new List<GitBlameEntry>(0);
 
             var dateTimeFormat = AppSettings.BlameShowAuthorTime
                 ? CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern + " " +
@@ -308,22 +338,49 @@ namespace GitUI.Blame
             // the extra spaces added here could be omitted.
 
             var filePathLengthEstimate = _blame.Lines.Where(l => filename != l.Commit.FileName)
-                .Select(l => l.Commit.FileName.Length)
-                .DefaultIfEmpty(0)
-                .Max();
+                                                     .Select(l => l.Commit.FileName.Length)
+                                                     .DefaultIfEmpty(0)
+                                                     .Max();
             var lineLengthEstimate = 25 + _blame.Lines.Max(l => l.Commit.Author?.Length ?? 0) + filePathLengthEstimate;
             var lineLength = Math.Max(80, lineLengthEstimate);
             var lineBuilder = new StringBuilder(lineLength + 2);
             var gutter = new StringBuilder(capacity: lineBuilder.Capacity * _blame.Lines.Count);
             var emptyLine = new string(' ', lineLength);
-            foreach (var line in _blame.Lines)
+            var cacheAvatars = new Dictionary<string, Image>();
+            var noAuthorImage = (Image)new Bitmap(Images.User80, avatarSize, avatarSize);
+            for (var index = 0; index < _blame.Lines.Count; index++)
             {
+                var line = _blame.Lines[index];
                 if (line.Commit == lastCommit)
                 {
                     gutter.AppendLine(emptyLine);
                 }
                 else
                 {
+                    var authorEmail = line.Commit.AuthorMail?.Trim('<', '>');
+                    if (showAuthorAvatar)
+                    {
+                        if (authorEmail != null)
+                        {
+                            if (cacheAvatars.ContainsKey(authorEmail))
+                            {
+                                gitBlameDisplays[index].Avatar = cacheAvatars[authorEmail];
+                            }
+                            else
+                            {
+                                var avatar = ThreadHelper.JoinableTaskFactory.Run(() =>
+                                    AvatarService.Default.GetAvatarAsync(authorEmail, line.Commit.Author,
+                                        avatarSize));
+                                cacheAvatars.Add(authorEmail, avatar);
+                                gitBlameDisplays[index].Avatar = avatar;
+                            }
+                        }
+                        else
+                        {
+                            gitBlameDisplays[index].Avatar = noAuthorImage;
+                        }
+                    }
+
                     BuildAuthorLine(line, lineBuilder, dateTimeFormat, filename, AppSettings.BlameShowAuthor, AppSettings.BlameShowAuthorDate, AppSettings.BlameShowOriginalFilePath, AppSettings.BlameDisplayAuthorFirst);
 
                     gutter.Append(lineBuilder);
@@ -336,10 +393,11 @@ namespace GitUI.Blame
                 lastCommit = line.Commit;
             }
 
-            return (gutter.ToString(), body.ToString());
+            return (gutter.ToString(), body.ToString(), gitBlameDisplays);
         }
 
-        private void BuildAuthorLine(GitBlameLine line, StringBuilder lineBuilder, string dateTimeFormat, string filename, bool showAuthor, bool showAuthorDate, bool showOriginalFilePath, bool displayAuthorFirst)
+        private void BuildAuthorLine(GitBlameLine line, StringBuilder lineBuilder, string dateTimeFormat,
+            string filename, bool showAuthor, bool showAuthorDate, bool showOriginalFilePath, bool displayAuthorFirst)
         {
             if (showAuthor && displayAuthorFirst)
             {
@@ -370,6 +428,51 @@ namespace GitUI.Blame
                 lineBuilder.Append(" - ");
                 lineBuilder.Append(line.Commit.FileName);
             }
+        }
+
+        private static IList<Color> GetAgeBucketGradientColors()
+        {
+            // Color chosen from: https://colorbrewer2.org/#type=sequential&scheme=Greens&n=7
+            return new[]
+            {
+                Color.FromArgb(247, 252, 245),
+                Color.FromArgb(199, 233, 192),
+                Color.FromArgb(161, 217, 155),
+                Color.FromArgb(116, 196, 118),
+                Color.FromArgb(65, 171, 93),
+                Color.FromArgb(35, 139, 69),
+                Color.FromArgb(0, 68, 27),
+            }.Select(ColorHelper.AdaptBackColor).ToList();
+        }
+
+        public DateTime ArtificialOldBoundary => DateTime.Now.AddYears(-3);
+
+        private List<GitBlameEntry> CalculateBlameGutterData(IReadOnlyList<GitBlameLine> blameLines)
+        {
+            var mostRecentDate = DateTime.Now.Ticks;
+            var artificialOldBoundary = ArtificialOldBoundary;
+            var gitBlameDisplays = new List<GitBlameEntry>(blameLines.Count);
+
+            var lessRecentDate = Math.Min(artificialOldBoundary.Ticks,
+                                          blameLines.Select(l => l.Commit.AuthorTime)
+                                                    .Where(d => d != DateTime.MinValue)
+                                                    .DefaultIfEmpty(artificialOldBoundary)
+                                                    .Min()
+                                                    .Ticks);
+            var intervalSize = (mostRecentDate - lessRecentDate + 1) / AgeBucketGradientColors.Count;
+            foreach (var blame in blameLines)
+            {
+                var relativeTicks = Math.Max(0, blame.Commit.AuthorTime.Ticks - lessRecentDate);
+                var ageBucketIndex = Math.Min((int)(relativeTicks / intervalSize), AgeBucketGradientColors.Count - 1);
+                var gitBlameDisplay = new GitBlameEntry
+                {
+                    AgeBucketIndex = ageBucketIndex,
+                    AgeBucketColor = AgeBucketGradientColors[ageBucketIndex]
+                };
+                gitBlameDisplays.Add(gitBlameDisplay);
+            }
+
+            return gitBlameDisplays;
         }
 
         private void ActiveTextAreaControlDoubleClick(object sender, EventArgs e)
@@ -403,7 +506,6 @@ namespace GitUI.Blame
             Point position = BlameAuthor.PointToClient(MousePosition);
 
             int line = BlameAuthor.GetLineFromVisualPosY(position.Y);
-
             if (line >= _blame.Lines.Count)
             {
                 return -1;
@@ -414,7 +516,7 @@ namespace GitUI.Blame
 
         private void contextMenu_Opened(object sender, EventArgs e)
         {
-            contextMenu.Tag = GetBlameLine();
+            contextMenu.Tag = new GitBlameContext(_fileName, _lineIndex, GetBlameLine(), _blameId);
 
             if (_revGrid == null || !TryGetSelectedRevision(out var selectedRevision))
             {
@@ -430,8 +532,7 @@ namespace GitUI.Blame
         [CanBeNull]
         private GitBlameCommit GetBlameCommit()
         {
-            int line = (int?)contextMenu.Tag ?? -1;
-
+            int line = (contextMenu.Tag as GitBlameContext)?.BlameLine ?? -1;
             if (line < 0)
             {
                 return null;
@@ -497,7 +598,7 @@ namespace GitUI.Blame
                 return;
             }
 
-            BlameRevision(selectedRevision.FirstParentGuid);
+            BlameRevision(selectedRevision.FirstParentId);
         }
 
         private void BlameRevision(ObjectId revisionId)
@@ -558,10 +659,15 @@ namespace GitUI.Blame
                 set => _control._blame = value;
             }
 
+            public DateTime ArtificialOldBoundary => _control.ArtificialOldBoundary;
+
             public void BuildAuthorLine(GitBlameLine line, StringBuilder lineBuilder, string dateTimeFormat, string filename, bool showAuthor, bool showAuthorDate, bool showOriginalFilePath, bool displayAuthorFirst)
                 => _control.BuildAuthorLine(line, lineBuilder, dateTimeFormat, filename, showAuthor, showAuthorDate, showOriginalFilePath, displayAuthorFirst);
 
-            public (string gutter, string body) BuildBlameContents(string filename) => _control.BuildBlameContents(filename);
+            public (string gutter, string body, List<GitBlameEntry> avatars) BuildBlameContents(string filename) => _control.BuildBlameContents(filename, avatarSize: 10);
+
+            public List<GitBlameEntry> CalculateBlameGutterData(IReadOnlyList<GitBlameLine> blameLines)
+                => _control.CalculateBlameGutterData(blameLines);
         }
     }
 }

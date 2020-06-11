@@ -22,9 +22,6 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _noRevisionSelected =
             new TranslationString("You need to choose a target revision.");
 
-        private readonly TranslationString _noRevisionSelectedCaption =
-                    new TranslationString("Error");
-
         private GitRevision _selectedRevision;
         public GitRevision SelectedRevision
         {
@@ -70,7 +67,7 @@ namespace GitUI.CommandsDialogs
 
         public void SetPathArgument(string path)
         {
-            if (path.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(path))
             {
                 checkBoxPathFilter.Checked = false;
                 textBoxPaths.Text = "";
@@ -115,7 +112,7 @@ namespace GitUI.CommandsDialogs
         {
             if (checkboxRevisionFilter.Checked && DiffSelectedRevision == null)
             {
-                MessageBox.Show(this, _noRevisionSelected.Text, _noRevisionSelectedCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                MessageBox.Show(this, _noRevisionSelected.Text, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
             }
 
@@ -163,7 +160,7 @@ namespace GitUI.CommandsDialogs
             else if (checkboxRevisionFilter.Checked)
             {
                 // 1. get all changed (and not deleted files) from selected to current revision
-                var files = UICommands.Module.GetDiffFiles(DiffSelectedRevision.Guid, SelectedRevision.Guid, SelectedRevision.ParentIds.FirstOrDefault()?.ToString()).Where(f => !f.IsDeleted);
+                var files = UICommands.Module.GetDiffFiles(DiffSelectedRevision?.Guid, SelectedRevision?.Guid, StagedStatus.None).Where(f => !f.IsDeleted);
 
                 // 2. wrap file names with ""
                 // 3. join together with space as separator

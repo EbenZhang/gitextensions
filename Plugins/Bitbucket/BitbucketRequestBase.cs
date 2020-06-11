@@ -42,20 +42,13 @@ namespace Bitbucket
             var request = new RestRequest(ApiUrl, RequestMethod);
             if (RequestBody != null)
             {
-                if (RequestBody is string)
-                {
-                    request.AddParameter("application/json", RequestBody, ParameterType.RequestBody);
-                }
-                else
-                {
-                    request.AddBody(RequestBody);
-                }
+                request.AddJsonBody(RequestBody);
             }
 
             // XSRF check fails when approving/creating
             request.AddHeader("X-Atlassian-Token", "no-check");
 
-            var response = await client.ExecuteTaskAsync(request).ConfigureAwait(false);
+            var response = await client.ExecuteAsync(request).ConfigureAwait(false);
             if (response.ResponseStatus != ResponseStatus.Completed)
             {
                 return new BitbucketResponse<T>

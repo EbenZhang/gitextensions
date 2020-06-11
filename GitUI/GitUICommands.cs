@@ -180,14 +180,12 @@ namespace GitUI
             var objectId = Module.RevParse(branch);
             if (objectId == null)
             {
-                MessageBox.Show($"Branch \"{branch}\" could not be resolved.");
+                MessageBox.Show($"Branch \"{branch}\" could not be resolved.", Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
 
-            using (var form = new FormResetCurrentBranch(this, Module.GetRevision(objectId)))
-            {
-                return form.ShowDialog(owner) == DialogResult.OK;
-            }
+            using var form = FormResetCurrentBranch.Create(this, Module.GetRevision(objectId));
+            return form.ShowDialog(owner) == DialogResult.OK;
         }
 
         public bool StashSave(IWin32Window owner, bool includeUntrackedFiles, bool keepIndex = false, string message = "", IReadOnlyList<string> selectedFiles = null)
@@ -386,7 +384,7 @@ namespace GitUI
             var objectId = Module.RevParse(branch);
             if (objectId == null)
             {
-                MessageBox.Show($"Branch \"{branch}\" could not be resolved.");
+                MessageBox.Show($"Branch \"{branch}\" could not be resolved.", Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
 
@@ -727,23 +725,30 @@ namespace GitUI
                 // Also delete new files, if requested.
                 if (resetAction == FormResetChanges.ActionEnum.ResetAndDelete)
                 {
-                    try
+                    string errorCaption = null;
+                    string errorMessage = null;
+                    string path = _fullPathResolver.Resolve(fileName);
+                    if (File.Exists(path))
                     {
-                        string path = _fullPathResolver.Resolve(fileName);
-                        if (File.Exists(path))
+                        try
                         {
                             File.Delete(path);
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            Directory.Delete(path, true);
+                            errorCaption = Strings.ErrorCaptionFailedDeleteFile;
+                            errorMessage = ex.Message;
                         }
                     }
-                    catch (IOException)
+                    else
                     {
+                        errorCaption = Strings.ErrorCaptionFailedDeleteFolder;
+                        path.TryDeleteDirectory(out errorMessage);
                     }
-                    catch (UnauthorizedAccessException)
+
+                    if (errorMessage != null)
                     {
+                        MessageBox.Show(null, errorMessage, errorCaption, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -1183,14 +1188,14 @@ namespace GitUI
 
             if (!RevisionDiffInfoProvider.TryGet(revisions, diffKind, out var extraDiffArgs, out var firstRevision, out var secondRevision, out var error))
             {
-                MessageBox.Show(owner, error);
+                MessageBox.Show(owner, error, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else
             {
                 string output = Module.OpenWithDifftool(fileName, oldFileName, firstRevision, secondRevision, extraDiffArgs, isTracked);
                 if (!string.IsNullOrEmpty(output))
                 {
-                    MessageBox.Show(owner, output);
+                    MessageBox.Show(owner, output, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -1292,7 +1297,7 @@ namespace GitUI
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Exception");
+                MessageBox.Show(ex.Message, "Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return true;
@@ -1325,7 +1330,7 @@ namespace GitUI
                 {
                     MessageBox.Show(
                         string.Format("ERROR: {0} failed. Message: {1}\r\n\r\n{2}", name, ex.Message, ex.StackTrace),
-                        "Error! :(");
+                        "Error! :(", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -1358,7 +1363,7 @@ namespace GitUI
 
             if (relevantHosts.Count == 0)
             {
-                MessageBox.Show(owner, "Could not find any repo hosts for current working directory");
+                MessageBox.Show(owner, "Could not find any repo hosts for current working directory", Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else if (relevantHosts.Count == 1)
             {
@@ -1366,7 +1371,7 @@ namespace GitUI
             }
             else
             {
-                MessageBox.Show("StartCreatePullRequest:Selection not implemented!");
+                MessageBox.Show("StartCreatePullRequest:Selection not implemented!", Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1399,31 +1404,31 @@ namespace GitUI
 
             if (command == "blame" && args.Count <= 2)
             {
-                MessageBox.Show("Cannot open blame, there is no file selected.", "Blame");
+                MessageBox.Show("Cannot open blame, there is no file selected.", "Blame", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             if (command == "difftool" && args.Count <= 2)
             {
-                MessageBox.Show("Cannot open difftool, there is no file selected.", "Difftool");
+                MessageBox.Show("Cannot open difftool, there is no file selected.", "Difftool", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             if (command == "filehistory" && args.Count <= 2)
             {
-                MessageBox.Show("Cannot open file history, there is no file selected.", "File history");
+                MessageBox.Show("Cannot open file history, there is no file selected.", "File history", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             if (command == "fileeditor" && args.Count <= 2)
             {
-                MessageBox.Show("Cannot open file editor, there is no file selected.", "File editor");
+                MessageBox.Show("Cannot open file editor, there is no file selected.", "File editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             if (command == "revert" && args.Count <= 2)
             {
-                MessageBox.Show("Cannot open revert, there is no file selected.", "Revert");
+                MessageBox.Show("Cannot open revert, there is no file selected.", "Revert", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -1712,7 +1717,7 @@ namespace GitUI
                 fileHistoryFileName = exactFileName.Substring(Module.WorkingDir.Length);
             }
 
-            if (fileHistoryFileName.IsNotNullOrWhitespace())
+            if (!string.IsNullOrWhiteSpace(fileHistoryFileName))
             {
                 StartFileHistoryDialog(null, fileHistoryFileName);
             }
@@ -1857,9 +1862,9 @@ namespace GitUI
             InvokeEvent(owner, PostRegisterPlugin);
         }
 
-        public void BrowseGoToRef(string refName, bool showNoRevisionMsg)
+        public void BrowseGoToRef(string refName, bool showNoRevisionMsg, bool toggleSelection = false)
         {
-            BrowseRepo?.GoToRef(refName, showNoRevisionMsg);
+            BrowseRepo?.GoToRef(refName, showNoRevisionMsg, toggleSelection);
         }
 
         public void BrowseSetWorkingDir(string path)

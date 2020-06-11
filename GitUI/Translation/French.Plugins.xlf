@@ -1,4 +1,4 @@
-<?xml version="1.0" ?><xliff GitExVersion="3.3.0" version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<?xml version="1.0" ?><xliff GitExVersion="" version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <file datatype="plaintext" original="AppVeyorSettingsUserControl" source-language="en" target-language="fr">
     <body>
       <trans-unit id="cbLoadTestResults.Text">
@@ -265,7 +265,8 @@
       </trans-unit>
       <trans-unit id="tabCreate.Text">
         <source>Create Pull Request</source>
-        <target>Créer une demande de pull</target>
+        <target>Créer une demande de tirage
+</target>
         
       </trans-unit>
       <trans-unit id="tabView.Text">
@@ -298,7 +299,7 @@
     <body>
       <trans-unit id="Description.Text">
         <source>Create local tracking branches</source>
-        <target>Créer des branches de suivie locales</target>
+        <target>Créer des branches locales de suivie</target>
         
       </trans-unit>
     </body>
@@ -396,7 +397,7 @@ Les branches distantes seront supprimées '{0}'. On ne peut pas annuler.
       </trans-unit>
       <trans-unit id="_searchBranches.Text">
         <source>Search branches</source>
-        <target>Rechercher des branches</target>
+        <target>Rechercher les branches</target>
         
       </trans-unit>
       <trans-unit id="_selectBranchesToDelete.Text">
@@ -621,7 +622,7 @@ Les branches distantes seront supprimées '{0}'. On ne peut pas annuler.
       </trans-unit>
       <trans-unit id="AddRemote.Text">
         <source>Manage remotes</source>
-        <target>Gérer</target>
+        <target>Gérer les dépôts distants</target>
         
       </trans-unit>
       <trans-unit id="Download.Text">
@@ -685,17 +686,12 @@ Les branches distantes seront supprimées '{0}'. On ne peut pas annuler.
       </trans-unit>
       <trans-unit id="AddRemote.Text">
         <source>Manage remotes</source>
-        <target>Gérer</target>
+        <target>Gérer les dépôts distants</target>
         
       </trans-unit>
       <trans-unit id="Publish.Text">
         <source>&amp;Publish</source>
         <target>&amp;Publier</target>
-        
-      </trans-unit>
-      <trans-unit id="PublishType.Text">
-        <source>For Review</source>
-        <target>A relire</target>
         
       </trans-unit>
       <trans-unit id="_publishCaption.Text">
@@ -706,21 +702,6 @@ Les branches distantes seront supprimées '{0}'. On ne peut pas annuler.
       <trans-unit id="_publishGerritChangeCaption.Text">
         <source>Publish Gerrit Change</source>
         <target>Publier le changement Gerrit</target>
-        
-      </trans-unit>
-      <trans-unit id="_publishTypePrivate.Text">
-        <source>Private</source>
-        <target>Privé</target>
-        
-      </trans-unit>
-      <trans-unit id="_publishTypeReview.Text">
-        <source>For Review</source>
-        <target>A relire</target>
-        
-      </trans-unit>
-      <trans-unit id="_publishTypeWip.Text">
-        <source>Work-in-Progress</source>
-        <target>Travail en cours</target>
         
       </trans-unit>
       <trans-unit id="_selectBranch.Text">
@@ -744,10 +725,12 @@ Les branches distantes seront supprimées '{0}'. On ne peut pas annuler.
       </trans-unit>
       <trans-unit id="labelHashtag.Text">
         <source>Hashtag:</source>
+        <target>Hashtag:</target>
         
       </trans-unit>
       <trans-unit id="labelPublishType.Text">
         <source>Publish Type:</source>
+        <target>Type de publication:</target>
         
       </trans-unit>
       <trans-unit id="labelRemote.Text">
@@ -1019,6 +1002,30 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       </trans-unit>
     </body>
   </file>
+  <file datatype="plaintext" original="GerritCapabilities" source-language="en" target-language="fr">
+    <body>
+      <trans-unit id="_publishTypeDraft.Text">
+        <source>Draft</source>
+        <target>Brouillon</target>
+        
+      </trans-unit>
+      <trans-unit id="_publishTypePrivate.Text">
+        <source>Private</source>
+        <target>Privé</target>
+        
+      </trans-unit>
+      <trans-unit id="_publishTypeReview.Text">
+        <source>For Review</source>
+        <target>A relire</target>
+        
+      </trans-unit>
+      <trans-unit id="_publishTypeWip.Text">
+        <source>Work-in-Progress</source>
+        <target>Travail en cours</target>
+        
+      </trans-unit>
+    </body>
+  </file>
   <file datatype="plaintext" original="GerritPlugin" source-language="en" target-language="fr">
     <body>
       <trans-unit id="Description.Text">
@@ -1059,6 +1066,10 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       <trans-unit id="_installCommitMsgHookShortText.Text">
         <source>Install commit-msg hook</source>
         <target>Installer le crochet commit-msg</target>
+        
+      </trans-unit>
+      <trans-unit id="_predefinedGerritVersion.Caption">
+        <source>Treat Gerrit as having version</source>
         
       </trans-unit>
       <trans-unit id="_publishGerritChange.Text">
@@ -1151,7 +1162,7 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       </trans-unit>
       <trans-unit id="btnPull.Text">
         <source>Pull</source>
-        <target>Récupérer</target>
+        <target>Récupérer (pull)</target>
         
       </trans-unit>
       <trans-unit id="cbBasedOn.Text">
@@ -1166,6 +1177,7 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       </trans-unit>
       <trans-unit id="cbSquash.Text">
         <source>Squash</source>
+        <target>Écraser</target>
         
       </trans-unit>
       <trans-unit id="gbManage.Text">
@@ -1241,8 +1253,9 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
         <target>GitHub</target>
         
       </trans-unit>
-      <trans-unit id="GitHubApiEndpoint.Caption">
-        <source>GitHub (Enterprise) API endpoint</source>
+      <trans-unit id="GitHubHost.Caption">
+        <source>GitHub (Enterprise) hostname</source>
+        <target>Nom d'hôte GitHub (Entreprise)</target>
         
       </trans-unit>
       <trans-unit id="OAuthToken.Caption">
@@ -1252,6 +1265,11 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       </trans-unit>
       <trans-unit id="_tokenAlreadyExist.Text">
         <source>You already have an OAuth token. To get a new one, delete your old one in Plugins &gt; Settings first.</source>
+        <target>Vous disposez déjà d'un jeton OAuth. Pour en obtenir un nouveau, supprimez d'abord l'ancien dans Plugins &gt; Paramètres.</target>
+        
+      </trans-unit>
+      <trans-unit id="_viewInWebSite.Text">
+        <source>View in {0}</source>
         
       </trans-unit>
     </body>
@@ -1446,18 +1464,22 @@ Voulez-vous réinitialiser le chemin configuré?</target>
       </trans-unit>
       <trans-unit id="EmptyQueryResultCaption.Text">
         <source>First Task Preview</source>
+        <target>Aperçu de la première tâche</target>
         
       </trans-unit>
       <trans-unit id="EmptyQueryResultMessage.Text">
         <source>[Empty Jira Query Result]</source>
+        <target>[Résultat de requête Jira vide]</target>
         
       </trans-unit>
       <trans-unit id="InvalidUrlCaption.Text">
         <source>Invalid Jira url</source>
+        <target>URL Jira non valide</target>
         
       </trans-unit>
       <trans-unit id="InvalidUrlMessage.Text">
         <source>A valid url is required to launch the Jira query helper</source>
+        <target>Une URL valide est requise pour lancer l'assistant de requête Jira</target>
         
       </trans-unit>
       <trans-unit id="JiraFieldsLabel.Text">
@@ -1472,10 +1494,12 @@ Voulez-vous réinitialiser le chemin configuré?</target>
       </trans-unit>
       <trans-unit id="QueryHelperLinkText.Text">
         <source>Open the query helper inside Jira</source>
+        <target>Ouvrir l'assistant de requête dans Jira</target>
         
       </trans-unit>
       <trans-unit id="QueryHelperOpenErrorText.Text">
         <source>Unable to open Jira query helper</source>
+        <target>Impossible d'ouvrir l'assistant de requête Jira</target>
         
       </trans-unit>
       <trans-unit id="_credentialsSettings.Caption">

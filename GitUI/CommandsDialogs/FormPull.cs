@@ -13,6 +13,7 @@ using GitCommands.Remotes;
 using GitCommands.UserRepositoryHistory;
 using GitExtUtils;
 using GitExtUtils.GitUI;
+using GitExtUtils.GitUI.Theming;
 using GitUI.Properties;
 using GitUI.Script;
 using GitUIPluginInterfaces;
@@ -158,7 +159,7 @@ namespace GitUI.CommandsDialogs
                 case AppSettings.PullAction.FetchPruneAll:
                     Fetch.Checked = true;
                     Prune.Checked = true;
-                    if (defaultRemote.IsNullOrEmpty())
+                    if (string.IsNullOrEmpty(defaultRemote))
                     {
                         _NO_TRANSLATE_Remotes.Text = AllRemotes;
                     }
@@ -205,7 +206,7 @@ namespace GitUI.CommandsDialogs
             _NO_TRANSLATE_Remotes.SelectedIndex = -1;
             _NO_TRANSLATE_Remotes.ResizeDropDownWidth(AppSettings.BranchDropDownMinWidth, AppSettings.BranchDropDownMaxWidth);
 
-            if (selectedRemoteName.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(selectedRemoteName))
             {
                 selectedRemoteName = Module.GetSetting(string.Format(SettingKeyString.BranchRemote, _branch));
             }
@@ -234,7 +235,7 @@ namespace GitUI.CommandsDialogs
             if (pullAction == AppSettings.PullAction.FetchPruneAll)
             {
                 string messageBoxTitle = null;
-                if (remote.IsNullOrEmpty())
+                if (string.IsNullOrEmpty(remote))
                 {
                     messageBoxTitle = string.Format(_pruneFromCaption.Text, AllRemotes);
                 }
@@ -275,7 +276,7 @@ namespace GitUI.CommandsDialogs
             Module.RunMergeTool();
 
             if (MessageBox.Show(this, _allMergeConflictSolvedQuestion.Text, _allMergeConflictSolvedQuestionCaption.Text,
-                                MessageBoxButtons.YesNo) != DialogResult.Yes)
+                                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
             {
                 return;
             }
@@ -362,7 +363,7 @@ namespace GitUI.CommandsDialogs
                 return dr;
             }
 
-            if (!Fetch.Checked && Branches.Text.IsNullOrWhiteSpace() && Module.IsDetachedHead())
+            if (!Fetch.Checked && string.IsNullOrWhiteSpace(Branches.Text) && Module.IsDetachedHead())
             {
                 int idx = PSTaskDialog.cTaskDialog.ShowCommandBox(
                     owner,
@@ -454,19 +455,19 @@ namespace GitUI.CommandsDialogs
             {
                 if (PullFromUrl.Checked && string.IsNullOrEmpty(comboBoxPullSource.Text))
                 {
-                    MessageBox.Show(this, _selectSourceDirectory.Text);
+                    MessageBox.Show(this, _selectSourceDirectory.Text, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
 
                 if (PullFromRemote.Checked && string.IsNullOrEmpty(_NO_TRANSLATE_Remotes.Text) && !IsPullAll())
                 {
-                    MessageBox.Show(this, _selectRemoteRepository.Text);
+                    MessageBox.Show(this, _selectRemoteRepository.Text, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
 
                 if (!Fetch.Checked && Branches.Text == "*")
                 {
-                    MessageBox.Show(this, _fetchAllBranchesCanOnlyWithFetch.Text);
+                    MessageBox.Show(this, _fetchAllBranchesCanOnlyWithFetch.Text, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
 
@@ -609,7 +610,9 @@ namespace GitUI.CommandsDialogs
             {
                 dialogResult = MessageBox.Show(this, _areYouSureYouWantToRebaseMerge.Text,
                                                   _areYouSureYouWantToRebaseMergeCaption.Text,
-                                                  MessageBoxButtons.YesNoCancel);
+                                                  MessageBoxButtons.YesNoCancel,
+                                                  MessageBoxIcon.Warning,
+                                                  MessageBoxDefaultButton.Button2);
             }
             else
             {
@@ -714,9 +717,9 @@ namespace GitUI.CommandsDialogs
 
             if (_branch == localBranch.Text)
             {
-                if (remote == currentBranchRemote.Value || currentBranchRemote.Value.IsNullOrEmpty())
+                if (remote == currentBranchRemote.Value || string.IsNullOrEmpty(currentBranchRemote.Value))
                 {
-                    curLocalBranch = Branches.Text.IsNullOrEmpty() ? null : _branch;
+                    curLocalBranch = string.IsNullOrEmpty(Branches.Text) ? null : _branch;
                 }
                 else
                 {
@@ -728,7 +731,7 @@ namespace GitUI.CommandsDialogs
                 curLocalBranch = localBranch.Text;
             }
 
-            if (Branches.Text.IsNullOrEmpty() && !curLocalBranch.IsNullOrEmpty()
+            if (string.IsNullOrEmpty(Branches.Text) && !string.IsNullOrEmpty(curLocalBranch)
                 && remote != currentBranchRemote.Value && !Fetch.Checked)
             {
                 int idx = PSTaskDialog.cTaskDialog.ShowCommandBox(this,
@@ -747,7 +750,7 @@ namespace GitUI.CommandsDialogs
                 }
             }
 
-            if (Branches.Text.IsNullOrEmpty() && !curLocalBranch.IsNullOrEmpty()
+            if (string.IsNullOrEmpty(Branches.Text) && !string.IsNullOrEmpty(curLocalBranch)
                 && Fetch.Checked)
             {
                 // if local branch eq to current branch and remote branch is not specified
@@ -785,7 +788,7 @@ namespace GitUI.CommandsDialogs
         private string CalculateRemoteBranchName()
         {
             string remoteBranchName = CalculateRemoteBranchNameBasedOnBranchesText();
-            if (remoteBranchName.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(remoteBranchName))
             {
                 return remoteBranchName;
             }
@@ -797,13 +800,13 @@ namespace GitUI.CommandsDialogs
 
         private string CalculateRemoteBranchNameBasedOnBranchesText()
         {
-            if (!Branches.Text.IsNullOrEmpty())
+            if (!string.IsNullOrEmpty(Branches.Text))
             {
                 return Branches.Text;
             }
 
             string remoteBranchName = Module.GetSetting(string.Format("branch.{0}.merge", _branch));
-            if (!remoteBranchName.IsNullOrEmpty())
+            if (!string.IsNullOrEmpty(remoteBranchName))
             {
                 var args = new GitArgumentBuilder("name-rev")
                 {
@@ -861,13 +864,13 @@ namespace GitUI.CommandsDialogs
                 {
                     foreach (var remote in (IEnumerable<ConfigFileRemote>)_NO_TRANSLATE_Remotes.DataSource)
                     {
-                        if (!remote.Name.IsNullOrWhiteSpace() && remote.Name != AllRemotes)
+                        if (!string.IsNullOrWhiteSpace(remote.Name) && remote.Name != AllRemotes)
                         {
                             yield return remote.Name;
                         }
                     }
                 }
-                else if (!_NO_TRANSLATE_Remotes.Text.IsNullOrWhiteSpace())
+                else if (!string.IsNullOrWhiteSpace(_NO_TRANSLATE_Remotes.Text))
                 {
                     yield return _NO_TRANSLATE_Remotes.Text;
                 }
@@ -976,8 +979,8 @@ namespace GitUI.CommandsDialogs
 
             localBranch.Enabled = false;
             localBranch.Text = _branch;
-            helpImageDisplayUserControl1.Image1 = DpiUtil.Scale(Images.HelpPullMerge);
-            helpImageDisplayUserControl1.Image2 = DpiUtil.Scale(Images.HelpPullMergeFastForward);
+            helpImageDisplayUserControl1.Image1 = DpiUtil.Scale(Images.HelpPullMerge.AdaptLightness());
+            helpImageDisplayUserControl1.Image2 = DpiUtil.Scale(Images.HelpPullMergeFastForward.AdaptLightness());
             helpImageDisplayUserControl1.IsOnHoverShowImage2 = true;
             AllTags.Enabled = false;
             Prune.Enabled = true;
@@ -997,7 +1000,7 @@ namespace GitUI.CommandsDialogs
 
             localBranch.Enabled = false;
             localBranch.Text = _branch;
-            helpImageDisplayUserControl1.Image1 = DpiUtil.Scale(Images.HelpPullRebase);
+            helpImageDisplayUserControl1.Image1 = DpiUtil.Scale(Images.HelpPullRebase.AdaptLightness());
             helpImageDisplayUserControl1.IsOnHoverShowImage2 = false;
             AllTags.Enabled = false;
             Prune.Enabled = false;
@@ -1017,7 +1020,8 @@ namespace GitUI.CommandsDialogs
 
             localBranch.Enabled = true;
             localBranch.Text = string.Empty;
-            helpImageDisplayUserControl1.Image1 = DpiUtil.Scale(Images.HelpPullFetch);
+
+            helpImageDisplayUserControl1.Image1 = DpiUtil.Scale(Images.HelpPullFetch.AdaptLightness());
             helpImageDisplayUserControl1.IsOnHoverShowImage2 = false;
             AllTags.Enabled = true;
             Prune.Enabled = true;
@@ -1062,7 +1066,7 @@ namespace GitUI.CommandsDialogs
 
         private void localBranch_Leave(object sender, EventArgs e)
         {
-            if (_branch != localBranch.Text.Trim() && Branches.Text.IsNullOrWhiteSpace())
+            if (_branch != localBranch.Text.Trim() && string.IsNullOrWhiteSpace(Branches.Text))
             {
                 Branches.Text = localBranch.Text;
             }

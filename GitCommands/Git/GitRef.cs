@@ -40,7 +40,7 @@ namespace GitCommands
 
             var name = ParseName();
 
-            Name = name.IsNullOrWhiteSpace() ? CompleteName : name;
+            Name = string.IsNullOrWhiteSpace(name) ? CompleteName : name;
 
             _remoteSettingName = $"branch.{Name}.remote";
             _mergeSettingName = $"branch.{Name}.merge";
@@ -123,6 +123,8 @@ namespace GitCommands
         public bool IsStash => _type == GitRefType.Stash;
 
         public bool IsDereference { get; }
+
+        public bool IsOther => !IsHead && !IsRemote && !IsTag;
 
         public string LocalName => IsRemote ? Name.Substring(Remote.Length + 1) : Name;
 

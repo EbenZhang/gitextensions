@@ -53,7 +53,7 @@ namespace Bitbucket
                 var branch = GitCommands.GitRefName.GetFullBranchName(module.GetSelectedBranch());
 
                 _NO_TRANSLATE_lblLinkCreatePull.Text = repoUrl +
-                    ((branch.IsNullOrEmpty() || branch.Equals(DetachedHeadParser.DetachedBranch)) ?
+                    ((string.IsNullOrEmpty(branch) || branch.Equals(DetachedHeadParser.DetachedBranch)) ?
                     _NO_TRANSLATE_LinkCreatePullNoBranch :
                     string.Format(_NO_TRANSLATE_LinkCreatePull, branch));
                 toolTipLink.SetToolTip(_NO_TRANSLATE_lblLinkCreatePull, _linkLabelToolTip.Text);
@@ -158,7 +158,7 @@ namespace Bitbucket
                 await this.SwitchToMainThreadAsync();
                 if (response.Success)
                 {
-                    MessageBox.Show(_success.Text);
+                    MessageBox.Show(_success.Text, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     ReloadPullRequests();
                 }
                 else
@@ -355,7 +355,7 @@ namespace Bitbucket
                 var response = ThreadHelper.JoinableTaskFactory.Run(() => mergeRequest.SendAsync());
                 if (response.Success)
                 {
-                    MessageBox.Show(_success.Text);
+                    MessageBox.Show(_success.Text, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     ReloadPullRequests();
                 }
                 else
@@ -384,7 +384,7 @@ namespace Bitbucket
                 var response = ThreadHelper.JoinableTaskFactory.Run(() => approveRequest.SendAsync());
                 if (response.Success)
                 {
-                    MessageBox.Show(_success.Text);
+                    MessageBox.Show(_success.Text, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     ReloadPullRequests();
                 }
                 else

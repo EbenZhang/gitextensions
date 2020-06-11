@@ -62,9 +62,6 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _updateTrackingReference =
             new TranslationString("The branch {0} does not have a tracking reference. Do you want to add a tracking reference to {1}?");
 
-        private readonly TranslationString _yes = new TranslationString("Yes");
-        private readonly TranslationString _no = new TranslationString("No");
-
         private readonly TranslationString _pullRepositoryMainInstruction = new TranslationString("Pull latest changes from remote repository");
         private readonly TranslationString _pullRepository =
             new TranslationString("The push was rejected because the tip of your current branch is behind its remote counterpart. " +
@@ -219,7 +216,7 @@ namespace GitUI.CommandsDialogs
             _NO_TRANSLATE_Remotes.SelectedIndexChanged += RemotesUpdated;
             _NO_TRANSLATE_Remotes.TextUpdate += RemotesUpdated;
 
-            if (selectedRemoteName.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(selectedRemoteName))
             {
                 selectedRemoteName = Module.GetSetting(string.Format(SettingKeyString.BranchRemote, _currentBranchName));
             }
@@ -268,7 +265,7 @@ namespace GitUI.CommandsDialogs
             ErrorOccurred = false;
             if (PushToUrl.Checked && !PathUtil.IsUrl(PushDestination.Text))
             {
-                MessageBox.Show(owner, _selectDestinationDirectory.Text);
+                MessageBox.Show(owner, _selectDestinationDirectory.Text, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
 
@@ -280,7 +277,7 @@ namespace GitUI.CommandsDialogs
             var selectedRemoteName = _selectedRemote.Name;
             if (TabControlTagBranch.SelectedTab == TagTab && string.IsNullOrEmpty(TagComboBox.Text))
             {
-                MessageBox.Show(owner, _selectTag.Text);
+                MessageBox.Show(owner, _selectTag.Text, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
 
@@ -298,7 +295,7 @@ namespace GitUI.CommandsDialogs
                 {
                     // Ask if this is really what the user wants
                     if (!AppSettings.DontConfirmPushNewBranch &&
-                        MessageBox.Show(owner, _branchNewForRemote.Text, _pushCaption.Text, MessageBoxButtons.YesNo) == DialogResult.No)
+                        MessageBox.Show(owner, _branchNewForRemote.Text, _pushCaption.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
                     {
                         return false;
                     }
@@ -337,7 +334,7 @@ namespace GitUI.CommandsDialogs
                     track = selectedLocalBranch != null && string.IsNullOrEmpty(selectedLocalBranch.TrackingRemote) &&
                             !UserGitRemotes.Any(x => _NO_TRANSLATE_Branch.Text.StartsWith(x.Name, StringComparison.OrdinalIgnoreCase));
                     var autoSetupMerge = Module.EffectiveConfigFile.GetValue("branch.autoSetupMerge");
-                    if (autoSetupMerge.IsNotNullOrWhitespace() && autoSetupMerge.ToLowerInvariant() == "false")
+                    if (!string.IsNullOrWhiteSpace(autoSetupMerge) && autoSetupMerge.ToLowerInvariant() == "false")
                     {
                         track = false;
                     }
@@ -347,7 +344,9 @@ namespace GitUI.CommandsDialogs
                         var result = MessageBox.Show(owner,
                                                      string.Format(_updateTrackingReference.Text, selectedLocalBranch.Name, RemoteBranch.Text),
                                                      _pushCaption.Text,
-                                                     MessageBoxButtons.YesNoCancel);
+                                                     MessageBoxButtons.YesNoCancel,
+                                                     MessageBoxIcon.Question,
+                                                     MessageBoxDefaultButton.Button1);
                         if (result == DialogResult.Cancel)
                         {
                             return false;
@@ -363,7 +362,7 @@ namespace GitUI.CommandsDialogs
                     {
                         var choice = MessageBox.Show(owner,
                                                      _useForceWithLeaseInstead.Text,
-                                                     "", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question,
+                                                     "Question", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question,
                                                      MessageBoxDefaultButton.Button1);
                         switch (choice)
                         {
@@ -728,7 +727,7 @@ namespace GitUI.CommandsDialogs
                         {
                             string defaultRemote = _remotesManager.GetDefaultPushRemote(_selectedRemote,
                                 branch.Name);
-                            if (!defaultRemote.IsNullOrEmpty())
+                            if (!string.IsNullOrEmpty(defaultRemote))
                             {
                                 RemoteBranch.Text = defaultRemote;
                                 return;
@@ -810,7 +809,7 @@ namespace GitUI.CommandsDialogs
 
             // update the text box of the Remote Url combobox to show the URL of selected remote
             string pushUrl = _selectedRemote.PushUrl;
-            if (pushUrl.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(pushUrl))
             {
                 pushUrl = _selectedRemote.Url;
             }
@@ -832,7 +831,7 @@ namespace GitUI.CommandsDialogs
 
         private void EnableLoadSshButton()
         {
-            LoadSSHKey.Visible = _selectedRemote?.PuttySshKey.IsNotNullOrWhitespace() ?? false;
+            LoadSSHKey.Visible = !string.IsNullOrWhiteSpace(_selectedRemote?.PuttySshKey);
         }
 
         private void LoadSshKeyClick(object sender, EventArgs e)
@@ -993,7 +992,7 @@ namespace GitUI.CommandsDialogs
                     row[DeleteColumnName] = false;
                     row[LocalColumnName] = head.Name;
                     row[RemoteColumnName] = remoteName;
-                    row[NewColumnName] = isKnownAtRemote ? _no.Text : _yes.Text;
+                    row[NewColumnName] = isKnownAtRemote ? Strings.No : Strings.Yes;
                     row[PushColumnName] = isKnownAtRemote;
 
                     _branchTable.Rows.Add(row);
@@ -1008,7 +1007,7 @@ namespace GitUI.CommandsDialogs
 
                         row[LocalColumnName] = null;
                         row[RemoteColumnName] = remoteHead.LocalName;
-                        row[NewColumnName] = _no.Text;
+                        row[NewColumnName] = Strings.No;
                         row[PushColumnName] = false;
                         row[ForceColumnName] = false;
                         row[DeleteColumnName] = false;

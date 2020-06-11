@@ -1,6 +1,4 @@
-version: 3.3.1.{build}
-
-os: Visual Studio 2017
+version: 3.4.0.{build}
 
 skip_tags: true
 
@@ -8,16 +6,20 @@ branches:
   except:
     - configdata
     - gh-pages
+    - /experimental\/*/
 
-environment:
-  matrix:
-  - IdeVersion: VS2017
-  SKIP_PAUSE: TRUE
-  ARCHIVE_WITH_PDB: TRUE
-  ARTIFACT_SIGNING_ENABLED: TRUE
+matrix:
+  fast_finish: true
+
+# https://www.appveyor.com/docs/build-environment/#build-worker-images
+image: Visual Studio 2019
 
 init:
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+cache:
+  # preserve "GitExtensions.PluginManager" directory, will be reset if appveyor.yml is modified
+  - .\artifacts\publish\GitExtensions.PluginManager -> appveyor.yml
 
 # Build settings, not to be confused with "before_build" and "after_build".
 # "project" is relative to the original build directory and not influenced by directory changes in "before_build".
@@ -27,15 +29,11 @@ build:
   # MSBuild verbosity level
   verbosity: minimal
 
-cache:
-  #- packages -> **\packages.config      # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
-  - packages\WiX.3.11.0 -> Setup\packages.config
-
 install:
 - cmd: git submodule update --init --recursive
 - cmd: echo /logger:"%ProgramFiles%\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll">> Directory.Build.rsp
 - cmd: |-
-    cd Setup
+    cd scripts
     C:\\Python35\\python set_version_to.py -v %APPVEYOR_BUILD_VERSION% -t %APPVEYOR_BUILD_VERSION%
     cd ..
 
@@ -43,58 +41,78 @@ install:
 # to run your custom scripts instead of automatic MSBuild
 build_script:
 - ps: |
-    Write-Output "Platform: $env:IdeVersion"
-
     # for release branches mark the repo as clean
     if (!$env:APPVEYOR_PULL_REQUEST_TITLE -and $env:APPVEYOR_REPO_BRANCH.StartsWith("release/")) {
-      & .\Build\Mark-RepoClean.ps1
+      & .\scripts\Mark-RepoClean.ps1
+    }
+
+    # if building a temporary merge with master, soft reset to the PR commit so the build contains the PR's hash instead of the merge-commit's hash
+    if ($env:APPVEYOR_PULL_REQUEST_HEAD_COMMIT -and ($env:APPVEYOR_REPO_COMMIT -ne $env:APPVEYOR_PULL_REQUEST_HEAD_COMMIT))
+    {
+      git reset --soft "$env:APPVEYOR_PULL_REQUEST_HEAD_COMMIT" --
     }
 
     # build
-    & .\Setup\Build.cmd
+    & .\cibuild.cmd -restore -build -buildNative -logFileName build.binlog
     if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
 
-    # for pull-reqests enforce updated translations
-    # if any strings have changed and the author hasn't updated translations,
-    # we will get changes to either English.xlf and/or English.Plugins.xlf - if so, fail the build
-    if ($env:APPVEYOR_PULL_REQUEST_TITLE) {
-      & .\Build\transifex\UpdateLocalEnglishTranslations.ps1
-
-      # stage all modified files, as some translations yield no content change, but are seeing as file changed until stages
-      git add *.xlf --ignore-errors
-
-      # look for any modified xlf files, and if any - fail the build
-      if ( $( git status --porcelain ) | ?{ $_.EndsWith('.xlf') } ) {
-        & git diff --cached > git-diff-xlf.txt
-        Push-AppveyorArtifact ./git-diff-xlf.txt
-
-        throw "Please update English translations and re-submit the pull-request.`r`nFor more information please refer to https://github.com/gitextensions/gitextensions/wiki/Translations";
-        $host.SetShouldExit(-10);
-      }
+    # if we have reset above we need to reset English xlfs, otherwise the loc verification step will fail
+    # refer to https://github.com/gitextensions/gitextensions/issues/7979
+    if ($env:APPVEYOR_PULL_REQUEST_HEAD_COMMIT) {
+      git reset $env:APPVEYOR_PULL_REQUEST_HEAD_COMMIT --quiet -- "GitUI/Translation/English.xlf" "GitUI/Translation/English.Plugins.xlf"
+      git checkout                                     --force -- "GitUI/Translation/English.xlf" "GitUI/Translation/English.Plugins.xlf"
     }
+
+    # it would be nice to run '.\cibuild.cmd -loc -logFileName localise.binlog /p:NoBuild=true' but it doesn't work without `-build` switch :\
+    Push-Location .\GitExtensions
+    msbuild /p:Configuration=Release /t:_UpdateEnglishTranslations /p:RunTranslationApp=true /p:ContinuousIntegrationBuild=true /v:m /bl:..\artifacts\log\localise.binlog
+    if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+    Pop-Location
 
 
 # to run your custom scripts instead of automatic tests
 test_script:
 - ps: |
     Write-Host "Ignore the tests and codecov util we figure out how to use OpenCover"
-    Write-Host $pwd
-    # & .\Build\Run-Tests.ps1
+    #& .\cibuild.cmd /p:NoBuild=true -test -logFileName UnitTest.binlog
+    #if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+    #& .\cibuild.cmd /p:NoBuild=true -integrationTest -logFileName IntegrationTest.binlog
+    #if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
 
 
 # scripts to run after tests
 after_test:
 - ps: |
     Write-Host "Preparing build artifacts..."
-    & .\Build\Prepare-Artifacts.ps1
+    & .\cibuild.cmd -publish -logFileName publish.binlog
+    if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+
+    # get files
+    $msi = (Resolve-Path .\artifacts\publish\GitExtensions-*.msi)[0].Path;
+    $zip = (Resolve-Path .\artifacts\publish\GitExtensions-Portable-*.zip)[0].Path;
+    #$vsix = (Resolve-Path artifacts\publish\GitExtensionsVSIX.vsix)[0].Path;
+
+    # do not sign artifacts for non-release branches
+    if ($env:APPVEYOR_PULL_REQUEST_TITLE) {
+        Write-Host "[INFO]: Do not sign non-release branches"
+        Get-ChildItem $zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+        #Get-ChildItem $vsix | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+        Exit-AppVeyorBuild
+        return
+    }
+
+    # archive files so we send them all in one go
+    $version = "$env:APPVEYOR_BUILD_VERSION";
+    $combined = ".\combined.$version-unsigned.zip"
+    Compress-Archive -LiteralPath $msi, $zip -CompressionLevel NoCompression -DestinationPath $combined -Force
+    if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+    move-item $msi ".\artifacts\publish\GitExtensions-$version.msi"
 
 
 artifacts:
-  # upload the generated portable archive only
-  - path: 'Setup/GitExtensions-Portable-*.zip'
-  - path: 'Setup/GitExtensions-pdbs-*.zip'
-  - path: 'GitExtensionsVSIX/bin/Release/GitExtensionsVSIX.vsix'
-  - path: 'Setup/GitExtensions-$(APPVEYOR_BUILD_VERSION).msi'
+  - path: './artifacts/publish/GitExtensions-Portable-*.zip'
+  - path: './artifacts/publish/GitExtensions-*.msi'
+    name: GitExtensions-$(APPVEYOR_BUILD_VERSION).msi
 
 deploy:
   release: $(APPVEYOR_BUILD_VERSION)
@@ -102,10 +120,9 @@ deploy:
   provider: GitHub
   auth_token:
     secure: rXu9qtKcQQGqMciH1aloVBxwqYuiqrtLd04CYPey4hKMu2AN9Mtl4j+98dPP+V1r
-  artifact: Setup/GitExtensions-$(APPVEYOR_BUILD_VERSION).msi
+  artifact: GitExtensions-$(APPVEYOR_BUILD_VERSION).msi
   draft: false
   prerelease: true
   APPVEYOR_REPO_TAG: false
   on:
     branch: /release\/.*/
-

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -10,6 +9,7 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Patches;
 using GitUI.Editor;
+using GitUI.UserControls;
 using GitUI.UserControls.RevisionGrid;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
@@ -23,121 +23,106 @@ namespace GitUI
         private static Patch GetItemPatch(
             [NotNull] GitModule module,
             [NotNull] GitItemStatus file,
-            [CanBeNull] ObjectId firstRevision,
-            [CanBeNull] ObjectId secondRevision,
+            [CanBeNull] ObjectId firstId,
+            [CanBeNull] ObjectId secondId,
             [NotNull] string diffArgs,
             [NotNull] Encoding encoding)
         {
             // Files with tree guid should be presented with normal diff
-            var isTracked = file.IsTracked || (file.TreeGuid != null && secondRevision != null);
+            var isTracked = file.IsTracked || (file.TreeGuid != null && secondId != null);
 
-            return module.GetSingleDiff(firstRevision?.ToString(), secondRevision?.ToString(), file.Name, file.OldName, diffArgs, encoding, true, isTracked);
+            return module.GetSingleDiff(firstId, secondId, file.Name, file.OldName, diffArgs, encoding, true, isTracked);
         }
 
-        [CanBeNull]
-        private static string GetSelectedPatch(
-            [NotNull] this FileViewer diffViewer,
-            [CanBeNull] ObjectId firstRevision,
-            [CanBeNull] ObjectId secondRevision,
-            [NotNull] GitItemStatus file)
+        /// <summary>
+        /// View the changes between the revisions, if possible as a diff
+        /// </summary>
+        /// <param name="fileViewer">Current FileViewer</param>
+        /// <param name="item">The FileStatusItem to present changes for</param>
+        /// <param name="defaultText">default text if no diff is possible</param>
+        /// <param name="openWithDiffTool">The difftool command to open with</param>
+        /// <returns>Task to view</returns>
+        public static Task ViewChangesAsync(this FileViewer fileViewer,
+            [CanBeNull] FileStatusItem item,
+            [NotNull] string defaultText = "",
+            [CanBeNull] Action openWithDiffTool = null)
         {
-            if (!file.IsTracked)
+            if (item?.Item?.IsStatusOnly ?? false)
             {
-                var fullPath = Path.Combine(diffViewer.Module.WorkingDir, file.Name);
-                if (Directory.Exists(fullPath) && GitModule.IsValidGitWorkingDir(fullPath))
+                // Present error (e.g. parsing Git)
+                return fileViewer.ViewTextAsync(item.Item.Name, item.Item.ErrorMessage);
+            }
+
+            if (item?.Item == null || item.SecondRevision?.ObjectId == null)
+            {
+                if (!string.IsNullOrWhiteSpace(defaultText))
                 {
-                    // git-status does not detect details for untracked and git-diff --no-index will not give info
-                    return LocalizationHelpers.GetSubmoduleText(diffViewer.Module, file.Name.TrimEnd('/'), "");
+                    return fileViewer.ViewTextAsync(item?.Item?.Name, defaultText);
                 }
-            }
 
-            if (file.IsSubmodule && file.GetSubmoduleStatusAsync() != null)
-            {
-                return LocalizationHelpers.ProcessSubmoduleStatus(diffViewer.Module, ThreadHelper.JoinableTaskFactory.Run(() => file.GetSubmoduleStatusAsync()));
-            }
-
-            Patch patch = GetItemPatch(diffViewer.Module, file, firstRevision, secondRevision,
-                diffViewer.GetExtraDiffArguments(), diffViewer.Encoding);
-
-            if (patch == null)
-            {
-                return string.Empty;
-            }
-
-            if (file.IsSubmodule)
-            {
-                return LocalizationHelpers.ProcessSubmodulePatch(diffViewer.Module, file.Name, patch);
-            }
-
-            return patch.Text;
-        }
-
-        public static Task ViewChangesAsync(this FileViewer diffViewer, IReadOnlyList<GitRevision> revisions, GitItemStatus file, string defaultText)
-        {
-            if (revisions.Count == 0)
-            {
+                fileViewer.Clear();
                 return Task.CompletedTask;
             }
 
-            var selectedRevision = revisions[0];
-            var secondRevision = selectedRevision?.ObjectId;
-            var firstRevision = revisions.Count >= 2 ? revisions[1].ObjectId : null;
-            if (firstRevision == null && selectedRevision != null)
+            var firstId = item.FirstRevision?.ObjectId ?? item.SecondRevision.FirstParentId;
+
+            openWithDiffTool ??= OpenWithDiffTool;
+
+            if (item.Item.IsNew || firstId == null || FileHelper.IsImage(item.Item.Name))
             {
-                firstRevision = selectedRevision.FirstParentGuid;
+                // View blob guid from revision, or file for worktree
+                return fileViewer.ViewGitItemRevisionAsync(item.Item, item.SecondRevision.ObjectId, openWithDiffTool);
             }
 
-            return ViewChangesAsync(diffViewer, firstRevision, secondRevision, file, defaultText, openWithDifftool: null /* use default */);
-        }
+            string selectedPatch = GetSelectedPatch(fileViewer, firstId, item.SecondRevision.ObjectId, item.Item);
 
-        public static Task ViewChangesAsync(
-            this FileViewer diffViewer,
-            [CanBeNull] ObjectId firstRevision,
-            ObjectId secondRevision,
-            [NotNull] GitItemStatus file,
-            [NotNull] string defaultText,
-            [CanBeNull] Action openWithDifftool)
-        {
-            if (firstRevision == null || FileHelper.IsImage(file.Name))
+            return item.Item.IsSubmodule || selectedPatch == null
+                ? fileViewer.ViewTextAsync(item.Item.Name, text: selectedPatch ?? defaultText, openWithDifftool: openWithDiffTool)
+                : fileViewer.ViewPatchAsync(item.Item.Name, text: selectedPatch, openWithDifftool: openWithDiffTool);
+
+            void OpenWithDiffTool()
             {
-                // The previous commit does not exist, nothing to compare with
-                if (file.TreeGuid != null)
-                {
-                    // blob guid exists
-                    return diffViewer.ViewGitItemAsync(file.Name, file.TreeGuid, openWithDifftool);
-                }
-
-                if (secondRevision == null)
-                {
-                    throw new ArgumentNullException(nameof(secondRevision));
-                }
-
-                // Get blob guid from revision
-                return diffViewer.ViewGitItemRevisionAsync(file.Name, secondRevision, openWithDifftool);
+                fileViewer.Module.OpenWithDifftool(
+                    item.Item.Name,
+                    item.Item.OldName,
+                    firstId?.ToString(),
+                    item.SecondRevision.ToString(),
+                    "",
+                    item.Item.IsTracked);
             }
 
-            return diffViewer.ViewPatchAsync(() =>
+            static string GetSelectedPatch(
+                FileViewer fileViewer,
+                ObjectId firstId,
+                ObjectId selectedId,
+                GitItemStatus file)
             {
-                string selectedPatch = diffViewer.GetSelectedPatch(firstRevision, secondRevision, file);
-                if (selectedPatch == null)
+                if (firstId == ObjectId.CombinedDiffId)
                 {
-                    return (text: defaultText, openWithDifftool: null /* not applicable */, file.Name);
+                    var diffOfConflict = fileViewer.Module.GetCombinedDiffContent(selectedId, file.Name,
+                        fileViewer.GetExtraDiffArguments(), fileViewer.Encoding);
+
+                    return string.IsNullOrWhiteSpace(diffOfConflict)
+                        ? Strings.UninterestingDiffOmitted
+                        : diffOfConflict;
                 }
 
-                return (text: selectedPatch,
-                    openWithDifftool: openWithDifftool ?? OpenWithDifftool, file.Name);
-
-                void OpenWithDifftool()
+                if (file.IsSubmodule && file.GetSubmoduleStatusAsync() != null)
                 {
-                    diffViewer.Module.OpenWithDifftool(
-                        file.Name,
-                        null,
-                        firstRevision.ToString(),
-                        firstRevision.ToString(),
-                        "",
-                        file.IsTracked);
+                    // Patch already evaluated
+                    var status = ThreadHelper.JoinableTaskFactory.Run(file.GetSubmoduleStatusAsync);
+                    return status != null
+                        ? LocalizationHelpers.ProcessSubmoduleStatus(fileViewer.Module, status)
+                        : $"Failed to get status for submodule \"{file.Name}\"";
                 }
-            });
+
+                var patch = GetItemPatch(fileViewer.Module, file, firstId, selectedId,
+                    fileViewer.GetExtraDiffArguments(), fileViewer.Encoding);
+
+                return file.IsSubmodule
+                    ? LocalizationHelpers.ProcessSubmodulePatch(fileViewer.Module, file.Name, patch)
+                    : patch?.Text;
+            }
         }
 
         public static void RemoveIfExists(this TabControl tabControl, TabPage page)

@@ -13,6 +13,7 @@ using GitCommands.Config;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 using ResourceManager;
+using RestSharp;
 
 namespace GitUI.CommandsDialogs.BrowseDialog
 {
@@ -29,6 +30,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         public IWin32Window OwnerWindow;
         public Version CurrentVersion { get; }
         public bool UpdateFound;
+        public string InstallerPath = "";
         public string UpdateUrl = "";
         public string NewVersion = "";
 
@@ -68,33 +70,52 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        private class GitHubReleaseInfo
+        {
+            public string html_url { get; set; }
+            public string tag_name { get; set; }
+        }
+
+        private GitHubReleaseInfo GetLatestGitExtensionsRelease()
+        {
+            var client = new RestClient("https://api.github.com");
+            client.UserAgent = "mabako/Git.hub";
+
+            var request = new RestRequest("/repos/EbenZhang/gitextensions/releases/latest");
+
+            return client.Get<GitHubReleaseInfo>(request).Data;
+        }
+
         private void SearchForUpdates()
         {
             try
             {
                 var github = new Client();
-                Repository gitExtRepo = github.getRepository("gitextensions", "gitextensions");
-
-                var configData = gitExtRepo?.GetRef("heads/configdata");
-
-                var tree = configData?.GetTree();
-                if (tree == null)
+                Repository gitExtRepo = github.getRepository("EbenZhang", "gitextensions");
+                if (gitExtRepo == null)
                 {
                     return;
                 }
 
-                var releases = tree.Tree.FirstOrDefault(entry => "GitExtensions.releases".Equals(entry.Path, StringComparison.InvariantCultureIgnoreCase));
-
-                if (releases?.Blob.Value != null)
+                var configData = GetLatestGitExtensionsRelease();
+                if (configData == null)
                 {
-                    CheckForNewerVersion(releases.Blob.Value.GetContent());
+                    return;
                 }
+
+                CheckForNewerVersion(configData);
             }
             catch (InvalidAsynchronousStateException)
             {
                 // InvalidAsynchronousStateException (The destination thread no longer exists) is thrown
                 // if a UI component gets disposed or the UI thread EXITs while a 'check for updates' thread
                 // is in the middle of its run... Ignore it, likely the user has closed the app
+            }
+            catch (NullReferenceException)
+            {
+                // We had a number of NRE reports.
+                // Most likely scenario is that GitHub is API rate limiting unauthenticated requests that lead to failures in Git.hub library.
+                // Nothing we can do here, ignore it.
             }
             catch (Exception ex)
             {
@@ -109,24 +130,106 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             }
         }
 
-        private void CheckForNewerVersion(string releases)
+        private void CheckForNewerVersion(GitHubReleaseInfo release)
         {
-            var versions = ReleaseVersion.Parse(releases);
-            var updates = ReleaseVersion.GetNewerVersions(CurrentVersion, AppSettings.CheckForReleaseCandidates, versions);
-
-            var update = updates.OrderBy(version => version.Version).LastOrDefault();
-            if (update != null)
+            Version newVersion = null;
+            try
             {
-                UpdateFound = true;
-                UpdateUrl = update.DownloadPage;
-                NewVersion = update.Version.ToString();
-                Done();
-                return;
+                newVersion = new Version(release.tag_name);
+            }
+            catch
+            {
+                // ignored
             }
 
-            UpdateUrl = "";
-            UpdateFound = false;
-            Done();
+            if (newVersion == null)
+            {
+                UpdateFound = false;
+            }
+            else
+            {
+                UpdateFound = CurrentVersion < new Version(release.tag_name);
+            }
+
+            if (UpdateFound)
+            {
+                var setupFileName = $"GitExtensions-{release.tag_name}.msi";
+                try
+                {
+                    var downloadToFolder = Path.Combine(Path.GetTempPath(), "GitExtensionReleases");
+                    DeleteOldSetups(downloadToFolder);
+                    if (!Directory.Exists(downloadToFolder))
+                    {
+                        Directory.CreateDirectory(downloadToFolder);
+                    }
+
+                    UpdateUrl = release.html_url;
+                    InstallerPath = Path.Combine(downloadToFolder, setupFileName);
+                    this.InvokeAsync(() =>
+                    {
+                        if (!Visible)
+                        {
+                            return;
+                        }
+
+                        UpdateLabel.Text = string.Format(_downloadingUpdate.Text, release.tag_name);
+                    }).FileAndForget();
+                    DownloadNewRelease(release, setupFileName);
+                    NewVersion = release.tag_name;
+                    Done();
+                }
+                catch
+                { // fall back to the download link
+                    InstallerPath = GetDownloadUrl(release, setupFileName);
+                    Done();
+                }
+            }
+            else
+            {
+                UpdateUrl = "";
+                InstallerPath = "";
+                Done();
+            }
+        }
+
+        private void DownloadNewRelease(GitHubReleaseInfo release, string setupFileName)
+        {
+            string url = GetDownloadUrl(release, setupFileName);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.AllowAutoRedirect = true;
+
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            {
+                Stream dataStream = response.GetResponseStream();
+                using (var fileStream = new FileStream(InstallerPath, FileMode.OpenOrCreate))
+                {
+                    dataStream.CopyTo(fileStream);
+                }
+
+                response.Close();
+            }
+        }
+
+        private static string GetDownloadUrl(GitHubReleaseInfo release, string setupFileName)
+        {
+            const string downloadUrlFormat = "https://github.com/EbenZhang/gitextensions/releases/download/{0}/{1}";
+            var url = string.Format(downloadUrlFormat, release.tag_name, setupFileName);
+            return url;
+        }
+
+        private void DeleteOldSetups(string downloadToFolder)
+        {
+            try
+            {
+                if (Directory.Exists(downloadToFolder))
+                {
+                    Directory.Delete(downloadToFolder, recursive: true);
+                }
+            }
+            catch
+            {
+                // don't care
+            }
         }
 
         private void Done()
@@ -172,41 +275,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             LaunchUrl(LaunchType.ChangeLog);
         }
 
-        private async void btnUpdateNow_Click(object sender, EventArgs e)
+        private void btnUpdateNow_Click(object sender, EventArgs e)
         {
-            linkChangeLog.Visible = false;
-            progressBar1.Visible = true;
-            btnUpdateNow.Enabled = false;
-            UpdateLabel.Text = _downloadingUpdate.Text;
-            string fileName = Path.GetFileName(UpdateUrl);
-
-            try
+            if (!string.IsNullOrWhiteSpace(InstallerPath))
             {
-                using (WebClient webClient = new WebClient())
+                using (Process.Start(InstallerPath))
                 {
-                    await webClient.DownloadFileTaskAsync(new Uri(UpdateUrl), Environment.GetEnvironmentVariable("TEMP") + "\\" + fileName);
+                    Application.Exit();
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, _errorMessage.Text + Environment.NewLine + ex.Message, _errorHeading.Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            try
-            {
-                Process process = new Process();
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.FileName = "msiexec.exe";
-                process.StartInfo.Arguments = string.Format("/i \"{0}\\{1}\" /qb LAUNCH=1", Environment.GetEnvironmentVariable("TEMP"), fileName);
-                process.Start();
-
-                progressBar1.Visible = false;
-                Close();
-                Application.Exit();
-            }
-            catch (Win32Exception)
-            {
             }
         }
 

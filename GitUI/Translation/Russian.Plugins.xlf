@@ -1,4 +1,4 @@
-<?xml version="1.0" ?><xliff GitExVersion="3.3.0" version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<?xml version="1.0" ?><xliff GitExVersion="" version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <file datatype="plaintext" original="AppVeyorSettingsUserControl" source-language="en" target-language="ru">
     <body>
       <trans-unit id="cbLoadTestResults.Text">
@@ -12,7 +12,7 @@
     <body>
       <trans-unit id="Description.Text">
         <source>Auto compile SubModules</source>
-        <target>Автоматически компилировать субмодули</target>
+        <target>Автоматическая сборка субмодулей</target>
         
       </trans-unit>
       <trans-unit id="_doYouWantBuild.Text">
@@ -26,7 +26,7 @@
       </trans-unit>
       <trans-unit id="_enterCorrectMsBuildPath.Text">
         <source>Please enter correct MSBuild path in the plugin settings dialog and try again.</source>
-        <target>Пожалуйста введите правильный путь к MSBuild в настройках плагина и попробуйте снова.</target>
+        <target>Пожалуйста, введите правильный путь к MSBuild в настройках плагина и попробуйте снова.</target>
         
       </trans-unit>
       <trans-unit id="_msBuildArguments.Caption">
@@ -416,7 +416,7 @@ Are you sure you want to continue?</source>
       </trans-unit>
       <trans-unit id="includeUnmergedBranches.Text">
         <source>Include unmerged branches</source>
-        <target>Включить не слитые ветки</target>
+        <target>Включить неслитые ветки</target>
         
       </trans-unit>
       <trans-unit id="label1.Text">
@@ -693,11 +693,6 @@ Are you sure you want to continue?</source>
         <target>&amp;Опубликовать</target>
         
       </trans-unit>
-      <trans-unit id="PublishType.Text">
-        <source>For Review</source>
-        <target>Для рассмотрения</target>
-        
-      </trans-unit>
       <trans-unit id="_publishCaption.Text">
         <source>Publish change</source>
         <target>Опубликовать изменения</target>
@@ -706,21 +701,6 @@ Are you sure you want to continue?</source>
       <trans-unit id="_publishGerritChangeCaption.Text">
         <source>Publish Gerrit Change</source>
         <target>Опубликовать изменения в Gerrit</target>
-        
-      </trans-unit>
-      <trans-unit id="_publishTypePrivate.Text">
-        <source>Private</source>
-        <target>Частный</target>
-        
-      </trans-unit>
-      <trans-unit id="_publishTypeReview.Text">
-        <source>For Review</source>
-        <target>Для рассмотрения</target>
-        
-      </trans-unit>
-      <trans-unit id="_publishTypeWip.Text">
-        <source>Work-in-Progress</source>
-        <target>Незаконченная работа</target>
         
       </trans-unit>
       <trans-unit id="_selectBranch.Text">
@@ -1024,6 +1004,30 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       </trans-unit>
     </body>
   </file>
+  <file datatype="plaintext" original="GerritCapabilities" source-language="en" target-language="ru">
+    <body>
+      <trans-unit id="_publishTypeDraft.Text">
+        <source>Draft</source>
+        <target>Черновик</target>
+        
+      </trans-unit>
+      <trans-unit id="_publishTypePrivate.Text">
+        <source>Private</source>
+        <target>Частный</target>
+        
+      </trans-unit>
+      <trans-unit id="_publishTypeReview.Text">
+        <source>For Review</source>
+        <target>Для рассмотрения</target>
+        
+      </trans-unit>
+      <trans-unit id="_publishTypeWip.Text">
+        <source>Work-in-Progress</source>
+        <target>Незаконченная работа</target>
+        
+      </trans-unit>
+    </body>
+  </file>
   <file datatype="plaintext" original="GerritPlugin" source-language="en" target-language="ru">
     <body>
       <trans-unit id="Description.Text">
@@ -1064,6 +1068,11 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       <trans-unit id="_installCommitMsgHookShortText.Text">
         <source>Install commit-msg hook</source>
         <target>Установить commit-msg хук</target>
+        
+      </trans-unit>
+      <trans-unit id="_predefinedGerritVersion.Caption">
+        <source>Treat Gerrit as having version</source>
+        <target>Рассматривать Gerrit, как имеющий версию</target>
         
       </trans-unit>
       <trans-unit id="_publishGerritChange.Text">
@@ -1247,9 +1256,9 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
         <target>GitHub</target>
         
       </trans-unit>
-      <trans-unit id="GitHubApiEndpoint.Caption">
-        <source>GitHub (Enterprise) API endpoint</source>
-        <target>Точка приёма GitHub (Enterprise) API</target>
+      <trans-unit id="GitHubHost.Caption">
+        <source>GitHub (Enterprise) hostname</source>
+        <target>Имя хоста GitHub (Enterprise)</target>
         
       </trans-unit>
       <trans-unit id="OAuthToken.Caption">
@@ -1260,6 +1269,11 @@ To enable Gerrit support for a repository, a .gitreview file must be created. Th
       <trans-unit id="_tokenAlreadyExist.Text">
         <source>You already have an OAuth token. To get a new one, delete your old one in Plugins &gt; Settings first.</source>
         <target>У вас уже есть токен OAuth. Чтобы получить новый, удалите старый в Плагинах &gt; Настройках.</target>
+        
+      </trans-unit>
+      <trans-unit id="_viewInWebSite.Text">
+        <source>View in {0}</source>
+        <target>Просмотр в {0}</target>
         
       </trans-unit>
     </body>
@@ -1596,7 +1610,7 @@ Do you want to reset the configured path?</source>
     <body>
       <trans-unit id="$this.Text">
         <source>Release Notes Generator</source>
-        <target>Генератор Release Notes</target>
+        <target>Генератор примечаний к выпуску</target>
         
       </trans-unit>
       <trans-unit id="_caption.Text">
@@ -1723,7 +1737,7 @@ branch names, tag names)</source>
     <body>
       <trans-unit id="Description.Text">
         <source>Release Notes Generator</source>
-        <target>Генератор Release Notes</target>
+        <target>Генератор примечаний к выпуску</target>
         
       </trans-unit>
     </body>

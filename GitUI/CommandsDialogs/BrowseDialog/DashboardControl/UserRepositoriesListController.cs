@@ -14,16 +14,18 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         string GetCurrentBranchName(string path);
         bool IsValidGitWorkingDir(string path);
         (IReadOnlyList<RecentRepoInfo> recentRepositories, IReadOnlyList<RecentRepoInfo> favouriteRepositories) PreRenderRepositories(Graphics g);
-        void RemoveRepository(string path);
+        bool RemoveInvalidRepository(string path);
     }
 
     public sealed class UserRepositoriesListController : IUserRepositoriesListController
     {
         private readonly ILocalRepositoryManager _localRepositoryManager;
+        private readonly IInvalidRepositoryRemover _invalidRepositoryRemover;
 
-        public UserRepositoriesListController(ILocalRepositoryManager localRepositoryManager)
+        public UserRepositoriesListController(ILocalRepositoryManager localRepositoryManager, IInvalidRepositoryRemover invalidRepositoryRemover)
         {
             _localRepositoryManager = localRepositoryManager;
+            _invalidRepositoryRemover = invalidRepositoryRemover;
         }
 
         public async Task AssignCategoryAsync(Repository repository, string category)
@@ -38,7 +40,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
         public string GetCurrentBranchName(string path)
         {
-            if (!AppSettings.DashboardShowCurrentBranch || GitModule.IsBareRepository(path))
+            if (!AppSettings.ShowRepoCurrentBranch || GitModule.IsBareRepository(path))
             {
                 return string.Empty;
             }
@@ -81,9 +83,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             return (recentRepositories, favouriteRepositories);
         }
 
-        public void RemoveRepository(string path)
-        {
-            ThreadHelper.JoinableTaskFactory.Run(() => RepositoryHistoryManager.Locals.RemoveRecentAsync(path));
-        }
+        public bool RemoveInvalidRepository(string path)
+           => _invalidRepositoryRemover.ShowDeleteInvalidRepositoryDialog(path);
     }
 }

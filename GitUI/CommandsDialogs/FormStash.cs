@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Management;
 using System.Text;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Patches;
 using GitExtUtils.GitUI;
+using GitUIPluginInterfaces;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
@@ -40,6 +42,8 @@ namespace GitUI.CommandsDialogs
         {
             InitializeComponent();
             View.ExtraDiffArgumentsChanged += delegate { StashedSelectedIndexChanged(null, null); };
+            View.TopScrollReached += FileViewer_TopScrollReached;
+            View.BottomScrollReached += FileViewer_BottomScrollReached;
             CompleteTheInitialization();
         }
 
@@ -142,7 +146,8 @@ namespace GitUI.CommandsDialogs
         {
             GitStash gitStash = Stashes.SelectedItem as GitStash;
 
-            Stashed.SetDiffs();
+            Stashed.GroupByRevision = false;
+            Stashed.ClearDiffs();
 
             Loading.Visible = true;
             Loading.IsAnimating = true;
@@ -164,9 +169,51 @@ namespace GitUI.CommandsDialogs
             }
         }
 
+        private void FileViewer_TopScrollReached(object sender, EventArgs e)
+        {
+            Stashed.SelectPreviousVisibleItem();
+            View.ScrollToBottom();
+        }
+
+        private void FileViewer_BottomScrollReached(object sender, EventArgs e)
+        {
+            Stashed.SelectNextVisibleItem();
+            View.ScrollToTop();
+        }
+
         private void LoadGitItemStatuses(IReadOnlyList<GitItemStatus> gitItemStatuses)
         {
-            Stashed.SetDiffs(items: gitItemStatuses);
+            GitStash gitStash = Stashes.SelectedItem as GitStash;
+            if (gitStash == _currentWorkingDirStashItem)
+            {
+                // FileStatusList has no interface for both worktree<-index, index<-HEAD at the same time
+                // Must be handled when displaying
+                var headId = Module.RevParse("HEAD");
+                var headRev = new GitRevision(headId);
+                var indexRev = new GitRevision(ObjectId.IndexId)
+                {
+                    ParentIds = new[] { headId }
+                };
+                var workTreeRev = new GitRevision(ObjectId.WorkTreeId)
+                {
+                    ParentIds = new[] { ObjectId.IndexId }
+                };
+                var indexItems = gitItemStatuses.Where(item => item.Staged == StagedStatus.Index).ToList();
+                var workTreeItems = gitItemStatuses.Where(item => item.Staged != StagedStatus.Index).ToList();
+                Stashed.SetStashDiffs(headRev, indexRev, ResourceManager.Strings.Index, indexItems, workTreeRev, ResourceManager.Strings.Workspace, workTreeItems);
+            }
+            else
+            {
+                var firstId = Module.RevParse(gitStash.Name + "^");
+                var selectedId = Module.RevParse(gitStash.Name);
+                var firstRev = firstId == null ? null : new GitRevision(firstId);
+                var secondRev = selectedId == null ? null : new GitRevision(selectedId)
+                {
+                    ParentIds = new[] { firstId }
+                };
+                Stashed.SetDiffs(firstRev, secondRev, gitItemStatuses);
+            }
+
             Loading.Visible = false;
             Loading.IsAnimating = false;
             Stashes.Enabled = true;
@@ -180,74 +227,16 @@ namespace GitUI.CommandsDialogs
 
         private void StashedSelectedIndexChanged(object sender, EventArgs e)
         {
-            GitStash gitStash = Stashes.SelectedItem as GitStash;
-            GitItemStatus stashedItem = Stashed.SelectedItem;
-
+            View.ViewChangesAsync(Stashed.SelectedItem);
             EnablePartialStash();
-
-            using (WaitCursorScope.Enter())
-            {
-                if (stashedItem != null &&
-                    gitStash == _currentWorkingDirStashItem)
-                {
-                    // current working directory
-                    View.ViewCurrentChanges(stashedItem);
-                }
-                else if (stashedItem != null)
-                {
-                    if (stashedItem.IsNew)
-                    {
-                        if (!stashedItem.IsSubmodule)
-                        {
-                            View.ViewGitItemAsync(stashedItem.Name, stashedItem.TreeGuid);
-                        }
-                        else
-                        {
-                            ThreadHelper.JoinableTaskFactory.RunAsync(
-                                () => View.ViewTextAsync(
-                                    stashedItem.Name,
-                                    LocalizationHelpers.GetSubmoduleText(Module, stashedItem.Name, stashedItem.TreeGuid?.ToString())));
-                        }
-                    }
-                    else
-                    {
-                        string extraDiffArguments = View.GetExtraDiffArguments();
-                        Encoding encoding = View.Encoding;
-                        View.ViewPatchAsync(
-                            () =>
-                            {
-                                Patch patch = Module.GetSingleDiff(gitStash.Name + "^", gitStash.Name, stashedItem.Name, stashedItem.OldName, extraDiffArguments, encoding, true, stashedItem.IsTracked);
-                                if (patch == null)
-                                {
-                                    return (text: string.Empty, openWithDifftool: null /* not applicable */, filename: null);
-                                }
-
-                                if (stashedItem.IsSubmodule)
-                                {
-                                    return (text: LocalizationHelpers.ProcessSubmodulePatch(Module, stashedItem.Name, patch),
-                                            openWithDifftool: null /* not implemented */, filename: null);
-                                }
-
-                                return (text: patch.Text, openWithDifftool: null /* not implemented */, filename: stashedItem.Name);
-                            });
-                    }
-                }
-                else
-                {
-                    ThreadHelper.JoinableTaskFactory.RunAsync(
-                        () => View.ViewTextAsync("", ""));
-                }
-            }
         }
 
         private void StashClick(object sender, EventArgs e)
         {
             if (chkIncludeUntrackedFiles.Checked && !GitVersion.Current.StashUntrackedFilesSupported)
             {
-                if (MessageBox.Show(_stashUntrackedFilesNotSupported.Text, _stashUntrackedFilesNotSupportedCaption.Text, MessageBoxButtons.OKCancel) == DialogResult.Cancel)
-                {
-                    return;
-                }
+                MessageBox.Show(_stashUntrackedFilesNotSupported.Text, _stashUntrackedFilesNotSupportedCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
 
             using (WaitCursorScope.Enter())
@@ -262,16 +251,14 @@ namespace GitUI.CommandsDialogs
         {
             if (chkIncludeUntrackedFiles.Checked && !GitVersion.Current.StashUntrackedFilesSupported)
             {
-                if (MessageBox.Show(_stashUntrackedFilesNotSupported.Text, _stashUntrackedFilesNotSupportedCaption.Text, MessageBoxButtons.OKCancel) == DialogResult.Cancel)
-                {
-                    return;
-                }
+                MessageBox.Show(_stashUntrackedFilesNotSupported.Text, _stashUntrackedFilesNotSupportedCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
 
             using (WaitCursorScope.Enter())
             {
                 var msg = toolStripButton_customMessage.Checked ? " " + StashMessage.Text.Trim() : string.Empty;
-                UICommands.StashSave(this, chkIncludeUntrackedFiles.Checked, StashKeepIndex.Checked, msg, Stashed.SelectedItems.Select(i => i.Name).ToList());
+                UICommands.StashSave(this, chkIncludeUntrackedFiles.Checked, StashKeepIndex.Checked, msg, Stashed.SelectedItems.Select(i => i.Item.Name).ToList());
                 Initialize();
             }
         }

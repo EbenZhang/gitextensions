@@ -1,5 +1,7 @@
-﻿using System.Windows.Forms;
+﻿using System;
+using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Config;
 using JetBrains.Annotations;
 using ResourceManager;
 
@@ -7,7 +9,6 @@ namespace GitUI
 {
     public class MessageBoxes : Translate
     {
-        private readonly TranslationString _error = new TranslationString("Error");
         private readonly TranslationString _notValidGitDirectory = new TranslationString("The current directory is not a valid git repository.");
 
         private readonly TranslationString _unresolvedMergeConflictsCaption = new TranslationString("Merge conflicts");
@@ -31,6 +32,9 @@ namespace GitUI
         private readonly TranslationString _rememberChoice = new TranslationString("Remember choice");
         private readonly TranslationString _confirmDeleteRemoteBranch = new TranslationString("Do you want to delete the branch {0} from {1}?");
 
+        private readonly TranslationString _shellNotFoundCaption = new TranslationString("Shell not found");
+        private readonly TranslationString _shellNotFound = new TranslationString("The selected shell is not installed, or is not on your path.");
+
         // internal for FormTranslate
         internal MessageBoxes()
         {
@@ -43,27 +47,35 @@ namespace GitUI
 
         public static void NotValidGitDirectory([CanBeNull] IWin32Window owner)
         {
-            MessageBox.Show(owner, Instance._notValidGitDirectory.Text, Instance._error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(owner, Instance._notValidGitDirectory.Text, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        public static void ShowGitConfigurationExceptionMessage(IWin32Window owner, GitConfigurationException exception)
+        {
+            MessageBox.Show(owner,
+                string.Format(ResourceManager.Strings.GeneralGitConfigExceptionMessage, exception.ConfigPath, Environment.NewLine, (exception.InnerException ?? exception).Message),
+                ResourceManager.Strings.GeneralGitConfigExceptionCaption,
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         public static bool UnresolvedMergeConflicts(IWin32Window owner)
         {
-            return MessageBox.Show(owner, Instance._unresolvedMergeConflicts.Text, Instance._unresolvedMergeConflictsCaption.Text, MessageBoxButtons.YesNo) == DialogResult.Yes;
+            return MessageBox.Show(owner, Instance._unresolvedMergeConflicts.Text, Instance._unresolvedMergeConflictsCaption.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
         }
 
         public static bool MiddleOfRebase(IWin32Window owner)
         {
-            return MessageBox.Show(owner, Instance._middleOfRebase.Text, Instance._middleOfRebaseCaption.Text, MessageBoxButtons.YesNo) == DialogResult.Yes;
+            return MessageBox.Show(owner, Instance._middleOfRebase.Text, Instance._middleOfRebaseCaption.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
         }
 
         public static bool MiddleOfPatchApply(IWin32Window owner)
         {
-            return MessageBox.Show(owner, Instance._middleOfPatchApply.Text, Instance._middleOfPatchApplyCaption.Text, MessageBoxButtons.YesNo) == DialogResult.Yes;
+            return MessageBox.Show(owner, Instance._middleOfPatchApply.Text, Instance._middleOfPatchApplyCaption.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
         }
 
         public static void PAgentNotFound(IWin32Window owner)
         {
-            MessageBox.Show(owner, Instance._pageantNotFound.Text, _putty);
+            MessageBox.Show(owner, Instance._pageantNotFound.Text, _putty, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         public static bool CacheHostkey(IWin32Window owner)
@@ -100,6 +112,11 @@ namespace GitUI
         {
             return MessageBox.Show(owner, string.Format(Instance._confirmDeleteRemoteBranch.Text, branchName, remote),
                 "", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        }
+
+        public static void ShellNotFound([CanBeNull] IWin32Window owner)
+        {
+            MessageBox.Show(owner, Instance._shellNotFound.Text, Instance._shellNotFoundCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

@@ -56,7 +56,7 @@ namespace GitCommands
         [ContractAnnotation("dirPath:notnull=>notnull")]
         public static string EnsureTrailingPathSeparator([CanBeNull] this string dirPath)
         {
-            if (!dirPath.IsNullOrEmpty() &&
+            if (!string.IsNullOrEmpty(dirPath) &&
                 dirPath[dirPath.Length - 1] != NativeDirectorySeparatorChar &&
                 dirPath[dirPath.Length - 1] != PosixDirectorySeparatorChar)
             {
@@ -81,10 +81,24 @@ namespace GitCommands
         [Pure]
         public static bool IsUrl(string path)
         {
-            return !string.IsNullOrEmpty(path) &&
-                   (path.StartsWith("http", StringComparison.CurrentCultureIgnoreCase) ||
-                    path.StartsWith("git", StringComparison.CurrentCultureIgnoreCase) ||
-                    path.StartsWith("ssh", StringComparison.CurrentCultureIgnoreCase));
+            return !string.IsNullOrEmpty(path)
+                && (path.StartsWith("http:", StringComparison.CurrentCultureIgnoreCase)
+                 || path.StartsWith("https:", StringComparison.CurrentCultureIgnoreCase)
+                 || path.StartsWith("git:", StringComparison.CurrentCultureIgnoreCase)
+                 || path.StartsWith("ssh:", StringComparison.CurrentCultureIgnoreCase)
+                 || path.StartsWith("file:", StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        public static bool CanBeGitURL(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return false;
+            }
+
+            return IsUrl(url)
+                   || url.EndsWith(".git", StringComparison.CurrentCultureIgnoreCase)
+                   || GitModule.IsValidGitWorkingDir(url);
         }
 
         [NotNull]
@@ -110,12 +124,65 @@ namespace GitCommands
 
             try
             {
-                return Path.GetFullPath(new Uri(path).LocalPath);
+                return Path.GetFullPath(Resolve(path));
             }
             catch (UriFormatException)
             {
                 return string.Empty;
             }
+        }
+
+        [NotNull]
+        public static string Resolve([NotNull] string path, string relativePath = "")
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException(nameof(path));
+            }
+
+            return IsWslPath(path) ? ResolveWsl(path, relativePath) : ResolveRelativePath(path, relativePath);
+        }
+
+        /// <summary>
+        /// Special handling of on purpose invalid WSL machine name in Windows 10
+        /// </summary>
+        [NotNull]
+        internal static string ResolveWsl([NotNull] string path, string relativePath = "")
+        {
+            if (string.IsNullOrWhiteSpace(path) || !IsWslPath(path))
+            {
+                throw new ArgumentException(nameof(path));
+            }
+
+            // Temporarily replace machine name with a valid name (remove $ sign from \\wsl$\)
+            path = path.Remove(5, 1);
+
+            path = ResolveRelativePath(path, relativePath);
+
+            // Revert temporary replacement of WSL machine name (add $ sign back)
+            return path.Insert(5, "$");
+        }
+
+        [NotNull]
+        private static string ResolveRelativePath([NotNull] string path, string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException(nameof(path));
+            }
+
+            Uri tempPath = new Uri(path);
+            if (!string.IsNullOrEmpty(relativePath))
+            {
+                tempPath = new Uri(tempPath, relativePath);
+            }
+
+            return tempPath.LocalPath;
+        }
+
+        internal static bool IsWslPath([NotNull] string path)
+        {
+            return path.ToLower().StartsWith(@"\\wsl$\");
         }
 
         [ContractAnnotation("=>false,posixPath:null")]
@@ -263,6 +330,109 @@ namespace GitCommands
 
                 yield return path.EnsureTrailingPathSeparator();
             }
+        }
+
+        public static string FindInFolders([NotNull] this string fileName, [NotNull] IEnumerable<string> folders)
+        {
+            foreach (string location in folders)
+            {
+                if (string.IsNullOrWhiteSpace(location))
+                {
+                    continue;
+                }
+
+                string fullName;
+                if (Path.IsPathRooted(location))
+                {
+                    fullName = FindFile(location, fileName);
+                    if (fullName != null)
+                    {
+                        return fullName;
+                    }
+
+                    continue;
+                }
+
+                fullName = FindFileInEnvVarFolder("ProgramFiles", location, fileName);
+                if (fullName != null)
+                {
+                    return fullName;
+                }
+
+                fullName = FindFileInEnvVarFolder("ProgramW6432", location, fileName);
+                if (fullName != null)
+                {
+                    return fullName;
+                }
+
+                if (IntPtr.Size == 8 || (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROCESSOR_ARCHITEW6432"))))
+                {
+                    fullName = FindFileInEnvVarFolder("ProgramFiles(x86)", location, fileName);
+                    if (fullName != null)
+                    {
+                        return fullName;
+                    }
+                }
+            }
+
+            return string.Empty;
+
+            string FindFileInEnvVarFolder(string environmentVariable, string location, string fileName1)
+            {
+                var envVarFolder = Environment.GetEnvironmentVariable(environmentVariable);
+                if (string.IsNullOrEmpty(envVarFolder))
+                {
+                    return null;
+                }
+
+                var path = Path.Combine(envVarFolder, location);
+                if (!Directory.Exists(path))
+                {
+                    return null;
+                }
+
+                return FindFile(path, fileName1);
+            }
+
+            string FindFile(string location, string fileName1)
+            {
+                string fullName = Path.Combine(location, fileName1);
+                if (File.Exists(fullName))
+                {
+                    return fullName;
+                }
+
+                return null;
+            }
+        }
+
+        /// <summary>
+        ///  Deletes the requested folder recursively.
+        /// </summary>
+        /// <returns>
+        ///  <see langword="true" /> if the folder is absent or successfully removed; otherwise <see langword="false" />.
+        /// </returns>
+        [ContractAnnotation("=>false,errorMessage:notnull")]
+        [ContractAnnotation("=>true,errorMessage:null")]
+        public static bool TryDeleteDirectory([NotNull] this string path, out string errorMessage)
+        {
+            errorMessage = null;
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            {
+                return true;
+            }
+
+            try
+            {
+                Directory.Delete(path, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+                return false;
+            }
+
+            return true;
         }
     }
 }

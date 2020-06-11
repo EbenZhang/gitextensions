@@ -16,6 +16,7 @@ using GitCommands.Git;
 using GitCommands.Remotes;
 using GitExtUtils;
 using GitExtUtils.GitUI;
+using GitExtUtils.GitUI.Theming;
 using GitUI.CommandsDialogs;
 using GitUI.Editor.RichTextBoxExtension;
 using GitUI.Hotkey;
@@ -115,9 +116,10 @@ namespace GitUI.CommitInfo
             _gitDescribeProvider = new GitDescribeProvider(() => Module);
             _refsFormatter = new RefsFormatter(_linkFactory);
 
-            var color = SystemColors.Window.MakeColorDarker(0.04);
-            pnlCommitMessage.BackColor = color;
-            rtbxCommitMessage.BackColor = color;
+            var messageBackground = KnownColor.Window.MakeBackgroundDarkerBy(0.04);
+            pnlCommitMessage.BackColor = messageBackground;
+            rtbxCommitMessage.BackColor = messageBackground;
+
             rtbxCommitMessage.Font = AppSettings.CommitFont;
             RevisionInfo.Font = AppSettings.Font;
 
@@ -162,29 +164,13 @@ namespace GitUI.CommitInfo
 
         private void RevisionInfoLinkClicked(object sender, LinkClickedEventArgs e)
         {
-            var link = _linkFactory.ParseLink(e.LinkText);
-
             try
             {
-                var result = new Uri(link);
-                if (result.Scheme == "gitext")
-                {
-                    CommandClickedEvent?.Invoke(sender, new CommandEventArgs(result.Host, result.AbsolutePath.TrimStart('/')));
-                }
-                else
-                {
-                    using (var process = new Process
-                    {
-                        EnableRaisingEvents = false,
-                        StartInfo = { FileName = result.AbsoluteUri }
-                    })
-                    {
-                        process.Start();
-                    }
-                }
+                _linkFactory.ExecuteLink(e.LinkText, commandEventArgs => CommandClickedEvent?.Invoke(sender, commandEventArgs), ShowAll);
             }
-            catch (UriFormatException)
+            catch (Exception ex)
             {
+                MessageBox.Show(this, ex.Message, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -204,7 +190,7 @@ namespace GitUI.CommitInfo
             ReloadCommitInfo();
         }
 
-        public void ShowAll(string what)
+        private void ShowAll(string what)
         {
             switch (what)
             {
@@ -760,10 +746,18 @@ namespace GitUI.CommitInfo
 
         protected override void DisposeCustomResources()
         {
-            _asyncLoadCancellation.Dispose();
-            _revisionInfoResizedSubscription.Dispose();
-            _commitMessageResizedSubscription.Dispose();
-            base.DisposeCustomResources();
+            try
+            {
+                _asyncLoadCancellation.Dispose();
+                _revisionInfoResizedSubscription?.Dispose();
+                _commitMessageResizedSubscription?.Dispose();
+
+                base.DisposeCustomResources();
+            }
+            catch (InvalidOperationException)
+            {
+                // System.Reactive causes the app to fail with: 'Invoke or BeginInvoke cannot be called on a control until the window handle has been created.'
+            }
         }
 
         internal sealed class BranchComparer : IComparer<string>

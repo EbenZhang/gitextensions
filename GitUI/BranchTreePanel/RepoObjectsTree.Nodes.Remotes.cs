@@ -10,6 +10,7 @@ using GitCommands.Remotes;
 using GitUI.BranchTreePanel.Interfaces;
 using GitUI.Properties;
 using GitUIPluginInterfaces;
+using GitUIPluginInterfaces.RepositoryHosts;
 using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
@@ -154,9 +155,10 @@ namespace GitUI.BranchTreePanel
             }
         }
 
-        private sealed class RemoteBranchNode : BaseBranchNode, IGitRefActions, ICanDelete, ICanRename
+        private sealed class RemoteBranchNode : BaseBranchLeafNode, IGitRefActions, ICanDelete, ICanRename
         {
-            public RemoteBranchNode(Tree tree, string fullPath) : base(tree, fullPath)
+            public RemoteBranchNode(Tree tree, string fullPath)
+                : base(tree, fullPath, nameof(Images.BranchRemote), nameof(Images.BranchRemoteMerged))
             {
             }
 
@@ -252,12 +254,6 @@ namespace GitUI.BranchTreePanel
             {
                 return Fetch() && Rebase();
             }
-
-            protected override void ApplyStyle()
-            {
-                base.ApplyStyle();
-                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = nameof(Images.BranchRemote);
-            }
         }
 
         private sealed class RemoteRepoNode : BaseBranchNode
@@ -286,6 +282,18 @@ namespace GitUI.BranchTreePanel
                 Trace.Assert(Enabled);
                 return DoPrune();
             }
+
+            public void OpenRemoteUrlInBrowser()
+            {
+                if (!IsRemoteUrlUsingHttp)
+                {
+                    return;
+                }
+
+                Process.Start(_remote.FetchUrl);
+            }
+
+            public bool IsRemoteUrlUsingHttp => _remote.FetchUrl.IsUrlUsingHttp();
 
             public void Enable(bool fetch)
             {

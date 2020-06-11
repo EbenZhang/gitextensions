@@ -77,7 +77,7 @@ namespace AppVeyorIntegration
             var accountName = config.GetString("AppVeyorAccountName", null);
             _accountToken = config.GetString("AppVeyorAccountToken", null);
             var projectNamesSetting = config.GetString("AppVeyorProjectName", null);
-            if (accountName.IsNullOrWhiteSpace() && projectNamesSetting.IsNullOrWhiteSpace())
+            if (string.IsNullOrWhiteSpace(accountName) && string.IsNullOrWhiteSpace(projectNamesSetting))
             {
                 return;
             }
@@ -100,13 +100,13 @@ namespace AppVeyorIntegration
                 (!useAllProjects && Projects.Keys.Intersect(projectNames).Count() != projectNames.Length))
             {
                 Projects.Clear();
-                if (_accountToken.IsNullOrWhiteSpace())
+                if (string.IsNullOrWhiteSpace(_accountToken))
                 {
                     FillProjectsFromSettings(accountName, projectNames);
                 }
                 else
                 {
-                    if (accountName.IsNullOrWhiteSpace())
+                    if (string.IsNullOrWhiteSpace(accountName))
                     {
                         return;
                     }
@@ -116,7 +116,7 @@ namespace AppVeyorIntegration
                         {
                             var result = await GetResponseAsync(_httpClientAppVeyor, ApiBaseUrl, CancellationToken.None).ConfigureAwait(false);
 
-                            if (result.IsNullOrWhiteSpace())
+                            if (string.IsNullOrWhiteSpace(result))
                             {
                                 return;
                             }
@@ -136,7 +136,7 @@ namespace AppVeyorIntegration
 
                                 if (useAllProjects || projectNames.Contains(projectObj.Name))
                                 {
-                                    Projects.Add(projectObj.Name, projectObj);
+                                    Projects[projectObj.Name] = projectObj;
                                 }
                             }
                         });
@@ -172,7 +172,7 @@ namespace AppVeyorIntegration
                 Timeout = TimeSpan.FromMinutes(2),
                 BaseAddress = new Uri(baseUrl, UriKind.Absolute),
             };
-            if (accountToken.IsNotNullOrWhitespace())
+            if (!string.IsNullOrWhiteSpace(accountToken))
             {
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accountToken);
             }
@@ -434,9 +434,14 @@ namespace AppVeyorIntegration
 
         private static long GetBuildDuration(JToken buildData)
         {
-            var startTime = buildData["started"].ToObject<DateTime>();
-            var updateTime = buildData["updated"].ToObject<DateTime>();
-            return (long)(updateTime - startTime).TotalMilliseconds;
+            var startTime = (buildData["started"] ?? buildData["created"])?.ToObject<DateTime>();
+            var updateTime = buildData["updated"]?.ToObject<DateTime>();
+            if (!startTime.HasValue || !updateTime.HasValue)
+            {
+                return 0;
+            }
+
+            return (long)(updateTime.Value - startTime.Value).TotalMilliseconds;
         }
 
         private async Task<JObject> FetchBuildDetailsManagingVersionUpdateAsync(AppVeyorBuildInfo buildDetails, CancellationToken cancellationToken)
@@ -483,7 +488,9 @@ namespace AppVeyorIntegration
 
             return httpClient.GetAsync(restServicePath, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                              .ContinueWith(
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks (task is a completed task)
                                  task => GetStreamFromHttpResponseAsync(httpClient, task, restServicePath, cancellationToken),
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
                                  cancellationToken,
                                  restServicePath.Contains("github") ? TaskContinuationOptions.None : TaskContinuationOptions.AttachedToParent,
                                  TaskScheduler.Current)

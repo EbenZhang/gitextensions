@@ -7,13 +7,11 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GitCommands.Git;
-using GitCommands.Git.Extensions;
 using GitCommands.Patches;
 using GitCommands.Utils;
 using GitExtUtils;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
-using Microsoft.VisualStudio.Threading;
 
 namespace GitCommands
 {
@@ -215,7 +213,7 @@ namespace GitCommands
         /// <returns>Argument string</returns>
         public static ArgumentString ResetCmd(ResetMode mode, string commit = null, string file = null)
         {
-            if (mode == ResetMode.ResetIndex && commit.IsNullOrWhiteSpace())
+            if (mode == ResetMode.ResetIndex && string.IsNullOrWhiteSpace(commit))
             {
                 throw new ArgumentException("reset to index requires a tree-ish parameter");
             }
@@ -226,6 +224,25 @@ namespace GitCommands
                 commit.QuoteNE(),
                 "--",
                 file?.ToPosixPath().QuoteNE()
+            };
+        }
+
+        /// <summary>
+        /// Push a local reference to a new commit
+        /// This is similar to "git branch --force "branch" "commit", except that you get a warning if commits are lost
+        /// </summary>
+        /// <param name="repoPath">Full path to the repo</param>
+        /// <param name="gitRef">The branch to move</param>
+        /// <param name="targetId">The commit to move to</param>
+        /// <param name="force">Push the reference also if commits are lost</param>
+        /// <returns>The Git command to execute</returns>
+        public static ArgumentString PushLocalCmd(string repoPath, string gitRef, ObjectId targetId, bool force = false)
+        {
+            return new GitArgumentBuilder("push")
+            {
+                $"file://{repoPath}",
+                $"{targetId}:{gitRef}",
+                { force, "--force" }
             };
         }
 
@@ -312,12 +329,14 @@ namespace GitCommands
             };
         }
 
-        public static ArgumentString MergedBranches(bool includeRemote = false)
+        public static ArgumentString MergedBranchesCmd(bool includeRemote = false, bool fullRefname = false, [CanBeNull] string commit = null)
         {
             return new GitArgumentBuilder("branch")
             {
+                { fullRefname, "--format=%(refname)" },
                 { includeRemote, "-a" },
-                "--merged"
+                "--merged",
+                commit
             };
         }
 
@@ -377,6 +396,16 @@ namespace GitCommands
         public static ArgumentString SkipRebaseCmd()
         {
             return new GitArgumentBuilder("rebase") { "--skip" };
+        }
+
+        public static ArgumentString ContinueMergeCmd()
+        {
+            return new GitArgumentBuilder("merge") { "--continue" };
+        }
+
+        public static ArgumentString AbortMergeCmd()
+        {
+            return new GitArgumentBuilder("merge") { "--abort" };
         }
 
         public static ArgumentString StartBisectCmd()
@@ -490,16 +519,23 @@ namespace GitCommands
 
         public static ArgumentString GetAllChangedFilesCmd(bool excludeIgnoredFiles, UntrackedFilesMode untrackedFiles, IgnoreSubmodulesMode ignoreSubmodules = IgnoreSubmodulesMode.None, bool noLocks = false)
         {
-            return new GitArgumentBuilder("status", gitOptions:
+            var args = new GitArgumentBuilder("status", gitOptions:
                 noLocks && GitVersion.Current.SupportNoOptionalLocks
                     ? (ArgumentString)"--no-optional-locks"
                     : default)
             {
                 $"--porcelain{(GitVersion.Current.SupportStatusPorcelainV2 ? "=2" : "")} -z",
                 untrackedFiles,
-                ignoreSubmodules,
                 { !excludeIgnoredFiles, "--ignored" }
             };
+
+            // git-config is set to None, to allow overrides for specific submodules (in .gitconfig or .gitmodules)
+            if (ignoreSubmodules != IgnoreSubmodulesMode.None)
+            {
+                args.Add(ignoreSubmodules);
+            }
+
+            return args;
         }
 
         [CanBeNull]
@@ -594,9 +630,17 @@ namespace GitCommands
 
             if (oldCommitId != null && commitId != null)
             {
-                var submodule = module.GetSubmodule(fileName);
-                addedCommits = submodule.GetCommitCount(commitId.ToString(), oldCommitId.ToString());
-                removedCommits = submodule.GetCommitCount(oldCommitId.ToString(), commitId.ToString());
+                if (oldCommitId == commitId)
+                {
+                    addedCommits = 0;
+                    removedCommits = 0;
+                }
+                else
+                {
+                    var submodule = module.GetSubmodule(fileName);
+                    addedCommits = submodule.GetCommitCount(commitId.ToString(), oldCommitId.ToString());
+                    removedCommits = submodule.GetCommitCount(oldCommitId.ToString(), commitId.ToString());
+                }
             }
 
             return new GitSubmoduleStatus(name, oldName, isDirty, commitId, oldCommitId, addedCommits, removedCommits);
@@ -607,26 +651,34 @@ namespace GitCommands
         /// </summary>
         /// <param name="module">The Git module</param>
         /// <param name="statusString">output from the git command</param>
-        /// <param name="firstRevision">from revision string</param>
-        /// <param name="secondRevision">to revision</param>
-        /// <param name="parentToSecond">The parent for the second revision</param>
+        /// <param name="staged">required to determine if <see cref="StagedStatus"/> allows stage/unstage.</param>
         /// <returns>list with the parsed GitItemStatus</returns>
         /// <seealso href="https://git-scm.com/docs/git-diff"/>
-        /// <remarks>Git revisions are required to determine if the <see cref="GitItemStatus"/> are WorkTree or Index.</remarks>
-        public static IReadOnlyList<GitItemStatus> GetDiffChangedFilesFromString(IGitModule module, string statusString, [CanBeNull] string firstRevision, [CanBeNull] string secondRevision, [CanBeNull] string parentToSecond)
+        public static IReadOnlyList<GitItemStatus> GetDiffChangedFilesFromString(IGitModule module, string statusString, StagedStatus staged)
+        {
+            return GetAllChangedFilesFromString_v1(module, statusString, true, staged);
+        }
+
+        /// <summary>
+        /// If possible, find if files in a diff are index or worktree
+        /// </summary>
+        /// <param name="firstId">from revision string</param>
+        /// <param name="secondId">to revision</param>
+        /// <param name="parentToSecond">The parent for the second revision</param>
+        /// <remarks>Git revisions are required to determine if <see cref="StagedStatus"/> allows stage/unstage.</remarks>
+        public static StagedStatus GetStagedStatus([CanBeNull] ObjectId firstId, [CanBeNull] ObjectId secondId, [CanBeNull] ObjectId parentToSecond)
         {
             StagedStatus staged;
-            if (firstRevision == GitRevision.IndexGuid && secondRevision == GitRevision.WorkTreeGuid)
+            if (firstId == ObjectId.IndexId && secondId == ObjectId.WorkTreeId)
             {
                 staged = StagedStatus.WorkTree;
             }
-            else if (firstRevision == parentToSecond && secondRevision == GitRevision.IndexGuid)
+            else if (firstId == parentToSecond && secondId == ObjectId.IndexId)
             {
                 staged = StagedStatus.Index;
             }
-            else if ((firstRevision.IsNotNullOrWhitespace() && !firstRevision.IsArtificial()) ||
-                (secondRevision.IsNotNullOrWhitespace() && !secondRevision.IsArtificial()) ||
-                parentToSecond.IsNotNullOrWhitespace())
+            else if (firstId != null && !firstId.IsArtificial &&
+                     secondId != null && !secondId.IsArtificial)
             {
                 // This cannot be a worktree/index file
                 staged = StagedStatus.None;
@@ -636,11 +688,12 @@ namespace GitCommands
                 staged = StagedStatus.Unknown;
             }
 
-            return GetAllChangedFilesFromString_v1(module, statusString, true, staged);
+            return staged;
         }
 
         /// <summary>
-        /// Parse the output from git-status --porcelain -z
+        /// Parse the output from git-status --porcelain=2 -z
+        /// Note that the caller should check for fatal errors in the Git output
         /// </summary>
         /// <param name="module">The Git module</param>
         /// <param name="statusString">output from the git command</param>
@@ -654,8 +707,32 @@ namespace GitCommands
             }
             else
             {
-                return GetAllChangedFilesFromString_v1(module, statusString, false, StagedStatus.Index);
+                return GetAllChangedFilesFromString_v1(module, statusString, false, StagedStatus.Unset);
             }
+        }
+
+        private static string RemoveWarnings(string statusString)
+        {
+            // The status string from git-diff can show warnings. See tests
+            var nl = new[] { '\n', '\r' };
+            string trimmedStatus = statusString;
+            int lastNewLinePos = trimmedStatus.LastIndexOfAny(nl);
+            while (lastNewLinePos >= 0)
+            {
+                if (lastNewLinePos == 0)
+                {
+                    trimmedStatus = trimmedStatus.Remove(0, 1);
+                    break;
+                }
+
+                // Error always end with \n and start at previous index
+                int ind = trimmedStatus.LastIndexOfAny(new[] { '\n', '\r', '\0' }, lastNewLinePos - 1);
+
+                trimmedStatus = trimmedStatus.Remove(ind + 1, lastNewLinePos - ind);
+                lastNewLinePos = trimmedStatus.LastIndexOfAny(nl);
+            }
+
+            return trimmedStatus;
         }
 
         /// <summary>
@@ -672,8 +749,10 @@ namespace GitCommands
                 return diffFiles;
             }
 
+            string trimmedStatus = RemoveWarnings(statusString);
+
             // Split all files on '\0'
-            var files = statusString.Split(new[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
+            var files = trimmedStatus.Split(new[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
             for (int n = 0; n < files.Length; n++)
             {
                 string line = files[n];
@@ -724,8 +803,8 @@ namespace GitCommands
                     }
                     else
                     {
-                        // suppress warning for variable not assigned
-                        fileName = null;
+                        // illegal
+                        continue;
                     }
 
                     UpdateItemStatus(x, true, subm, fileName, oldFileName, renamePercent);
@@ -763,9 +842,7 @@ namespace GitCommands
                         // Slight modification on how the following flags are used
                         // Changed commit
                         gitItemStatus.IsChanged = subm[1] == 'C';
-
-                        // Is dirty
-                        gitItemStatus.IsTracked = subm[2] != 'M' && subm[3] != 'U';
+                        gitItemStatus.IsDirty = subm[2] == 'M' || subm[3] == 'U';
                     }
                 }
 
@@ -777,6 +854,11 @@ namespace GitCommands
         /// Parse git-status --porcelain=1 and git-diff --name-status
         /// Outputs are similar, except that git-status has status for both worktree and index
         /// </summary>
+        /// <param name="module">The GitModule</param>
+        /// <param name="statusString">Output from Git command</param>
+        /// <param name="fromDiff">Parse git-diff</param>
+        /// <param name="staged">The staged status <see cref="GitItemStatus"/>, only relevant for git-diff (parsed for git-status)</param>
+        /// <returns>list with the git items</returns>
         private static IReadOnlyList<GitItemStatus> GetAllChangedFilesFromString_v1(IGitModule module, string statusString, bool fromDiff, StagedStatus staged)
         {
             var diffFiles = new List<GitItemStatus>();
@@ -786,25 +868,7 @@ namespace GitCommands
                 return diffFiles;
             }
 
-            // The status string from git-diff can show warnings. See tests
-            var nl = new[] { '\n', '\r' };
-            string trimmedStatus = statusString.Trim(nl);
-            int lastNewLinePos = trimmedStatus.LastIndexOfAny(nl);
-            if (lastNewLinePos > 0)
-            {
-                int ind = trimmedStatus.LastIndexOf('\0');
-                if (ind < lastNewLinePos)
-                {
-                    // Warning at end
-                    lastNewLinePos = trimmedStatus.IndexOfAny(nl, ind >= 0 ? ind : 0);
-                    trimmedStatus = trimmedStatus.Substring(0, lastNewLinePos).Trim(nl);
-                }
-                else
-                {
-                    // Warning at beginning
-                    trimmedStatus = trimmedStatus.Substring(lastNewLinePos).Trim(nl);
-                }
-            }
+            string trimmedStatus = RemoveWarnings(statusString);
 
             // Doesn't work with removed submodules
             var submodules = module.GetSubmodulesLocalPaths();
@@ -818,13 +882,29 @@ namespace GitCommands
                     continue;
                 }
 
-                int splitIndex = files[n].IndexOfAny(new[] { '\0', '\t', ' ' }, 1);
+                int splitIndex;
+                if (fromDiff)
+                {
+                    splitIndex = -1;
+                }
+                else
+                {
+                    // Note that this fails for files with spaces (git-status --porcelain=1 is deprecated)
+                    var splitChars = new[] { '\t', ' ' };
+                    splitIndex = files[n].IndexOfAny(splitChars, 1);
+                }
 
                 string status;
                 string fileName;
 
                 if (splitIndex < 0)
                 {
+                    if (n >= files.Length - 1)
+                    {
+                        // Illegal, ignore
+                        continue;
+                    }
+
                     status = files[n];
                     fileName = files[n + 1];
                     n++;
@@ -945,13 +1025,13 @@ namespace GitCommands
             // Find renamed files...
             if (fromDiff)
             {
-                gitItemStatus.OldName = fileName.Trim();
-                gitItemStatus.Name = nextFile.Trim();
+                gitItemStatus.OldName = fileName;
+                gitItemStatus.Name = nextFile;
             }
             else
             {
-                gitItemStatus.Name = fileName.Trim();
-                gitItemStatus.OldName = nextFile.Trim();
+                gitItemStatus.Name = fileName;
+                gitItemStatus.OldName = nextFile;
             }
 
             gitItemStatus.IsNew = false;
@@ -983,7 +1063,7 @@ namespace GitCommands
 
             return new GitItemStatus
             {
-                Name = fileName.Trim(),
+                Name = fileName,
                 IsNew = isNew,
                 IsChanged = x == 'M',
                 IsDeleted = x == 'D',
@@ -997,10 +1077,8 @@ namespace GitCommands
             };
         }
 
-        public static ArgumentString MergeBranchCmd(string branch, bool allowFastForward, bool squash, bool noCommit, string strategy, bool allowUnrelatedHistories, string message, int? log)
+        public static ArgumentString MergeBranchCmd(string branch, bool allowFastForward, bool squash, bool noCommit, string strategy, bool allowUnrelatedHistories, string mergeCommitFilePath, int? log)
         {
-            // TODO Quote should (optionally?) escape any " characters, at least for usages like the below
-
             return new GitArgumentBuilder("merge")
             {
                 { !allowFastForward, "--no-ff" },
@@ -1008,8 +1086,8 @@ namespace GitCommands
                 { squash, "--squash" },
                 { noCommit, "--no-commit" },
                 { allowUnrelatedHistories, "--allow-unrelated-histories" },
-                { !string.IsNullOrEmpty(message), $"-m {message.Quote()}" },
-                { log != null, $"--log={log}" },
+                { !string.IsNullOrWhiteSpace(mergeCommitFilePath), $"-F \"{mergeCommitFilePath}\"" }, // let git fail, if the file doesn't exist
+                { log != null && log.Value > 0, $"--log={log}" },
                 branch
             };
         }

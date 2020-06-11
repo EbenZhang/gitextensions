@@ -3,7 +3,9 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Config;
 using GitExtUtils.GitUI;
+using GitExtUtils.GitUI.Theming;
 using GitUI.CommandsDialogs.SubmodulesDialog;
 using GitUIPluginInterfaces;
 using ResourceManager;
@@ -33,7 +35,7 @@ namespace GitUI.CommandsDialogs
             Status.DataPropertyName = nameof(GitSubmoduleInfo.Status);
             gitSubmoduleBindingSource.DataSource = _modules;
             splitContainer1.SplitterDistance = DpiUtil.Scale(222);
-
+            Pull.AdaptImageLightness();
             InitializeComplete();
         }
 
@@ -76,7 +78,7 @@ namespace GitUI.CommandsDialogs
             };
             _bw.DoWork += (sender, e) =>
             {
-                foreach (var oldSubmodule in Module.GetSubmodulesInfo())
+                foreach (var oldSubmodule in Module.GetSubmodulesInfo().Where(submodule => submodule != null))
                 {
                     if (_bw.CancellationPending)
                     {
@@ -135,7 +137,7 @@ namespace GitUI.CommandsDialogs
         {
             if (Submodules.SelectedRows.Count != 1 ||
                 MessageBox.Show(this, _removeSelectedSubmodule.Text, _removeSelectedSubmoduleCaption.Text,
-                                MessageBoxButtons.YesNo) !=
+                                MessageBoxButtons.YesNo, MessageBoxIcon.Warning) !=
                 DialogResult.Yes)
             {
                 return;
@@ -145,11 +147,21 @@ namespace GitUI.CommandsDialogs
             {
                 Module.UnstageFile(SubModuleLocalPath.Text);
 
-                var modules = Module.GetSubmoduleConfigFile();
-                modules.RemoveConfigSection("submodule \"" + SubModuleName.Text + "\"");
-                if (modules.ConfigSections.Count > 0)
+                ConfigFile submoduleConfigFile;
+                try
                 {
-                    modules.Save();
+                    submoduleConfigFile = Module.GetSubmoduleConfigFile();
+                }
+                catch (GitConfigurationException ex)
+                {
+                    MessageBoxes.ShowGitConfigurationExceptionMessage(this, ex);
+                    return;
+                }
+
+                submoduleConfigFile.RemoveConfigSection("submodule \"" + SubModuleName.Text + "\"");
+                if (submoduleConfigFile.ConfigSections.Count > 0)
+                {
+                    submoduleConfigFile.Save();
                     Module.StageFile(".gitmodules");
                 }
                 else

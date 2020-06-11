@@ -102,14 +102,14 @@ namespace ResourceManager.CommitDataRenders
             if (commitData.ChildIds != null && commitData.ChildIds.Count != 0)
             {
                 header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetChildren(commitData.ChildIds.Count), padding) +
-                    RenderObjectIds(commitData.ChildIds, showRevisionsAsLinks, revisionProvider, padding));
+                                  RenderObjectIds(commitData.ChildIds, showRevisionsAsLinks, revisionProvider, padding));
             }
 
-            var parentGuids = commitData.ParentGuids;
-            if (parentGuids.Count != 0)
+            var parentIds = commitData.ParentIds;
+            if (parentIds.Count != 0)
             {
-                header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetParents(parentGuids.Count), padding) + RenderObjectIds(parentGuids, showRevisionsAsLinks));
-                    RenderObjectIds(parentGuids, showRevisionsAsLinks, revisionProvider, padding));
+                header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetParents(parentIds.Count), padding) +
+                                  RenderObjectIds(parentIds, showRevisionsAsLinks, revisionProvider, padding));
             }
 
             // remove the trailing newline character

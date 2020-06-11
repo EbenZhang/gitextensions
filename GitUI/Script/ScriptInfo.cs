@@ -2,24 +2,7 @@
 
 namespace GitUI.Script
 {
-    public enum ScriptEvent
-    {
-        None,
-        BeforeCommit,
-        AfterCommit,
-        BeforePull,
-        AfterPull,
-        BeforePush,
-        AfterPush,
-        ShowInUserMenuBar,
-        BeforeCheckout,
-        AfterCheckout,
-        BeforeMerge,
-        AfterMerge,
-        BeforeFetch,
-        AfterFetch
-    }
-
+    // WARNING: This class is serialized to XML!
     public class ScriptInfo
     {
         public ScriptInfo()
@@ -60,6 +43,11 @@ namespace GitUI.Script
         [CanBeNull]
         public System.Drawing.Bitmap GetIcon()
         {
+            if (string.IsNullOrWhiteSpace(Icon))
+            {
+                return null;
+            }
+
             // Get all resources
             System.Resources.ResourceManager rm
                 = new System.Resources.ResourceManager("GitUI.Properties.Images",

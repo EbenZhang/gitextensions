@@ -33,8 +33,8 @@ Yes, I allow telemetry!");
             new TranslationString("The Git executable could not be located on your system.");
         private readonly TranslationString _authorDateText = new TranslationString("{0:Author date|Author dates}");
         private readonly TranslationString _committerText = new TranslationString("Committer");
-        private readonly TranslationString _commitDateText = new TranslationString("{0:Commit date|Commits dates}");
-        private readonly TranslationString _commitHashText = new TranslationString("{0:Commit hash|Commits hashes}");
+        private readonly TranslationString _commitDateText = new TranslationString("{0:Commit date|Commit dates}");
+        private readonly TranslationString _commitHashText = new TranslationString("{0:Commit hash|Commit hashes}");
         private readonly TranslationString _messageText = new TranslationString("{0:Message|Messages}");
         private readonly TranslationString _showAllText = new TranslationString("Show all");
         private readonly TranslationString _workspaceText = new TranslationString("Working directory");
@@ -42,6 +42,11 @@ Yes, I allow telemetry!");
 
         private readonly TranslationString _parentsText = new TranslationString("{0:Parent|Parents}");
         private readonly TranslationString _childrenText = new TranslationString("{0:Child|Children}");
+
+        private readonly TranslationString _deleteFile = new TranslationString("{0:Delete file|Delete files}");
+
+        private readonly TranslationString _generalGitConfigExceptionMessage = new TranslationString("Failed to read \"{0}\" due to the following error:{1}{1}{2}{1}{1}Due to the nature of this problem, the behavior of the application cannot be guaranteed and it must be closed.{1}{1}Please correct this issue and re-open Git Extensions.");
+        private readonly TranslationString _generalGitConfigExceptionCaption = new TranslationString("Repository Configuration Error");
 
         // public only because of FormTranslate
         public Strings()
@@ -76,6 +81,9 @@ Yes, I allow telemetry!");
         public static string Workspace => _instance.Value._workspaceText.Text;
         public static string Index => _instance.Value._indexText.Text;
 
+        public static string GeneralGitConfigExceptionMessage => _instance.Value._generalGitConfigExceptionMessage.Text;
+        public static string GeneralGitConfigExceptionCaption => _instance.Value._generalGitConfigExceptionCaption.Text;
+
         public static string GetParents(int value)
         {
             return Smart.Format(AppSettings.CurrentCultureInfo, _instance.Value._parentsText.Text, value, Math.Abs(value));
@@ -84,6 +92,11 @@ Yes, I allow telemetry!");
         public static string GetChildren(int value)
         {
             return Smart.Format(AppSettings.CurrentCultureInfo, _instance.Value._childrenText.Text, value, Math.Abs(value));
+        }
+
+        public static string GetDeleteFile(int value)
+        {
+            return Smart.Format(AppSettings.CurrentCultureInfo, _instance.Value._deleteFile.Text, value, Math.Abs(value));
         }
 
         public static string GetCommitDate(int value)

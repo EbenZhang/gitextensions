@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using GitCommands;
 using GitExtUtils.GitUI;
 using GitUIPluginInterfaces;
@@ -22,11 +24,25 @@ namespace GitUI.UserControls
 
             DiffText.EscapePressed += () => EscapePressed?.Invoke();
             DiffText.ExtraDiffArgumentsChanged += DiffText_ExtraDiffArgumentsChanged;
+            DiffText.TopScrollReached += FileViewer_TopScrollReached;
+            DiffText.BottomScrollReached += FileViewer_BottomScrollReached;
             DiffFiles.Focus();
-            DiffFiles.SetDiffs();
+            DiffFiles.ClearDiffs();
 
             splitContainer1.SplitterDistance = DpiUtil.Scale(200);
             splitContainer2.SplitterDistance = DpiUtil.Scale(260);
+        }
+
+        private void FileViewer_TopScrollReached(object sender, EventArgs e)
+        {
+            DiffFiles.SelectPreviousVisibleItem();
+            DiffText.ScrollToBottom();
+        }
+
+        private void FileViewer_BottomScrollReached(object sender, EventArgs e)
+        {
+            DiffFiles.SelectNextVisibleItem();
+            DiffText.ScrollToTop();
         }
 
         public void SetRevision([CanBeNull] ObjectId objectId, [CanBeNull] string fileToSelect)
@@ -41,10 +57,10 @@ namespace GitUI.UserControls
                 DiffFiles.SetDiffs(new[] { revision });
                 if (fileToSelect != null)
                 {
-                    var itemToSelect = DiffFiles.AllItems.FirstOrDefault(i => i.Name == fileToSelect);
+                    var itemToSelect = DiffFiles.AllItems.FirstOrDefault(i => i.Item.Name == fileToSelect);
                     if (itemToSelect != null)
                     {
-                        DiffFiles.SelectedItem = itemToSelect;
+                        DiffFiles.SelectedGitItem = itemToSelect.Item;
                     }
                 }
 
@@ -54,53 +70,25 @@ namespace GitUI.UserControls
             }
         }
 
-        private async void DiffFiles_SelectedIndexChanged(object sender, EventArgs e)
+        private void DiffFiles_SelectedIndexChanged(object sender, EventArgs e)
         {
-            try
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
                 await ViewSelectedDiffAsync();
-            }
-            catch (OperationCanceledException)
-            {
-            }
+            }).FileAndForget();
         }
 
-        private async void DiffText_ExtraDiffArgumentsChanged(object sender, EventArgs e)
+        private void DiffText_ExtraDiffArgumentsChanged(object sender, EventArgs e)
         {
-            try
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
                 await ViewSelectedDiffAsync();
-            }
-            catch (OperationCanceledException)
-            {
-            }
+            }).FileAndForget();
         }
 
-        // Partly the same as RevisionDiffControl.cs ShowSelectedFileDiffAsync()
         private async Task ViewSelectedDiffAsync()
         {
-            if (DiffFiles.SelectedItem == null || DiffFiles.Revision == null)
-            {
-                DiffText.Clear();
-                return;
-            }
-
-            if (DiffFiles.SelectedItemParent?.Guid == GitRevision.CombinedDiffGuid)
-            {
-                var diffOfConflict = Module.GetCombinedDiffContent(DiffFiles.Revision, DiffFiles.SelectedItem.Name,
-                    DiffText.GetExtraDiffArguments(), DiffText.Encoding);
-
-                if (string.IsNullOrWhiteSpace(diffOfConflict))
-                {
-                    diffOfConflict = Strings.UninterestingDiffOmitted;
-                }
-
-                DiffText.ViewPatch(text: diffOfConflict, openWithDifftool: null /* not implemented */);
-                return;
-            }
-
-            await DiffText.ViewChangesAsync(DiffFiles.SelectedItemParent?.ObjectId, DiffFiles.Revision?.ObjectId, DiffFiles.SelectedItem, string.Empty,
-                openWithDifftool: null /* use default */);
+            await DiffText.ViewChangesAsync(DiffFiles.SelectedItem);
         }
     }
 }

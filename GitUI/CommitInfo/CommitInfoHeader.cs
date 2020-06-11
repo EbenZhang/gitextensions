@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Linq;
@@ -121,29 +122,13 @@ namespace GitUI.CommitInfo
 
         private void rtbRevisionHeader_LinkClicked(object sender, LinkClickedEventArgs e)
         {
-            var link = _linkFactory.ParseLink(e.LinkText);
-
             try
             {
-                var result = new Uri(link);
-                if (result.Scheme == "gitext")
-                {
-                    CommandClicked?.Invoke(sender, new CommandEventArgs(result.Host, result.AbsolutePath.TrimStart('/')));
-                }
-                else
-                {
-                    using (var process = new Process
-                    {
-                        EnableRaisingEvents = false,
-                        StartInfo = { FileName = result.AbsoluteUri }
-                    })
-                    {
-                        process.Start();
-                    }
-                }
+                _linkFactory.ExecuteLink(e.LinkText, commandEventArgs => CommandClicked?.Invoke(sender, commandEventArgs));
             }
-            catch (UriFormatException)
+            catch (Exception ex)
             {
+                MessageBox.Show(this, ex.Message, Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -166,8 +151,16 @@ namespace GitUI.CommitInfo
 
         protected override void DisposeCustomResources()
         {
-            _rtbResizedSubscription.Dispose();
-            base.DisposeCustomResources();
+            try
+            {
+                _rtbResizedSubscription?.Dispose();
+
+                base.DisposeCustomResources();
+            }
+            catch (InvalidOperationException)
+            {
+                // System.Reactive causes the app to fail with: 'Invoke or BeginInvoke cannot be called on a control until the window handle has been created.'
+            }
         }
     }
 }

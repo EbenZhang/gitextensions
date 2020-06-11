@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Windows.Forms;
 using GitUI.Editor;
 using GitUI.SpellChecker;
@@ -27,13 +28,13 @@ namespace GitUI.CommandsDialogs
             this.toolStripSeparator12 = new System.Windows.Forms.ToolStripSeparator();
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openWithToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.stageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openWithDifftoolToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator9 = new System.Windows.Forms.ToolStripSeparator();
             this.filenameToClipboardToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openContainingFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator8 = new System.Windows.Forms.ToolStripSeparator();
             this.viewFileHistoryToolStripItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripSeparator7 = new System.Windows.Forms.ToolStripSeparator();
             this.editFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.deleteFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
@@ -43,32 +44,32 @@ namespace GitUI.CommandsDialogs
             this.doNotSkipWorktreeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.assumeUnchangedToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.doNotAssumeUnchangedToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripSeparator4 = new System.Windows.Forms.ToolStripSeparator();
             this.interactiveAddToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fileTooltip = new System.Windows.Forms.ToolTip(this.components);
             this.StageInSuperproject = new System.Windows.Forms.CheckBox();
             this.StagedFileContext = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.stagedResetChanges = new System.Windows.Forms.ToolStripMenuItem();
             this.stagedFileHistoryToolStripMenuItem6 = new System.Windows.Forms.ToolStripMenuItem();
+            this.stagedFileHistoryToolStripSeparator = new System.Windows.Forms.ToolStripSeparator();
             this.stagedToolStripSeparator14 = new System.Windows.Forms.ToolStripSeparator();
             this.stagedOpenToolStripMenuItem7 = new System.Windows.Forms.ToolStripMenuItem();
             this.stagedOpenWithToolStripMenuItem8 = new System.Windows.Forms.ToolStripMenuItem();
+            this.stagedUnstageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.stagedOpenDifftoolToolStripMenuItem9 = new System.Windows.Forms.ToolStripMenuItem();
             this.stagedToolStripSeparator18 = new System.Windows.Forms.ToolStripSeparator();
             this.stagedCopyPathToolStripMenuItem14 = new System.Windows.Forms.ToolStripMenuItem();
             this.stagedOpenFolderToolStripMenuItem10 = new System.Windows.Forms.ToolStripMenuItem();
-            this.stagedToolStripSeparator17 = new System.Windows.Forms.ToolStripSeparator();
             this.stagedEditFileToolStripMenuItem11 = new System.Windows.Forms.ToolStripMenuItem();
             this.UnstagedSubmoduleContext = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.commitSubmoduleChanges = new System.Windows.Forms.ToolStripMenuItem();
             this.resetSubmoduleChanges = new System.Windows.Forms.ToolStripMenuItem();
             this.stashSubmoduleChangesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.updateSubmoduleMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.stageSubmoduleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator13 = new System.Windows.Forms.ToolStripSeparator();
-            this.submoduleSummaryMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.viewHistoryMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator15 = new System.Windows.Forms.ToolStripSeparator();
-            this.openSubmoduleMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.unstagedSubmoduleStageToolStripSeparator = new System.Windows.Forms.ToolStripSeparator();
             this.openFolderMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openDiffMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator16 = new System.Windows.Forms.ToolStripSeparator();
@@ -189,20 +190,21 @@ namespace GitUI.CommandsDialogs
             // UnstagedFileContext
             //
             this.UnstagedFileContext.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.stageToolStripMenuItem,
             this.resetChanges,
             this.resetPartOfFileToolStripMenuItem,
+            this.interactiveAddToolStripMenuItem,
             this.toolStripSeparator12,
+            this.openWithDifftoolToolStripMenuItem,
             this.openToolStripMenuItem,
             this.openWithToolStripMenuItem,
-            this.openWithDifftoolToolStripMenuItem,
+            this.editFileToolStripMenuItem,
+            this.deleteFileToolStripMenuItem,
             this.toolStripSeparator9,
             this.filenameToClipboardToolStripMenuItem,
             this.openContainingFolderToolStripMenuItem,
             this.toolStripSeparator8,
             this.viewFileHistoryToolStripItem,
-            this.toolStripSeparator7,
-            this.editFileToolStripMenuItem,
-            this.deleteFileToolStripMenuItem,
             this.toolStripSeparator5,
             this.addFileToGitIgnoreToolStripMenuItem,
             this.addFileToGitInfoExcludeLocallyToolStripMenuItem,
@@ -210,9 +212,7 @@ namespace GitUI.CommandsDialogs
             this.skipWorktreeToolStripMenuItem,
             this.doNotSkipWorktreeToolStripMenuItem,
             this.assumeUnchangedToolStripMenuItem,
-            this.doNotAssumeUnchangedToolStripMenuItem,
-            this.toolStripSeparator4,
-            this.interactiveAddToolStripMenuItem});
+            this.doNotAssumeUnchangedToolStripMenuItem});
             this.UnstagedFileContext.Name = "UnstagedFileContext";
             this.UnstagedFileContext.Size = new System.Drawing.Size(233, 414);
             this.UnstagedFileContext.Opening += UnstagedFileContext_Opening;
@@ -250,6 +250,14 @@ namespace GitUI.CommandsDialogs
             this.openWithToolStripMenuItem.Size = new System.Drawing.Size(232, 22);
             this.openWithToolStripMenuItem.Text = "Open with...";
             this.openWithToolStripMenuItem.Click += new System.EventHandler(this.OpenWithToolStripMenuItemClick);
+            //
+            // stageToolStripMenuItem
+            //
+            this.stageToolStripMenuItem.Image = global::GitUI.Properties.Images.Stage;
+            this.stageToolStripMenuItem.Name = "stageToolStripMenuItem";
+            this.stageToolStripMenuItem.Size = new System.Drawing.Size(232, 22);
+            this.stageToolStripMenuItem.Font = new Font(this.stageToolStripMenuItem.Font, FontStyle.Bold);
+            this.stageToolStripMenuItem.Click += new System.EventHandler(this.StageClick);
             //
             // openWithDifftoolToolStripMenuItem
             //
@@ -293,11 +301,6 @@ namespace GitUI.CommandsDialogs
             this.viewFileHistoryToolStripItem.Size = new System.Drawing.Size(232, 22);
             this.viewFileHistoryToolStripItem.Text = "View file history";
             this.viewFileHistoryToolStripItem.Click += new System.EventHandler(this.ViewFileHistoryMenuItem_Click);
-            //
-            // toolStripSeparator7
-            //
-            this.toolStripSeparator7.Name = "toolStripSeparator7";
-            this.toolStripSeparator7.Size = new System.Drawing.Size(229, 6);
             //
             // editFileToolStripMenuItem
             //
@@ -366,11 +369,6 @@ namespace GitUI.CommandsDialogs
             this.doNotAssumeUnchangedToolStripMenuItem.Visible = false;
             this.doNotAssumeUnchangedToolStripMenuItem.Click += new System.EventHandler(this.DoNotAssumeUnchangedToolStripMenuItemClick);
             //
-            // toolStripSeparator4
-            //
-            this.toolStripSeparator4.Name = "toolStripSeparator4";
-            this.toolStripSeparator4.Size = new System.Drawing.Size(229, 6);
-            //
             // interactiveAddToolStripMenuItem
             //
             this.interactiveAddToolStripMenuItem.Name = "interactiveAddToolStripMenuItem";
@@ -394,17 +392,18 @@ namespace GitUI.CommandsDialogs
             // StagedFileContext
             //
             this.StagedFileContext.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.stagedUnstageToolStripMenuItem,
             this.stagedResetChanges,
-            this.stagedFileHistoryToolStripMenuItem6,
             this.stagedToolStripSeparator14,
+            this.stagedOpenDifftoolToolStripMenuItem9,
             this.stagedOpenToolStripMenuItem7,
             this.stagedOpenWithToolStripMenuItem8,
-            this.stagedOpenDifftoolToolStripMenuItem9,
+            this.stagedEditFileToolStripMenuItem11,
             this.stagedToolStripSeparator18,
             this.stagedCopyPathToolStripMenuItem14,
             this.stagedOpenFolderToolStripMenuItem10,
-            this.stagedToolStripSeparator17,
-            this.stagedEditFileToolStripMenuItem11});
+            this.stagedFileHistoryToolStripSeparator,
+            this.stagedFileHistoryToolStripMenuItem6});
             this.StagedFileContext.Name = "StagedFileContext";
             this.StagedFileContext.Size = new System.Drawing.Size(233, 198);
             this.StagedFileContext.Opening += StagedFileContext_Opening;
@@ -425,6 +424,11 @@ namespace GitUI.CommandsDialogs
             this.stagedFileHistoryToolStripMenuItem6.Text = "View file history";
             this.stagedFileHistoryToolStripMenuItem6.Click += new System.EventHandler(this.ViewFileHistoryMenuItem_Click);
             //
+            // stagedFileHistoryToolStripSeparator
+            // 
+            this.stagedFileHistoryToolStripSeparator.Name = "stagedFileHistoryToolStripSeparator";
+            this.stagedFileHistoryToolStripSeparator.Size = new System.Drawing.Size(229, 6);
+            // 
             // stagedToolStripSeparator14
             //
             this.stagedToolStripSeparator14.Name = "stagedToolStripSeparator14";
@@ -443,6 +447,14 @@ namespace GitUI.CommandsDialogs
             this.stagedOpenWithToolStripMenuItem8.Size = new System.Drawing.Size(232, 22);
             this.stagedOpenWithToolStripMenuItem8.Text = "Open with...";
             this.stagedOpenWithToolStripMenuItem8.Click += new System.EventHandler(this.OpenWithToolStripMenuItemClick);
+            //
+            // stagedUnstageToolStripMenuItem
+            //
+            this.stagedUnstageToolStripMenuItem.Image = global::GitUI.Properties.Images.Unstage;
+            this.stagedUnstageToolStripMenuItem.Name = "stagedUnstageToolStripMenuItem";
+            this.stagedUnstageToolStripMenuItem.Size = new System.Drawing.Size(232, 22);
+            this.stagedUnstageToolStripMenuItem.Font = new Font(this.stagedUnstageToolStripMenuItem.Font, FontStyle.Bold);
+            this.stagedUnstageToolStripMenuItem.Click += new System.EventHandler(this.UnstageFilesClick);
             //
             // stagedOpenDifftoolToolStripMenuItem9
             //
@@ -474,11 +486,6 @@ namespace GitUI.CommandsDialogs
             this.stagedOpenFolderToolStripMenuItem10.Text = "Show in folder";
             this.stagedOpenFolderToolStripMenuItem10.Click += new System.EventHandler(this.openFolderToolStripMenuItem10_Click);
             //
-            // stagedToolStripSeparator17
-            //
-            this.stagedToolStripSeparator17.Name = "stagedToolStripSeparator17";
-            this.stagedToolStripSeparator17.Size = new System.Drawing.Size(229, 6);
-            //
             // stagedEditFileToolStripMenuItem11
             //
             this.stagedEditFileToolStripMenuItem11.Image = global::GitUI.Properties.Images.EditFile;
@@ -490,19 +497,19 @@ namespace GitUI.CommandsDialogs
             // UnstagedSubmoduleContext
             //
             this.UnstagedSubmoduleContext.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.commitSubmoduleChanges,
+            this.updateSubmoduleMenuItem,
             this.resetSubmoduleChanges,
             this.stashSubmoduleChangesToolStripMenuItem,
-            this.updateSubmoduleMenuItem,
-            this.toolStripSeparator13,
-            this.submoduleSummaryMenuItem,
-            this.viewHistoryMenuItem,
+            this.commitSubmoduleChanges,
             this.toolStripSeparator15,
-            this.openSubmoduleMenuItem,
-            this.openFolderMenuItem,
+            this.stageSubmoduleToolStripMenuItem,
+            this.unstagedSubmoduleStageToolStripSeparator,
             this.openDiffMenuItem,
             this.toolStripSeparator16,
-            this.copyFolderNameMenuItem});
+            this.copyFolderNameMenuItem,
+            this.openFolderMenuItem,
+            this.toolStripSeparator13,
+            this.viewHistoryMenuItem});
             this.UnstagedSubmoduleContext.Name = "UnstagedSubmoduleContext";
             this.UnstagedSubmoduleContext.Size = new System.Drawing.Size(229, 242);
             //
@@ -539,18 +546,19 @@ namespace GitUI.CommandsDialogs
             this.updateSubmoduleMenuItem.Text = "Update submodule";
             this.updateSubmoduleMenuItem.Click += new System.EventHandler(this.updateSubmoduleMenuItem_Click);
             //
+            // stageSubmoduleToolStripMenuItem
+            //
+            this.stageSubmoduleToolStripMenuItem.Image = global::GitUI.Properties.Images.Stage;
+            this.stageSubmoduleToolStripMenuItem.Name = "stageSubmoduleToolStripMenuItem";
+            this.stageSubmoduleToolStripMenuItem.Size = new System.Drawing.Size(232, 22);
+            this.stageSubmoduleToolStripMenuItem.Font = new Font(this.stageToolStripMenuItem.Font, FontStyle.Bold);
+            this.stageSubmoduleToolStripMenuItem.Click += new System.EventHandler(this.StageClick);
+            //
             // toolStripSeparator13
             //
             this.toolStripSeparator13.Name = "toolStripSeparator13";
             this.toolStripSeparator13.Size = new System.Drawing.Size(225, 6);
             this.toolStripSeparator13.Tag = "1";
-            //
-            // submoduleSummaryMenuItem
-            //
-            this.submoduleSummaryMenuItem.Name = "submoduleSummaryMenuItem";
-            this.submoduleSummaryMenuItem.Size = new System.Drawing.Size(228, 22);
-            this.submoduleSummaryMenuItem.Text = "View summary";
-            this.submoduleSummaryMenuItem.Click += new System.EventHandler(this.submoduleSummaryMenuItem_Click);
             //
             // viewHistoryMenuItem
             //
@@ -565,14 +573,10 @@ namespace GitUI.CommandsDialogs
             this.toolStripSeparator15.Name = "toolStripSeparator15";
             this.toolStripSeparator15.Size = new System.Drawing.Size(225, 6);
             //
-            // openSubmoduleMenuItem
+            // unstagedSubmoduleStageToolStripSeparator
             //
-            this.openSubmoduleMenuItem.Image = global::GitUI.Properties.Images.GitExtensionsLogo16;
-            this.openSubmoduleMenuItem.Name = "openSubmoduleMenuItem";
-            this.openSubmoduleMenuItem.Size = new System.Drawing.Size(228, 22);
-            this.openSubmoduleMenuItem.Tag = "1";
-            this.openSubmoduleMenuItem.Text = "Open with Git Extensions";
-            this.openSubmoduleMenuItem.Click += new System.EventHandler(this.openSubmoduleMenuItem_Click);
+            this.unstagedSubmoduleStageToolStripSeparator.Name = "unstagedSubmoduleStageToolStripSeparator";
+            this.unstagedSubmoduleStageToolStripSeparator.Size = new System.Drawing.Size(225, 6);
             //
             // openFolderMenuItem
             //
@@ -696,7 +700,6 @@ namespace GitUI.CommandsDialogs
             // Unstaged
             //
             this.Unstaged.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.Unstaged.FilterVisible = false;
             this.Unstaged.Location = new System.Drawing.Point(0, 0);
             this.Unstaged.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Unstaged.Name = "Unstaged";
@@ -924,7 +927,6 @@ namespace GitUI.CommandsDialogs
             //
             this.Staged.ContextMenuStrip = this.StagedFileContext;
             this.Staged.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.Staged.FilterVisible = false;
             this.Staged.Location = new System.Drawing.Point(0, 28);
             this.Staged.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Staged.Name = "Staged";
@@ -1571,11 +1573,11 @@ namespace GitUI.CommandsDialogs
         private System.Windows.Forms.ToolStripMenuItem doNotAssumeUnchangedToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem skipWorktreeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem doNotSkipWorktreeToolStripMenuItem;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator4;
         private System.Windows.Forms.ToolStripMenuItem openToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openWithToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem filenameToClipboardToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator5;
+        private System.Windows.Forms.ToolStripMenuItem stageToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openWithDifftoolToolStripMenuItem;
         private System.Windows.Forms.ToolTip fileTooltip;
         private System.Windows.Forms.ToolStripMenuItem resetPartOfFileToolStripMenuItem;
@@ -1612,7 +1614,6 @@ namespace GitUI.CommandsDialogs
         private ToolStripButton toolRefreshItem;
         private ToolStripSeparator toolStripSeparator6;
         private ToolStripSeparator toolStripSeparator8;
-        private ToolStripSeparator toolStripSeparator7;
         private ToolStripSeparator toolStripSeparator9;
         private ToolStripButton toolStageAllItem;
         private ToolStripSeparator toolStripSeparator10;
@@ -1629,20 +1630,20 @@ namespace GitUI.CommandsDialogs
         private ToolStripComboBox selectionFilter;
         private ToolStripMenuItem selectionFilterToolStripMenuItem;
         private ContextMenuStrip UnstagedSubmoduleContext;
-        private ToolStripMenuItem openSubmoduleMenuItem;
         private ToolStripMenuItem updateSubmoduleMenuItem;
         private ToolStripSeparator toolStripSeparator13;
         private ToolStripMenuItem viewHistoryMenuItem;
+        private ToolStripSeparator unstagedSubmoduleStageToolStripSeparator;
         private ToolStripSeparator toolStripSeparator15;
         private ToolStripMenuItem openFolderMenuItem;
         private ToolStripMenuItem openDiffMenuItem;
         private ToolStripSeparator toolStripSeparator16;
         private ToolStripMenuItem copyFolderNameMenuItem;
-        private ToolStripMenuItem submoduleSummaryMenuItem;
         private ToolStripMenuItem resetSubmoduleChanges;
         private ToolStripMenuItem commitSubmoduleChanges;
         private ToolStripMenuItem stashSubmoduleChangesToolStripMenuItem;
         private ToolStripSeparator toolStripMenuItem1;
+        private ToolStripMenuItem stageSubmoduleToolStripMenuItem;
         private ToolStripMenuItem generateListOfChangesInSubmodulesChangesToolStripMenuItem;
         private ToolStripDropDownButton commitTemplatesToolStripMenuItem;
         private ToolStripMenuItem openContainingFolderToolStripMenuItem;
@@ -1650,12 +1651,13 @@ namespace GitUI.CommandsDialogs
         private ContextMenuStrip StagedFileContext;
         private ToolStripMenuItem stagedResetChanges;
         private ToolStripMenuItem stagedFileHistoryToolStripMenuItem6;
+        private ToolStripSeparator stagedFileHistoryToolStripSeparator;
         private ToolStripSeparator stagedToolStripSeparator14;
         private ToolStripMenuItem stagedOpenToolStripMenuItem7;
         private ToolStripMenuItem stagedOpenWithToolStripMenuItem8;
+        private ToolStripMenuItem stagedUnstageToolStripMenuItem;
         private ToolStripMenuItem stagedOpenDifftoolToolStripMenuItem9;
         private ToolStripMenuItem stagedOpenFolderToolStripMenuItem10;
-        private ToolStripSeparator stagedToolStripSeparator17;
         private ToolStripMenuItem stagedEditFileToolStripMenuItem11;
         private ToolStripSeparator stagedToolStripSeparator18;
         private ToolStripMenuItem stagedCopyPathToolStripMenuItem14;
