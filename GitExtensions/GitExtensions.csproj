@@ -66,10 +66,6 @@
     <None Include="app.manifest" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Externals\NBug\NBug\NBug.csproj">
-      <Project>{62CED1D5-F603-40DE-8BF5-3E49D3A392F4}</Project>
-      <Name>NBug</Name>
-    </ProjectReference>
     <ProjectReference Include="..\GitExtUtils\GitExtUtils.csproj">
       <Project>{0f1f1168-a4b2-4fa2-b17b-735140d17f39}</Project>
       <Name>GitExtUtils</Name>
@@ -96,7 +92,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="GitInfo">
-      <Version>2.0.18</Version>
+      <Version>2.0.21</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -130,5 +126,11 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
+  </Target>
+  <Target Name="CopyTranslations" AfterTargets="AfterBuild">
+    <ItemGroup>
+      <Translations Include="$(ProjectDir)\..\GitUI\Translation\*.xlf;$(ProjectDir)\..\GitUI\Translation\*.gif" />
+    </ItemGroup>
+    <Copy SourceFiles="@(Translations)" DestinationFolder="$(TargetDir)Translation" ContinueOnError="false" />
   </Target>
 </Project>

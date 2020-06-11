@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GitExtUtils;
 using GitUI;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
@@ -28,6 +29,7 @@ namespace GitCommands
 
     public sealed class RevisionReader : IDisposable
     {
+        private const string EndOfBody = "1DEA7CC4-FB39-450A-8DDF-762FCEA28B05";
         private const string FullFormat =
 
               // These header entries can all be decoded from the bytes directly.
@@ -47,7 +49,7 @@ namespace GitCommands
               /* Committer name  */ "%cN%n" +
               /* Committer email */ "%cE%n" +
               /* Commit subject  */ "%s%n%n" +
-              /* Commit body     */ "%b";
+              /* Commit body     */ "%b" + EndOfBody;
 
         private readonly CancellationTokenSequence _cancellationTokenSequence = new CancellationTokenSequence();
 
@@ -177,6 +179,7 @@ namespace GitCommands
                     new ArgumentBuilder
                     {
                         { AppSettings.ShowReflogReferences, "--reflog" },
+                        { AppSettings.SortByAuthorDate, "--author-date-order" },
                         {
                             refFilterOptions.HasFlag(RefFilterOptions.All),
                             "--all",
@@ -380,7 +383,7 @@ namespace GitCommands
 
             #endregion
 
-            #region Encoded string values (names, emails, subject, body)
+            #region Encoded string values (names, emails, subject, body, [file]name)
 
             // Finally, decode the names, email, subject and body strings using the required text encoding
             var s = encoding.GetString(array, offset, lastOffset - offset);
@@ -405,8 +408,7 @@ namespace GitCommands
             // NOTE the convention is that the Subject string is duplicated at the start of the Body string
             // Therefore we read the subject twice.
             // If there are not enough characters remaining for a body, then just assign the subject string directly.
-            var body = reader.Remaining - subject.Length == 2 ? subject : reader.ReadToEnd();
-
+            var (body, additionalData) = ParseCommitBody(reader, subject);
             if (body == null)
             {
                 // TODO log this parse error
@@ -430,11 +432,41 @@ namespace GitCommands
                 MessageEncoding = encodingName,
                 Subject = subject,
                 Body = body,
+                Name = additionalData,
                 HasMultiLineMessage = !ReferenceEquals(subject, body),
                 HasNotes = false
             };
 
             return true;
+        }
+
+        [CanBeNull]
+        private static (string body, string additionalData) ParseCommitBody([NotNull] StringLineReader reader, [NotNull] string subject)
+        {
+            int lengthOfSubjectRepeatedInBody = subject.Length + 2/*newlines*/;
+            if (reader.Remaining == lengthOfSubjectRepeatedInBody + EndOfBody.Length)
+            {
+                return (body: subject, additionalData: null);
+            }
+
+            string tail = reader.ReadToEnd() ?? "";
+            int indexOfEndOfBody = tail.LastIndexOf(EndOfBody, StringComparison.InvariantCulture);
+            if (indexOfEndOfBody < 0)
+            {
+                // TODO log this parse error
+                Debug.Fail("Missing end-of-body marker in the log -- this should not happen");
+                return (body: null, additionalData: null);
+            }
+
+            string additionalData = null;
+            if (tail.Length > indexOfEndOfBody + EndOfBody.Length)
+            {
+                additionalData = tail.Substring(indexOfEndOfBody + EndOfBody.Length).TrimStart();
+            }
+
+            string body = indexOfEndOfBody == lengthOfSubjectRepeatedInBody
+                          ? subject : tail.Substring(0, indexOfEndOfBody).TrimEnd();
+            return (body, additionalData);
         }
 
         public void Dispose()
@@ -447,7 +479,7 @@ namespace GitCommands
         /// <summary>
         /// Simple type to walk along a string, line by line, without redundant allocations.
         /// </summary>
-        private struct StringLineReader
+        internal struct StringLineReader
         {
             private readonly string _s;
             private int _index;
@@ -510,18 +542,25 @@ namespace GitCommands
         internal TestAccessor GetTestAccessor()
             => new TestAccessor(this);
 
-        public readonly struct TestAccessor
+        internal readonly struct TestAccessor
         {
             private readonly RevisionReader _revisionReader;
 
-            public TestAccessor(RevisionReader revisionReader)
+            internal TestAccessor(RevisionReader revisionReader)
             {
                 _revisionReader = revisionReader;
             }
 
-            public ArgumentBuilder BuildArgumentsBuildArguments(RefFilterOptions refFilterOptions,
+            internal ArgumentBuilder BuildArgumentsBuildArguments(RefFilterOptions refFilterOptions,
                 string branchFilter, string revisionFilter, string pathFilter) =>
                 _revisionReader.BuildArguments(refFilterOptions, branchFilter, revisionFilter, pathFilter);
+
+            internal static (string body, string additionalData) ParseCommitBody(StringLineReader reader, string subject) =>
+                RevisionReader.ParseCommitBody(reader, subject);
+
+            internal static StringLineReader MakeReader(string s) => new StringLineReader(s);
+
+            internal static string EndOfBody => RevisionReader.EndOfBody;
         }
     }
 }

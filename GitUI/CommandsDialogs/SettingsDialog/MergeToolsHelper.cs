@@ -100,42 +100,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         }
 
         [CanBeNull]
-        public static string FindPathForKDiff(string pathFromConfig)
-        {
-            if (string.IsNullOrEmpty(pathFromConfig) || !File.Exists(pathFromConfig))
-            {
-                string kdiff3path = pathFromConfig;
-                if (EnvUtils.RunningOnUnix())
-                {
-                    // Maybe command -v is better, but didn't work
-                    kdiff3path = new Executable("which").GetOutput("kdiff3").Replace("\n", "");
-                    if (string.IsNullOrEmpty(kdiff3path))
-                    {
-                        return null;
-                    }
-                }
-                else if (EnvUtils.RunningOnWindows())
-                {
-                    string regkdiff3path = GetRegistryValue(Registry.LocalMachine, "SOFTWARE\\KDiff3", "");
-                    if (regkdiff3path != "")
-                    {
-                        regkdiff3path += "\\kdiff3.exe";
-                    }
-
-                    kdiff3path = FindFileInFolders("kdiff3.exe", @"KDiff3\", regkdiff3path);
-                    if (string.IsNullOrEmpty(kdiff3path))
-                    {
-                        return null;
-                    }
-                }
-
-                return kdiff3path;
-            }
-
-            return null;
-        }
-
-        [CanBeNull]
         public static string GetDiffToolExeFile(string difftoolText)
         {
             string diffTool = difftoolText.ToLowerInvariant();
@@ -158,7 +122,8 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                 case "semanticdiff":
                     return "semanticmergetool.exe";
                 case "tmerge":
-                    return "TortoiseMerge.exe";
+                case "tortoisemerge":
+                    return "TortoiseGitMerge.exe";
                 case "winmerge":
                     return "winmergeu.exe";
                 case "vsdiffmerge":
@@ -199,10 +164,10 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     folder = Path.Combine(folder, @"PlasticSCM4\semanticmerge\");
                     return FindFileInFolders(exeName, folder);
                 case "tmerge":
-                    exeName = "TortoiseGitMerge.exe"; // TortoiseGit 1.8 use new names
                     string difftoolPath = FindFileInFolders(exeName, @"TortoiseGit\bin\");
                     if (string.IsNullOrEmpty(difftoolPath))
                     {
+                        // TortoiseGit <1.8 (2013), TortoiseSVN
                         exeName = "TortoiseMerge.exe";
                         difftoolPath = FindFileInFolders(exeName, @"TortoiseGit\bin\", @"TortoiseSVN\bin\");
                     }
@@ -229,6 +194,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return FindFileInFolders(exeName, paths);
         }
 
+        /// <summary>
+        /// Get the suggested parameters for known difftools
+        /// This should probably be replaced with the built in Git handling instead
+        /// </summary>
+        /// <param name="diffToolText">The difftool</param>
+        /// <param name="exeFile">The executable</param>
+        /// <returns>The suggested parameters</returns>
         public static string DiffToolCmdSuggest(string diffToolText, string exeFile)
         {
             string diffTool = diffToolText.ToLowerInvariant();
@@ -266,19 +238,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         {
             string mergeTool = mergeToolText.ToLowerInvariant();
             var exeName = GetDiffToolExeFile(mergeTool);
-            if (exeName != null)
-            {
-                return exeName;
-            }
 
-            switch (mergeTool)
-            {
-                case "tortoisemerge":
-                    return "TortoiseMerge.exe";
-            }
-
-            return null;
-        }
+            return exeName;
+         }
 
         public static string FindMergeToolFullPath(ConfigFileSettingsSet settings, string mergeToolText, out string exeName)
         {
@@ -319,10 +281,10 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     folder = Path.Combine(folder, @"PlasticSCM4\semanticmerge\");
                     return FindFileInFolders(exeName, folder);
                 case "tortoisemerge":
-                    exeName = "TortoiseGitMerge.exe"; // TortoiseGit 1.8 use new names
                     string path = FindFileInFolders(exeName, @"TortoiseGit\bin\");
                     if (string.IsNullOrEmpty(path))
                     {
+                        // TortoiseGit <1.8 (2013), TortoiseSVN
                         exeName = "TortoiseMerge.exe";
                         path = FindFileInFolders(exeName, @"TortoiseGit\bin\", @"TortoiseSVN\bin\");
                     }
@@ -343,11 +305,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         public static string MergeToolcmdSuggest(string mergeToolText, string exeFile)
         {
             string mergeTool = mergeToolText.ToLowerInvariant();
-            switch (mergeTool)
-            {
-                case "kdiff3":
-                    return "";
-            }
 
             return AutoConfigMergeToolCmd(mergeToolText, exeFile);
         }
@@ -363,6 +320,8 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     return "\"" + exeFile + "\" \"$LOCAL\" \"$REMOTE\" \"$BASE\" \"$MERGED\"";
                 case "diffmerge":
                     return "\"" + exeFile + "\" -merge -result=\"$MERGED\" \"$LOCAL\" \"$BASE\" \"$REMOTE\"";
+                case "kdiff3":
+                    return "\"" + exeFile + "\" \"$BASE\" \"$LOCAL\" \"$REMOTE\" -o \"$MERGED\"";
                 case "meld":
                     return "\"" + exeFile + "\" \"$LOCAL\" \"$BASE\" \"$REMOTE\" --output \"$MERGED\"";
                 case "p4merge":

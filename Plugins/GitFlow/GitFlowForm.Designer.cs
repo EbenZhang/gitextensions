@@ -29,7 +29,6 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GitFlowForm));
             this.btnInit = new System.Windows.Forms.Button();
             this.txtBranchName = new System.Windows.Forms.TextBox();
             this.btnCreateBranch = new System.Windows.Forms.Button();
@@ -37,6 +36,7 @@
             this.btnFinish = new System.Windows.Forms.Button();
             this.gbManage = new System.Windows.Forms.GroupBox();
             this.pnlManageBranch = new System.Windows.Forms.Panel();
+            this.cbSquash = new System.Windows.Forms.CheckBox();
             this.cbPushAfterFinish = new System.Windows.Forms.CheckBox();
             this.panel2 = new System.Windows.Forms.Panel();
             this.pnlPull = new System.Windows.Forms.Panel();
@@ -91,7 +91,7 @@
             // 
             this.txtBranchName.Location = new System.Drawing.Point(163, 25);
             this.txtBranchName.Name = "txtBranchName";
-            this.txtBranchName.Size = new System.Drawing.Size(374, 21);
+            this.txtBranchName.Size = new System.Drawing.Size(374, 20);
             this.txtBranchName.TabIndex = 2;
             // 
             // btnCreateBranch
@@ -136,6 +136,7 @@
             // 
             // pnlManageBranch
             // 
+            this.pnlManageBranch.Controls.Add(this.cbSquash);
             this.pnlManageBranch.Controls.Add(this.cbPushAfterFinish);
             this.pnlManageBranch.Controls.Add(this.panel2);
             this.pnlManageBranch.Controls.Add(this.pnlPull);
@@ -150,12 +151,22 @@
             this.pnlManageBranch.Size = new System.Drawing.Size(610, 131);
             this.pnlManageBranch.TabIndex = 7;
             // 
+            // cbSquash
+            // 
+            this.cbSquash.AutoSize = true;
+            this.cbSquash.Location = new System.Drawing.Point(492, 113);
+            this.cbSquash.Name = "cbSquash";
+            this.cbSquash.Size = new System.Drawing.Size(62, 17);
+            this.cbSquash.TabIndex = 9;
+            this.cbSquash.Text = "Squash";
+            this.cbSquash.UseVisualStyleBackColor = true;
+            // 
             // cbPushAfterFinish
             // 
             this.cbPushAfterFinish.AutoSize = true;
             this.cbPushAfterFinish.Location = new System.Drawing.Point(492, 97);
             this.cbPushAfterFinish.Name = "cbPushAfterFinish";
-            this.cbPushAfterFinish.Size = new System.Drawing.Size(104, 17);
+            this.cbPushAfterFinish.Size = new System.Drawing.Size(101, 17);
             this.cbPushAfterFinish.TabIndex = 8;
             this.cbPushAfterFinish.Text = "Push after finish";
             this.cbPushAfterFinish.UseVisualStyleBackColor = true;
@@ -192,7 +203,7 @@
             this.label9.AutoSize = true;
             this.label9.Location = new System.Drawing.Point(80, 9);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(108, 13);
+            this.label9.Size = new System.Drawing.Size(104, 13);
             this.label9.TabIndex = 1;
             this.label9.Text = "Remote to pull from :";
             // 
@@ -220,7 +231,7 @@
             this.lblPrefixManage.AutoSize = true;
             this.lblPrefixManage.Location = new System.Drawing.Point(104, 11);
             this.lblPrefixManage.Name = "lblPrefixManage";
-            this.lblPrefixManage.Size = new System.Drawing.Size(47, 13);
+            this.lblPrefixManage.Size = new System.Drawing.Size(43, 13);
             this.lblPrefixManage.TabIndex = 1;
             this.lblPrefixManage.Text = "[prefix]/";
             this.lblPrefixManage.TextAlign = System.Drawing.ContentAlignment.TopRight;
@@ -230,7 +241,7 @@
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(38, 11);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(44, 13);
+            this.label1.Size = new System.Drawing.Size(43, 13);
             this.label1.TabIndex = 1;
             this.label1.Text = "branch:";
             // 
@@ -279,7 +290,7 @@
             this.label10.AutoSize = true;
             this.label10.Location = new System.Drawing.Point(9, 28);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(85, 13);
+            this.label10.Size = new System.Drawing.Size(84, 13);
             this.label10.TabIndex = 1;
             this.label10.Text = "Expected name:";
             // 
@@ -288,7 +299,7 @@
             this.lblPrefixName.AutoSize = true;
             this.lblPrefixName.Location = new System.Drawing.Point(119, 28);
             this.lblPrefixName.Name = "lblPrefixName";
-            this.lblPrefixName.Size = new System.Drawing.Size(47, 13);
+            this.lblPrefixName.Size = new System.Drawing.Size(43, 13);
             this.lblPrefixName.TabIndex = 1;
             this.lblPrefixName.Text = "[prefix]/";
             this.lblPrefixName.TextAlign = System.Drawing.ContentAlignment.TopRight;
@@ -331,7 +342,7 @@
             this.cbBasedOn.AutoSize = true;
             this.cbBasedOn.Location = new System.Drawing.Point(3, 11);
             this.cbBasedOn.Name = "cbBasedOn";
-            this.cbBasedOn.Size = new System.Drawing.Size(74, 17);
+            this.cbBasedOn.Size = new System.Drawing.Size(73, 17);
             this.cbBasedOn.TabIndex = 0;
             this.cbBasedOn.Text = "based on:";
             this.cbBasedOn.UseVisualStyleBackColor = true;
@@ -351,7 +362,7 @@
             this.lnkGitFlow.AutoSize = true;
             this.lnkGitFlow.Location = new System.Drawing.Point(570, 17);
             this.lnkGitFlow.Name = "lnkGitFlow";
-            this.lnkGitFlow.Size = new System.Drawing.Size(74, 13);
+            this.lnkGitFlow.Size = new System.Drawing.Size(73, 13);
             this.lnkGitFlow.TabIndex = 9;
             this.lnkGitFlow.TabStop = true;
             this.lnkGitFlow.Text = "About GitFlow";
@@ -391,7 +402,7 @@
             this.lblCaptionHead.AutoSize = true;
             this.lblCaptionHead.Location = new System.Drawing.Point(176, 17);
             this.lblCaptionHead.Name = "lblCaptionHead";
-            this.lblCaptionHead.Size = new System.Drawing.Size(38, 13);
+            this.lblCaptionHead.Size = new System.Drawing.Size(40, 13);
             this.lblCaptionHead.TabIndex = 1;
             this.lblCaptionHead.Text = "HEAD:";
             // 
@@ -400,7 +411,7 @@
             this.lblHead.AutoSize = true;
             this.lblHead.Location = new System.Drawing.Point(217, 17);
             this.lblHead.Name = "lblHead";
-            this.lblHead.Size = new System.Drawing.Size(37, 13);
+            this.lblHead.Size = new System.Drawing.Size(33, 13);
             this.lblHead.TabIndex = 1;
             this.lblHead.Text = "ref/...";
             this.lblHead.TextAlign = System.Drawing.ContentAlignment.TopRight;
@@ -444,7 +455,7 @@
             this.lblRunCommand.AutoSize = true;
             this.lblRunCommand.Location = new System.Drawing.Point(60, 14);
             this.lblRunCommand.Name = "lblRunCommand";
-            this.lblRunCommand.Size = new System.Drawing.Size(11, 13);
+            this.lblRunCommand.Size = new System.Drawing.Size(10, 13);
             this.lblRunCommand.TabIndex = 1;
             this.lblRunCommand.Text = "-";
             // 
@@ -524,5 +535,6 @@
         private System.Windows.Forms.Label lblRunCommand;
         private System.Windows.Forms.TextBox txtResult;
         private System.Windows.Forms.CheckBox cbPushAfterFinish;
+        private System.Windows.Forms.CheckBox cbSquash;
     }
 }

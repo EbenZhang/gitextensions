@@ -43,7 +43,7 @@ namespace GitHub3
                     _repo = GitHub3Plugin.GitHub.getRepository(Owner, Name);
                 }
 
-                return _repo.Parent?.GitUrl;
+                return CloneProtocol == GitProtocol.Ssh ? _repo.Parent?.GitUrl : _repo.Parent?.CloneUrl;
             }
         }
 
@@ -70,25 +70,9 @@ namespace GitHub3
             }
         }
 
-        public string CloneReadWriteUrl
-        {
-            get
-            {
-                string url;
-                if (CloneProtocol == "SSH")
-                {
-                    url = _repo.SshUrl;
-                }
-                else
-                {
-                    url = _repo.CloneUrl;
-                }
+        public string CloneReadWriteUrl => CloneProtocol == GitProtocol.Ssh ? _repo.SshUrl : _repo.CloneUrl;
 
-                return url;
-            }
-        }
-
-        public string CloneReadOnlyUrl => _repo.GitUrl;
+        public string CloneReadOnlyUrl => CloneProtocol == GitProtocol.Ssh ? _repo.GitUrl : _repo.CloneUrl;
 
         public IReadOnlyList<IHostedBranch> GetBranches()
         {
@@ -134,9 +118,9 @@ namespace GitHub3
             return pullRequest.Number;
         }
 
-        public string CloneProtocol { get; set; } = "SSH";
+        public GitProtocol CloneProtocol { get; set; } = GitProtocol.Ssh;
 
-        public string[] SupportedCloneProtocols { get; set; } = new string[] { "SSH", "HTTPS" };
+        public IReadOnlyList<GitProtocol> SupportedCloneProtocols { get; set; } = new[] { GitProtocol.Ssh, GitProtocol.Https };
 
         public override string ToString() => $"{Owner}/{Name}";
     }

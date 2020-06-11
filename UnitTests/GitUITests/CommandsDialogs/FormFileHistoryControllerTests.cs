@@ -17,42 +17,29 @@ namespace GitUITests.CommandsDialogs
             _controller = new FormFileHistoryController();
         }
 
-        [Test]
-        public void TryGetExactPathName()
+        [TestCase(@"Does not exist")]
+        [TestCase("")]
+        [TestCase(" ")]
+        public void TryGetExactPathName_Should_return_null_on_not_existing_file(string path)
         {
-            // TODO: needs rework/refactor
+            var lowercasePath = path.ToLower();
+            var isExistingOnFileSystem = _controller.TryGetExactPath(lowercasePath, out string exactPath);
 
-            var paths = new[]
-            {
-                @"C:\Users\Public\desktop.ini",
-                @"C:\pagefile.sys",
-                @"C:\Windows\System32\cmd.exe",
-                @"C:\Users\Default\NTUSER.DAT",
-                @"C:\Program Files (x86)\Microsoft.NET\Primary Interop Assemblies",
-                @"C:\Program Files (x86)",
-                @"Does not exist",
-                @"\\" + Environment.MachineName.ToLower() + @"\c$\Windows\System32",
-                "",
-                " "
-            };
+            Assert.IsFalse(isExistingOnFileSystem);
+            Assert.IsNull(exactPath);
+        }
 
-            foreach (var path in paths)
-            {
-                var lowercasePath = path.ToLower();
-                var expected = File.Exists(lowercasePath) || Directory.Exists(lowercasePath);
-                var actual = _controller.TryGetExactPath(lowercasePath, out string exactPath);
+        [Test]
+        public void TryGetExactPathName_Should_handle_network_path()
+        {
+            var path = @"\\" + Environment.MachineName.ToLower() + @"\c$\Windows\System32";
 
-                Assert.AreEqual(expected, actual);
+            var lowercasePath = path.ToLower();
+            var isExistingOnFileSystem = _controller.TryGetExactPath(lowercasePath, out string exactPath);
 
-                if (actual)
-                {
-                    Assert.AreEqual(path.ToLower(), exactPath.ToLower());
-                }
-                else
-                {
-                    Assert.IsNull(exactPath);
-                }
-            }
+            Assert.IsTrue(isExistingOnFileSystem);
+
+            Assert.AreEqual(path, exactPath);
         }
 
         [TestCase("Folder1\\file1.txt", true, true)]

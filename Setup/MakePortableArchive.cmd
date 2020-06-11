@@ -133,8 +133,6 @@ xcopy /y /i ..\GitExtensions\bin\%Configuration%\System.Net.WebSockets.dll GitEx
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\System.ObjectModel.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\System.Reactive.Windows.Threading.dll GitExtensions\
-IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\System.Reflection.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\System.Reflection.Extensions.dll GitExtensions\
@@ -232,25 +230,17 @@ xcopy /y /i ..\GitExtensions\bin\%Configuration%\de\Microsoft.VisualStudio.Threa
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\de\Microsoft.VisualStudio.Validation.resources.dll GitExtensions\de\
 IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\de\NBug.resources.dll GitExtensions\de\
-IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\es\Microsoft.VisualStudio.Composition.resources.dll GitExtensions\es\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\es\Microsoft.VisualStudio.Threading.resources.dll GitExtensions\es\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\es\Microsoft.VisualStudio.Validation.resources.dll GitExtensions\es\
 IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\es-MX\NBug.resources.dll GitExtensions\es-MX\
-IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\fi-FI\NBug.resources.dll GitExtensions\fi-FI\
-IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\fr\Microsoft.VisualStudio.Composition.resources.dll GitExtensions\fr\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\fr\Microsoft.VisualStudio.Threading.resources.dll GitExtensions\fr\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\fr\Microsoft.VisualStudio.Validation.resources.dll GitExtensions\fr\
-IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\hr\NBug.resources.dll GitExtensions\hr\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\it\Microsoft.VisualStudio.Composition.resources.dll GitExtensions\it\
 IF ERRORLEVEL 1 EXIT /B 1 
@@ -264,15 +254,11 @@ xcopy /y /i ..\GitExtensions\bin\%Configuration%\ja\Microsoft.VisualStudio.Threa
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ja\Microsoft.VisualStudio.Validation.resources.dll GitExtensions\ja\
 IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\ja\NBug.resources.dll GitExtensions\ja\
-IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ko\Microsoft.VisualStudio.Composition.resources.dll GitExtensions\ko\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ko\Microsoft.VisualStudio.Threading.resources.dll GitExtensions\ko\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ko\Microsoft.VisualStudio.Validation.resources.dll GitExtensions\ko\
-IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\ko-KR\NBug.resources.dll GitExtensions\ko-KR\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\pl\Microsoft.VisualStudio.Composition.resources.dll GitExtensions\pl\
 IF ERRORLEVEL 1 EXIT /B 1 
@@ -410,15 +396,11 @@ xcopy /y /i ..\GitExtensions\bin\%Configuration%\pt-BR\Microsoft.VisualStudio.Th
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\pt-BR\Microsoft.VisualStudio.Validation.resources.dll GitExtensions\pt-BR\
 IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\pt-BR\NBug.resources.dll GitExtensions\pt-BR\
-IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ru\Microsoft.VisualStudio.Composition.resources.dll GitExtensions\ru\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ru\Microsoft.VisualStudio.Threading.resources.dll GitExtensions\ru\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ru\Microsoft.VisualStudio.Validation.resources.dll GitExtensions\ru\
-IF ERRORLEVEL 1 EXIT /B 1 
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\ru-RU\NBug.resources.dll GitExtensions\ru-RU\
 IF ERRORLEVEL 1 EXIT /B 1 
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\tr\Microsoft.VisualStudio.Composition.resources.dll GitExtensions\tr\
 IF ERRORLEVEL 1 EXIT /B 1 
@@ -470,11 +452,13 @@ xcopy /y /i ..\bin\ICSharpCode.SharpZipLib.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\ICSharpCode.TextEditor.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
+xcopy /y /i ..\GitExtensions\bin\%Configuration%\AppInsights.WindowsDesktop.dll GitExtensions\
+IF ERRORLEVEL 1 EXIT /B 1
+xcopy /y /i ..\GitExtensions\bin\%Configuration%\Microsoft.ApplicationInsights.dll GitExtensions\
+IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\Microsoft.WindowsAPICodePack.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\Microsoft.WindowsAPICodePack.Shell.dll GitExtensions\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\NBug.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\SmartFormat.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
@@ -498,19 +482,15 @@ IF ERRORLEVEL 1 EXIT /B 1
 REM Plugins
 echo "Plugins"
 
-REM xcopy /y /e ..\Plugins\GitExtensions.PluginManager\Output GitExtensions\Plugins\
-REM IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\Plugins\AutoCompileSubmodules\bin\%Configuration%\AutoCompileSubmodules.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\Plugins\BackgroundFetch\bin\%Configuration%\BackgroundFetch.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\Plugins\BackgroundFetch\bin\%Configuration%\System.Reactive.Core.dll GitExtensions\
+xcopy /y /i ..\Plugins\BackgroundFetch\bin\%Configuration%\System.Reactive.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\Plugins\BackgroundFetch\bin\%Configuration%\System.Reactive.Interfaces.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\Plugins\BackgroundFetch\bin\%Configuration%\System.Reactive.Linq.dll GitExtensions\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\Plugins\BackgroundFetch\bin\%Configuration%\System.Reactive.PlatformServices.dll GitExtensions\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\Plugins\Bitbucket\bin\%Configuration%\Bitbucket.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1
@@ -605,67 +585,45 @@ IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\Plugins\TfsInterop.Vs2015.dll GitExtensions\Plugins\
 IF ERRORLEVEL 1 EXIT /B 1 
 
+REM UserPlugins
+echo "UserPlugins"
+
+xcopy /y /e ..\Plugins\GitExtensions.PluginManager\Output GitExtensions\UserPlugins\GitExtensions.PluginManager\
+IF ERRORLEVEL 1 EXIT /B 1
+
 REM Translation
 echo "Translation"
-xcopy /y /i ..\GitUI\Translation\English.gif GitExtensions\Translation\
+
+REM --## DO NOT MODIFY --
+xcopy /y /i "..\GitUI\Translation\English.gif" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\English.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\English.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\English.Plugins.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\English.Plugins.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Czech.gif GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Czech.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Czech.Plugins.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Dutch.gif GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Dutch.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Dutch.Plugins.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\French.gif GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\French.gif" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\French.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\French.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\French.Plugins.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\French.Plugins.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\German.gif GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\German.gif" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\German.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\German.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\German.Plugins.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\German.Plugins.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Italian.gif GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Italian.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Italian.Plugins.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Japanese.gif GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\Polish.gif" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Japanese.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\Polish.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Japanese.Plugins.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\Polish.Plugins.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Korean.gif GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Korean.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i ..\GitUI\Translation\Korean.Plugins.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Polish.gif GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\Russian.gif" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Polish.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\Russian.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Polish.Plugins.xlf GitExtensions\Translation\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Russian.gif GitExtensions\Translation\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Russian.xlf GitExtensions\Translation\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Russian.Plugins.xlf GitExtensions\Translation\
+xcopy /y /i "..\GitUI\Translation\Russian.Plugins.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i "..\GitUI\Translation\Simplified Chinese.gif" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
@@ -673,36 +631,8 @@ xcopy /y /i "..\GitUI\Translation\Simplified Chinese.xlf" GitExtensions\Translat
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i "..\GitUI\Translation\Simplified Chinese.Plugins.xlf" GitExtensions\Translation\
 IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Spanish.gif GitExtensions\Translation\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Spanish.xlf GitExtensions\Translation\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitUI\Translation\Spanish.Plugins.xlf GitExtensions\Translation\
-IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i "..\GitUI\Translation\Traditional Chinese.gif" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i "..\GitUI\Translation\Traditional Chinese.xlf" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i "..\GitUI\Translation\Traditional Chinese.Plugins.xlf" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1
-REM xcopy /y /i "..\GitExtensions\bin\%Configuration%\Translation\Portuguese (Brazil).gif" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i "..\GitExtensions\bin\%Configuration%\Translation\Portuguese (Portugal).gif" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i ..\GitExtensions\bin\%Configuration%\Translation\Romanian.gif GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i "..\GitExtensions\bin\%Configuration%\Translation\Portuguese (Brazil).Plugins.xlf" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i "..\GitExtensions\bin\%Configuration%\Translation\Portuguese (Brazil).xlf" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i "..\GitExtensions\bin\%Configuration%\Translation\Portuguese (Portugal).Plugins.xlf" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i "..\GitExtensions\bin\%Configuration%\Translation\Portuguese (Portugal).xlf" GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i ..\GitExtensions\bin\%Configuration%\Translation\Romanian.Plugins.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
-REM xcopy /y /i ..\GitExtensions\bin\%Configuration%\Translation\Romanian.xlf GitExtensions\Translation\
-REM IF ERRORLEVEL 1 EXIT /B 1 
+REM --## DO NOT MODIFY END --
+
 
 
 
@@ -746,8 +676,6 @@ IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\GitUI.pdb GitExtensions-pdbs\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\GitUIPluginInterfaces.pdb GitExtensions-pdbs\
-IF ERRORLEVEL 1 EXIT /B 1
-xcopy /y /i ..\GitExtensions\bin\%Configuration%\NBug.pdb GitExtensions-pdbs\
 IF ERRORLEVEL 1 EXIT /B 1
 xcopy /y /i ..\GitExtensions\bin\%Configuration%\NetSpell.SpellChecker.pdb GitExtensions-pdbs\
 IF ERRORLEVEL 1 EXIT /B 1

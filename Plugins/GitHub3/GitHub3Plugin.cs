@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Git.hub;
 using GitCommands.Config;
+using GitCommands.Remotes;
 using GitHub3.Properties;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.RepositoryHosts;
@@ -12,12 +14,6 @@ using ResourceManager;
 
 namespace GitHub3
 {
-    internal static class GitHubApiInfo
-    {
-        internal static string client_id = "ebc0e8947c206610d737";
-        internal static string client_secret = "c993907df3f45145bf638842692b69c56d1ace4d";
-    }
-
     internal static class GitHubLoginInfo
     {
         private static string _username;
@@ -73,12 +69,20 @@ namespace GitHub3
     [Export(typeof(IGitPlugin))]
     public class GitHub3Plugin : GitPluginBase, IRepositoryHostPlugin
     {
+        public static string GitHubAuthorizationRelativeUrl = "authorizations";
+        public static string UpstreamConventionName = "upstream";
+        public readonly StringSetting GitHubApiEndpoint = new StringSetting("GitHub (Enterprise) API endpoint", "https://api.github.com");
         public readonly StringSetting OAuthToken = new StringSetting("OAuth Token", "");
 
-        internal static GitHub3Plugin Instance;
-        internal static Client GitHub;
+        private readonly TranslationString _tokenAlreadyExist = new TranslationString("You already have an OAuth token. To get a new one, delete your old one in Plugins > Settings first.");
 
-        public GitHub3Plugin()
+        internal static GitHub3Plugin Instance;
+        internal static Client _gitHub;
+        internal static Client GitHub => _gitHub ?? (_gitHub = new Client(Instance.GitHubApiEndpoint.ValueOrDefault(Instance.Settings)));
+
+        private IGitUICommands _currentGitUiCommands;
+
+        public GitHub3Plugin() : base(true)
         {
             SetNameAndDescription("GitHub");
             Translate();
@@ -87,8 +91,6 @@ namespace GitHub3
             {
                 Instance = this;
             }
-
-            GitHub = new Client();
 
             Icon = Resources.IconGitHub;
         }
@@ -100,6 +102,7 @@ namespace GitHub3
 
         public override void Register(IGitUICommands gitUiCommands)
         {
+            _currentGitUiCommands = gitUiCommands;
             if (!string.IsNullOrEmpty(GitHubLoginInfo.OAuthToken))
             {
                 GitHub.setOAuth2Token(GitHubLoginInfo.OAuthToken);
@@ -110,14 +113,15 @@ namespace GitHub3
         {
             if (string.IsNullOrEmpty(GitHubLoginInfo.OAuthToken))
             {
-                using (var frm = new OAuth())
+                var authorizationApiUrl = new Uri(new Uri(GitHubApiEndpoint.ValueOrDefault(Settings)), GitHubAuthorizationRelativeUrl).ToString();
+                using (var gitHubCredentialsPrompt = new GitHubCredentialsPrompt(authorizationApiUrl))
                 {
-                    frm.ShowDialog(args.OwnerForm);
+                    gitHubCredentialsPrompt.ShowDialog(args.OwnerForm);
                 }
             }
             else
             {
-                MessageBox.Show(args.OwnerForm, "You already have an OAuth token. To get a new one, delete your old one in Plugins > Settings first.");
+                MessageBox.Show(args.OwnerForm, _tokenAlreadyExist.Text);
             }
 
             return false;
@@ -145,42 +149,68 @@ namespace GitHub3
             return GitHub.getRepositories().Select(repo => (IHostedRepository)new GitHubRepo(repo)).ToList();
         }
 
-        public bool ConfigurationOk => true;
+        public bool ConfigurationOk => !string.IsNullOrEmpty(GitHubLoginInfo.OAuthToken);
 
-        public bool GitModuleIsRelevantToMe(IGitModule module)
+        public string OwnerLogin => GitHub.getCurrentUser()?.Login;
+
+        public async Task<string> AddUpstreamRemoteAsync()
         {
-            return GetHostedRemotesForModule(module).Count > 0;
+            var gitModule = _currentGitUiCommands.GitModule;
+            var hostedRemote = GetHostedRemotesForModule().FirstOrDefault(r => r.IsOwnedByMe);
+            if (hostedRemote == null)
+            {
+                return null;
+            }
+
+            var hostedRepository = hostedRemote.GetHostedRepository();
+            if (!hostedRepository.IsAFork)
+            {
+                return null;
+            }
+
+            if ((await gitModule.GetRemotesAsync()).Any(r => r.Name == UpstreamConventionName || r.FetchUrl == hostedRepository.ParentReadOnlyUrl))
+            {
+                return null;
+            }
+
+            gitModule.AddRemote(UpstreamConventionName, hostedRepository.ParentReadOnlyUrl);
+            return UpstreamConventionName;
+        }
+
+        public bool GitModuleIsRelevantToMe()
+        {
+            return GetHostedRemotesForModule().Count > 0;
         }
 
         /// <summary>
         /// Returns all relevant github-remotes for the current working directory
         /// </summary>
-        public IReadOnlyList<IHostedRemote> GetHostedRemotesForModule(IGitModule module)
+        public IReadOnlyList<IHostedRemote> GetHostedRemotesForModule()
         {
+            if (_currentGitUiCommands?.GitModule == null)
+            {
+                return Array.Empty<IHostedRemote>();
+            }
+
+            var gitModule = _currentGitUiCommands.GitModule;
             return Remotes().ToList();
 
             IEnumerable<IHostedRemote> Remotes()
             {
                 var set = new HashSet<IHostedRemote>();
 
-                foreach (string remote in module.GetRemoteNames())
+                foreach (string remote in gitModule.GetRemoteNames())
                 {
-                    var url = module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote));
+                    var url = gitModule.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote));
 
                     if (string.IsNullOrEmpty(url))
                     {
                         continue;
                     }
 
-                    var m = Regex.Match(url, @"git(?:@|://)github.com[:/]([^/]+)/([\w_\.\-]+)\.git");
-                    if (!m.Success)
+                    if (new GitHubRemoteParser().TryExtractGitHubDataFromRemoteUrl(url, out var owner, out var repository))
                     {
-                        m = Regex.Match(url, @"https?://(?:[^@:]+)?(?::[^/@:]+)?@?github.com/([^/]+)/([\w_\.\-]+)(?:.git)?");
-                    }
-
-                    if (m.Success)
-                    {
-                        var hostedRemote = new GitHubHostedRemote(remote, m.Groups[1].Value, m.Groups[2].Value.Replace(".git", ""));
+                        var hostedRemote = new GitHubHostedRemote(remote, owner, repository, url);
 
                         if (set.Add(hostedRemote))
                         {

@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
+﻿using System.Collections.Generic;
 using GitCommands;
 using GitCommands.Submodules;
-using GitUI;
 
 namespace CommonTestUtils
 {
@@ -19,7 +16,7 @@ namespace CommonTestUtils
                 noBranchText: string.Empty,
                 updateStatus: updateStatus);
 
-            AsyncTestHelper.WaitForPendingOperations();
+            AsyncTestHelper.WaitForPendingOperations(AsyncTestHelper.UnexpectedTimeout);
 
             provider.StatusUpdated -= Provider_StatusUpdated;
 
@@ -40,7 +37,7 @@ namespace CommonTestUtils
                 workingDirectory: module.WorkingDir,
                 gitStatus: gitStatus);
 
-            AsyncTestHelper.WaitForPendingOperations();
+            AsyncTestHelper.WaitForPendingOperations(AsyncTestHelper.UnexpectedTimeout);
 
             provider.StatusUpdated -= Provider_StatusUpdated;
 

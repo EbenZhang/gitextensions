@@ -53,7 +53,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
         {
             _createBtn.Enabled = false;
             _yourBranchesCB.Text = _strLoading.Text;
-            _hostedRemotes = _repoHost.GetHostedRemotesForModule(Module);
+            _hostedRemotes = _repoHost.GetHostedRemotesForModule();
             this.Mask();
             _remoteLoader.LoadAsync(
                 () => _hostedRemotes.Where(r => !r.IsOwnedByMe).ToArray(),
@@ -141,9 +141,10 @@ namespace GitUI.CommandsDialogs.RepoHosting
                         comboBox.Items.Clear();
 
                         var selectItem = 0;
+                        var defaultBranch = hostedRepository.GetDefaultBranch();
                         for (var i = 0; i < branches.Count; i++)
                         {
-                            if (branches[i].Name == hostedRepository.GetDefaultBranch())
+                            if (branches[i].Name == defaultBranch)
                             {
                                 selectItem = i;
                             }

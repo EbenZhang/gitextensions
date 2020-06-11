@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using GitExtUtils;
 using GitUI.Properties;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
@@ -21,6 +22,10 @@ namespace Gerrit
 
         private readonly TranslationString _selectRemote = new TranslationString("Please select a remote repository");
         private readonly TranslationString _selectBranch = new TranslationString("Please enter a branch");
+
+        private readonly TranslationString _publishTypeReview = new TranslationString("For Review");
+        private readonly TranslationString _publishTypeWip = new TranslationString("Work-in-Progress");
+        private readonly TranslationString _publishTypePrivate = new TranslationString("Private");
         #endregion
 
         public FormGerritPublish(IGitUICommands uiCommand)
@@ -30,6 +35,21 @@ namespace Gerrit
             InitializeComplete();
 
             Publish.Image = Images.Push;
+            PublishType.Items.AddRange(new object[]
+            {
+                new KeyValuePair<string, string>(_publishTypeReview.Text, ""),
+                new KeyValuePair<string, string>(_publishTypeWip.Text, "wip")
+            });
+            PublishType.SelectedIndex = 0;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            if (Version >= Version.Parse("2.15"))
+            {
+                PublishType.Items.Add(new KeyValuePair<string, string>(_publishTypePrivate.Text, "private"));
+            }
         }
 
         private void PublishClick(object sender, EventArgs e)
@@ -68,33 +88,60 @@ namespace Gerrit
 
             GerritUtil.StartAgent(owner, Module, _NO_TRANSLATE_Remotes.Text);
 
-            string targetRef = PublishDraft.Checked ? "drafts" : "publish";
-
-            var pushCommand = UICommands.CreateRemoteCommand();
-
-            string targetBranch = "refs/" + targetRef + "/" + branch;
-            string topic = _NO_TRANSLATE_Topic.Text.Trim();
-
-            if (!string.IsNullOrEmpty(topic))
-            {
-                targetBranch += "/" + topic;
-            }
+            List<string> additionalOptions = new List<string>();
 
             string reviewers = _NO_TRANSLATE_Reviewers.Text.Trim();
             if (!string.IsNullOrEmpty(reviewers))
             {
-                string formattedReviewers = string.Join(",", reviewers.Split(' ')
-                                                                      .Where(r => !string.IsNullOrEmpty(r))
-                                                                      .Select(r => "r=" + r));
-                if (!formattedReviewers.IsNullOrEmpty())
-                {
-                    targetBranch += "%" + formattedReviewers;
-                }
+                additionalOptions.AddRange(reviewers.Split(new[] { ' ', ',', ';', '|' })
+                                                    .Where(r => !string.IsNullOrEmpty(r))
+                                                    .Select(r => "r=" + r));
             }
 
+            string cc = _NO_TRANSLATE_Cc.Text.Trim();
+            if (!string.IsNullOrEmpty(cc))
+            {
+                additionalOptions.AddRange(cc.Split(new[] { ' ', ',', ';', '|' })
+                                             .Where(r => !string.IsNullOrEmpty(r))
+                                             .Select(r => "cc=" + r));
+            }
+
+            string topic = _NO_TRANSLATE_Topic.Text.Trim();
+            if (!string.IsNullOrEmpty(topic))
+            {
+                additionalOptions.Add("topic=" + topic);
+            }
+
+            string hashtag = _NO_TRANSLATE_Hashtag.Text.Trim();
+            if (!string.IsNullOrEmpty(hashtag))
+            {
+                additionalOptions.Add("hashtag=" + hashtag);
+            }
+
+            additionalOptions = additionalOptions.Where(r => !string.IsNullOrEmpty(r)).ToList();
+
+            string publishType = ((KeyValuePair<string, string>)PublishType.SelectedItem).Value;
+            string targetRef = "for";
+            if (Version >= Version.Parse("2.15"))
+            {
+                additionalOptions.Add(publishType);
+            }
+            else if (publishType == "wip")
+            {
+                targetRef = "drafts";
+            }
+
+            string targetBranch = $"refs/{targetRef}/{branch}";
+            if (additionalOptions.Count > 0)
+            {
+                targetBranch += "%" + string.Join(",", additionalOptions);
+            }
+
+            var pushCommand = UICommands.CreateRemoteCommand();
             pushCommand.CommandText = PushCmd(
                 _NO_TRANSLATE_Remotes.Text,
                 targetBranch);
+
             pushCommand.Remote = _NO_TRANSLATE_Remotes.Text;
             pushCommand.Title = _publishCaption.Text;
 

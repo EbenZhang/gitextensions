@@ -22,15 +22,15 @@ namespace GitUI.UserControls.RevisionGrid
             Image = Images.CopyToClipboard;
             Text = _copyToClipboardText.Text;
 
-            // Create a dummy menu, so that the shortcut keys work.
-            OnDropDownOpening(null, null);
-
             DropDownOpening += OnDropDownOpening;
         }
 
         public void SetRevisionFunc(Func<IReadOnlyList<GitRevision>> revisionFunc)
         {
             _revisionFunc = revisionFunc;
+
+            // Add dummy item for the menu entry to appear expandable (triangle on the right)
+            DropDownItems.Add(new ToolStripMenuItem());
         }
 
         private void AddItem(string displayText, Func<GitRevision, string> extractRevisionText, Image image, char? hotkey)
@@ -96,16 +96,8 @@ namespace GitUI.UserControls.RevisionGrid
             var revisions = _revisionFunc?.Invoke();
             if (revisions == null || revisions.Count == 0)
             {
-                if (sender == null)
-                {
-                    // create the initial dummy menu on a dummy revision
-                    revisions = new List<GitRevision> { new GitRevision(GitUIPluginInterfaces.ObjectId.WorkTreeId) };
-                }
-                else
-                {
-                    HideDropDown();
-                    return;
-                }
+                HideDropDown();
+                return;
             }
 
             DropDownItems.Clear();
@@ -153,18 +145,18 @@ namespace GitUI.UserControls.RevisionGrid
 
             // Add other items
             int count = revisions.Count();
-            AddItem(Strings.GetCommitHash(count), r => r.Guid, Images.CommitId, 'C');
-            AddItem(Strings.GetMessage(count), r => r.Body ?? r.Subject, Images.Message, 'M');
-            AddItem(Strings.GetAuthor(count), r => $"{r.Author} <{r.AuthorEmail}>", Images.Author, 'A');
+            AddItem(ResourceManager.Strings.GetCommitHash(count), r => r.Guid, Images.CommitId, 'C');
+            AddItem(ResourceManager.Strings.GetMessage(count), r => r.Body ?? r.Subject, Images.Message, 'M');
+            AddItem(ResourceManager.Strings.GetAuthor(count), r => $"{r.Author} <{r.AuthorEmail}>", Images.Author, 'A');
 
             if (count == 1 && revisions.First().AuthorDate == revisions.First().CommitDate)
             {
-                AddItem(Strings.Date, r => r.AuthorDate.ToString(), Images.Date, 'D');
+                AddItem(ResourceManager.Strings.Date, r => r.AuthorDate.ToString(), Images.Date, 'D');
             }
             else
             {
-                AddItem(Strings.GetAuthorDate(count), r => r.AuthorDate.ToString(), Images.Date, 'T');
-                AddItem(Strings.GetCommitDate(count), r => r.CommitDate.ToString(), Images.Date, 'D');
+                AddItem(ResourceManager.Strings.GetAuthorDate(count), r => r.AuthorDate.ToString(), Images.Date, 'T');
+                AddItem(ResourceManager.Strings.GetCommitDate(count), r => r.CommitDate.ToString(), Images.Date, 'D');
             }
         }
 

@@ -9,6 +9,7 @@ using GitExtUtils.GitUI;
 using GitUI;
 using GitUI.CommandsDialogs.SettingsDialog;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
+using GitUI.Infrastructure.Telemetry;
 using JetBrains.Annotations;
 using Microsoft.VisualStudio.Threading;
 using ResourceManager;
@@ -30,28 +31,12 @@ namespace GitExtensions
 
             try
             {
-                NBug.Settings.UIMode = NBug.Enums.UIMode.Full;
-
-                // Uncomment the following after testing to see that NBug is working as configured
-                NBug.Settings.ReleaseMode = true;
-                NBug.Settings.ExitApplicationImmediately = false;
-                NBug.Settings.WriteLogToDisk = false;
-                NBug.Settings.MaxQueuedReports = 10;
-                NBug.Settings.StopReportingAfter = 90;
-                NBug.Settings.SleepBeforeSend = 30;
-                NBug.Settings.StoragePath = NBug.Enums.StoragePath.WindowsTemp;
-                NBug.Settings.GetSystemInfo = () =>
-                {
-                    // if the error happens before we had a chance to init the environment information
-                    // the call to GetInformation() will fail. A double Initialise() call is safe.
-                    UserEnvironmentInformation.Initialise(ThisAssembly.Git.Sha, ThisAssembly.Git.IsDirty);
-                    return UserEnvironmentInformation.GetInformation();
-                };
+                DiagnosticsClient.Initialize(ThisAssembly.Git.IsDirty);
 
                 if (!Debugger.IsAttached)
                 {
-                    AppDomain.CurrentDomain.UnhandledException += NBug.Handler.UnhandledException;
-                    Application.ThreadException += NBug.Handler.ThreadException;
+                    AppDomain.CurrentDomain.UnhandledException += (s, e) => ReportBug((Exception)e.ExceptionObject);
+                    Application.ThreadException += (s, e) => ReportBug(e.Exception);
                 }
             }
             catch (TypeInitializationException tie)
@@ -99,6 +84,13 @@ namespace GitExtensions
                 {
                     formChoose.ShowDialog();
                 }
+            }
+
+            if (!AppSettings.TelemetryEnabled.HasValue)
+            {
+                AppSettings.TelemetryEnabled = MessageBox.Show(null, Strings.TelemetryPermissionMessage,
+                                                               Strings.TelemetryPermissionCaption, MessageBoxButtons.YesNo,
+                                                               MessageBoxIcon.Question) == DialogResult.Yes;
             }
 
             try
@@ -172,23 +164,25 @@ namespace GitExtensions
                 // while parsing command line arguments, it unescapes " incorrectly
                 // https://github.com/gitextensions/gitextensions/issues/3489
                 string dirArg = args[2].TrimEnd('"');
-
-                if (!Directory.Exists(dirArg))
+                if (!string.IsNullOrWhiteSpace(dirArg))
                 {
-                    dirArg = Path.GetDirectoryName(dirArg);
+                    if (!Directory.Exists(dirArg))
+                    {
+                        dirArg = Path.GetDirectoryName(dirArg);
+                    }
+
+                    workingDir = GitModule.TryFindGitWorkingDir(dirArg);
+
+                    if (Directory.Exists(workingDir))
+                    {
+                        workingDir = Path.GetFullPath(workingDir);
+                    }
+
+                    // Do not add this working directory to the recent repositories. It is a nice feature, but it
+                    // also increases the startup time
+                    ////if (Module.ValidWorkingDir())
+                    ////   Repositories.RepositoryHistory.AddMostRecentRepository(Module.WorkingDir);
                 }
-
-                workingDir = GitModule.TryFindGitWorkingDir(dirArg);
-
-                if (Directory.Exists(workingDir))
-                {
-                    workingDir = Path.GetFullPath(workingDir);
-                }
-
-                // Do not add this working directory to the recent repositories. It is a nice feature, but it
-                // also increases the startup time
-                ////if (Module.ValidWorkingDir())
-                ////   Repositories.RepositoryHistory.AddMostRecentRepository(Module.WorkingDir);
             }
 
             if (args.Length <= 1 && workingDir == null && AppSettings.StartWithRecentWorkingDir)
@@ -199,7 +193,7 @@ namespace GitExtensions
                 }
             }
 
-            if (workingDir == null)
+            if (args.Length > 1 && workingDir == null)
             {
                 // If no working dir is yet found, try to find one relative to the current working directory.
                 // This allows the `fileeditor` command to discover repository configuration which is
@@ -283,12 +277,12 @@ namespace GitExtensions
         private static bool LocateMissingGit()
         {
             int dialogResult = PSTaskDialog.cTaskDialog.ShowCommandBox(Title: "Error",
-                                                                        MainInstruction: Strings.GitExecutableNotFound,
+                                                                        MainInstruction: ResourceManager.Strings.GitExecutableNotFound,
                                                                         Content: null,
                                                                         ExpandedInfo: null,
                                                                         Footer: null,
                                                                         VerificationText: null,
-                                                                        CommandButtons: $"{Strings.FindGitExecutable}|{Strings.InstallGitInstructions}",
+                                                                        CommandButtons: $"{ResourceManager.Strings.FindGitExecutable}|{ResourceManager.Strings.InstallGitInstructions}",
                                                                         ShowCancelButton: true,
                                                                         MainIcon: PSTaskDialog.eSysIcons.Error,
                                                                         FooterIcon: PSTaskDialog.eSysIcons.Warning);
@@ -325,6 +319,23 @@ namespace GitExtensions
                     {
                         return false;
                     }
+            }
+        }
+
+        private static void ReportBug(Exception ex)
+        {
+            // if the error happens before we had a chance to init the environment information
+            // the call to GetInformation() will fail. A double Initialise() call is safe.
+            UserEnvironmentInformation.Initialise(ThisAssembly.Git.Sha, ThisAssembly.Git.IsDirty);
+            var envInfo = UserEnvironmentInformation.GetInformation();
+
+            using (var form = new GitUI.NBugReports.BugReportForm())
+            {
+                var result = form.ShowDialog(ex, envInfo);
+                if (result == DialogResult.Abort)
+                {
+                    Environment.Exit(-1);
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ using GitCommands;
 using GitCommands.Remotes;
 using GitUI.BranchTreePanel.Interfaces;
 using GitUI.Properties;
+using GitUIPluginInterfaces;
 using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
@@ -312,20 +313,20 @@ namespace GitUI.BranchTreePanel
             {
                 base.ApplyStyle();
 
-                TreeViewNode.ToolTipText = _remote.FetchUrl != _remote.PushUrl
-                    ? $"Push: {_remote.PushUrl}\nFetch: {_remote.FetchUrl}"
+                TreeViewNode.ToolTipText = _remote.PushUrls.Count != 1 && _remote.FetchUrl != _remote.PushUrls[0]
+                    ? $"Fetch: {_remote.FetchUrl}\nPush: {string.Join("\n", _remote.PushUrls.ToArray())}"
                     : _remote.FetchUrl;
 
                 string imageKey;
-                if (_remote.PushUrl.Contains("github.com") || _remote.FetchUrl.Contains("github.com"))
+                if (_remote.FetchUrl.Contains("github.com"))
                 {
                     imageKey = nameof(Images.GitHub);
                 }
-                else if (_remote.PushUrl.Contains("bitbucket.") || _remote.FetchUrl.Contains("bitbucket."))
+                else if (_remote.FetchUrl.Contains("bitbucket."))
                 {
                     imageKey = nameof(Images.BitBucket);
                 }
-                else if (_remote.PushUrl.Contains("visualstudio.com") || _remote.FetchUrl.Contains("visualstudio.com"))
+                else if (_remote.FetchUrl.Contains("visualstudio.com") || _remote.FetchUrl.Contains("dev.azure.com"))
                 {
                     imageKey = nameof(Images.VisualStudioTeamServices);
                 }

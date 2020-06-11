@@ -15,6 +15,7 @@ using GitCommands.Git.Extensions;
 using GitCommands.Patches;
 using GitCommands.Settings;
 using GitCommands.Utils;
+using GitExtUtils;
 using GitUI;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
@@ -478,7 +479,7 @@ namespace GitCommands
                     return dir.EnsureTrailingPathSeparator();
                 }
 
-                dir = PathUtil.GetDirectoryName(dir);
+                dir = Path.GetDirectoryName(dir);
             }
 
             return null;
@@ -746,26 +747,6 @@ namespace GitCommands
             }
 
             return list;
-        }
-
-        public IReadOnlyList<string> GetSortedRefs()
-        {
-            var args = new GitArgumentBuilder("for-each-ref")
-            {
-                "--sort=-committerdate",
-                "--sort=-taggerdate",
-                "--format=\"%(refname)\"",
-                "refs/"
-            };
-
-            string tree = _gitExecutable.GetOutput(args);
-            int warningPos = tree.IndexOf("warning:");
-            if (warningPos >= 0)
-            {
-                throw new RefsWarningException(tree.Substring(warningPos).SplitLines()[0]);
-            }
-
-            return tree.Split();
         }
 
         public async Task<Dictionary<IGitRef, IGitItem>> GetSubmoduleItemsForEachRefAsync(string filename, Func<IGitRef, bool> showRemoteRef, bool noLocks = false)
@@ -1243,8 +1224,8 @@ namespace GitCommands
 
             Debug.Assert(WorkingDir.StartsWith(SuperprojectModule.WorkingDir), "Submodule working dir should start with super-project's working dir");
 
-            return PathUtil.GetDirectoryName(
-                WorkingDir.Substring(SuperprojectModule.WorkingDir.Length).ToPosixPath());
+            return Path.GetDirectoryName(
+                WorkingDir.Substring(SuperprojectModule.WorkingDir.Length)).ToPosixPath();
         }
 
         public string GetSubmoduleFullPath(string localPath)
@@ -1375,6 +1356,22 @@ namespace GitCommands
             });
         }
 
+        public string ResetFiles(IReadOnlyList<string> files)
+        {
+            if (files == null || files.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return _gitExecutable.GetBatchOutput(new GitArgumentBuilder("checkout-index")
+                {
+                    "--index",
+                    "--force",
+                    "--"
+                }
+                .BuildBatchArguments(files.Select(item => item.ToPosixPath().Quote())));
+        }
+
         /// <summary>
         /// Delete index.lock in the current working folder.
         /// </summary>
@@ -1413,14 +1410,16 @@ namespace GitCommands
                 revision = null;
             }
 
-            _gitExecutable.RunCommand(
-                new GitArgumentBuilder("checkout")
+            // Run batch arguments to work around max command line length on Windows. Fix #6593
+            // 3: double quotes + ' '
+            // See https://referencesource.microsoft.com/#system/services/monitoring/system/diagnosticts/Process.cs,1952
+            _gitExecutable.RunBatchCommand(new GitArgumentBuilder("checkout")
                 {
                     { force, "--force" },
                     revision,
-                    "--",
-                    files.Select(f => f.ToPosixPath().Quote())
-                });
+                    "--"
+                }
+                .BuildBatchArguments(files.Select(f => f.ToPosixPath().Quote())));
         }
 
         public string RemoveFiles(IReadOnlyList<string> files, bool force)
@@ -1800,7 +1799,7 @@ namespace GitCommands
                     {
                         foreach (var file in nonNewFiles)
                         {
-                            inputWriter.WriteLine($"0 0000000000000000000000000000000000000000\t\"{file.Name.ToPosixPath()}\"");
+                            inputWriter.WriteLine($"0 0000000000000000000000000000000000000000\t\"{EscapeOctalCodePoints(file.Name.ToPosixPath())}\"");
                         }
                     },
                     SystemEncoding);
@@ -1829,6 +1828,52 @@ namespace GitCommands
             }
 
             return output.ToString();
+        }
+
+        /// <summary>
+        /// Batch unstage files using <see cref="ExecutableExtensions.RunBatchCommand(IExecutable, ICollection{BatchArgumentItem}, Action{BatchProgressEventArgs}, byte[], bool)"/>
+        /// </summary>
+        /// <param name="selectedItems">Selected file items</param>
+        /// <param name="action">Progress update callback</param>
+        /// <returns><see langword="true" /> if changes should be rescanned; otherwise <see langword="false" /></returns>.
+        public bool BatchUnstageFiles(IEnumerable<GitItemStatus> selectedItems, Action<BatchProgressEventArgs> action = null)
+        {
+            var files = new List<GitItemStatus>();
+            var filesToRemove = new List<string>();
+            var shouldRescanChanges = false;
+            foreach (var item in selectedItems)
+            {
+                if (!item.IsNew)
+                {
+                    filesToRemove.Add(item.Name);
+
+                    if (item.IsRenamed)
+                    {
+                        filesToRemove.Add(item.OldName);
+                    }
+
+                    if (item.IsDeleted)
+                    {
+                        shouldRescanChanges = true;
+                    }
+                }
+                else
+                {
+                    files.Add(item);
+                }
+            }
+
+            if (filesToRemove.Count > 0)
+            {
+                var args = GitCommandHelpers.ResetCmd(ResetMode.ResetIndex, "HEAD");
+                _gitExecutable.RunBatchCommand(new ArgumentBuilder() { args }
+                    .BuildBatchArguments(filesToRemove),
+                    action);
+            }
+
+            UnstageFiles(files);
+
+            return shouldRescanChanges;
         }
 
         public async Task<bool> AddInteractiveAsync(GitItemStatus file)
@@ -1985,8 +2030,8 @@ namespace GitCommands
                     {
                         Name = file,
                         FullName = fullFileName,
-                        IsNext = n == next,
-                        IsSkipped = n < next
+                        IsApplied = n < next,
+                        IsNext = n == next
                     };
 
                 if (File.Exists(rebaseDir + file))
@@ -2157,53 +2202,61 @@ namespace GitCommands
             {
                 var remotes = new List<Remote>();
 
-                /*
-                 * $ git remote -v
-                 * origin  git@github.com:drewnoakes/gitextensions.git (fetch)
-                 * origin  git@github.com:drewnoakes/gitextensions.git (push)
-                 * upstream        git@github.com:gitextensions/gitextensions.git (fetch)
-                 * upstream        git@github.com:gitextensions/gitextensions.git (push)
-                 *
-                 * That's a tab character between the first two records. There's a space before (fetch/push).
-                 */
+                // See tests for explanation of the format
 
                 using (var enumerator = lines.GetEnumerator())
                 {
                     while (enumerator.MoveNext())
                     {
-                        var fetchLine = enumerator.Current;
-
-                        // An invalid module is not an error; we simply return an empty list of remotes
-                        if (fetchLine.IndexOf("not a git repository", StringComparison.OrdinalIgnoreCase) >= 0)
+                        var remoteLine = enumerator.Current;
+                        if (remoteLine.IndexOf("not a git repository", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
+                            // An invalid module is not an error; we simply return an empty list of remotes
                             return remotes;
+                        }
+
+                        var remoteMatch = _remoteVerboseLineRegex.Match(remoteLine);
+                        if (!remoteMatch.Success
+                            || (remoteMatch.Groups["direction"].Value != "fetch"
+                               && remoteMatch.Groups["direction"].Value != "push"))
+                        {
+                            // Ignore malformed and unknown entries
+                            continue;
+                        }
+
+                        var name = remoteMatch.Groups["name"].Value;
+                        var remoteUrl = remoteMatch.Groups["url"].Value;
+                        if (remoteMatch.Groups["direction"].Value == "push")
+                        {
+                            if (remotes.Count <= 0 || name != remotes[remotes.Count - 1].Name)
+                            {
+                                throw new Exception("Unable to update remote pushurl for command output: " + remoteLine);
+                            }
+
+                            remotes[remotes.Count - 1].PushUrls.Add(remoteUrl);
+                            continue;
                         }
 
                         if (!enumerator.MoveNext())
                         {
-                            throw new Exception("Remote URLs should appear in pairs.");
+                            throw new Exception("Remote URLs should appear in pairs, no pushurl for fetch: " + remoteLine);
                         }
 
                         var pushLine = enumerator.Current;
-
-                        var fetchMatch = _remoteVerboseLineRegex.Match(fetchLine);
                         var pushMatch = _remoteVerboseLineRegex.Match(pushLine);
-
-                        if (!fetchMatch.Success || !pushMatch.Success || fetchMatch.Groups["direction"].Value != "fetch" || pushMatch.Groups["direction"].Value != "push")
+                        if (!pushMatch.Success || pushMatch.Groups["direction"].Value != "push")
                         {
-                            throw new Exception("Unable to parse git command output.");
+                            throw new Exception("Unable to parse git remote push URL line: " + pushLine);
                         }
 
-                        var name = fetchMatch.Groups["name"].Value;
-                        var fetchUrl = fetchMatch.Groups["url"].Value;
                         var pushUrl = pushMatch.Groups["url"].Value;
-
                         if (name != pushMatch.Groups["name"].Value)
                         {
-                            throw new Exception("Fetch and push remote names must match.");
+                            throw new Exception("Fetch and push remote names must match: " +
+                                remoteLine + ", " + pushLine);
                         }
 
-                        remotes.Add(new Remote(name, pushUrl, fetchUrl));
+                        remotes.Add(new Remote(name, remoteUrl, pushUrl));
                     }
                 }
 
@@ -2287,7 +2340,7 @@ namespace GitCommands
             {
                 "--no-color",
                 extraDiffArguments,
-                { AppSettings.UsePatienceDiffAlgorithm, "--patience" },
+                { AppSettings.UseHistogramDiffAlgorithm, "--histogram" },
                 "-M -C",
                 diffOptions
             };
@@ -2598,7 +2651,7 @@ namespace GitCommands
                     "--no-color",
                     { staged, "-M -C --cached" },
                     extraDiffArguments,
-                    { AppSettings.UsePatienceDiffAlgorithm, "--patience" },
+                    { AppSettings.UseHistogramDiffAlgorithm, "--histogram" },
                     "--",
                     fileName.ToPosixPath().Quote(),
                     { staged, oldFileName?.ToPosixPath().Quote() }
@@ -2982,7 +3035,7 @@ namespace GitCommands
                 return Array.Empty<string>();
             }
 
-            var result = output.Split(new[] { '\r', '\n', '*' }, StringSplitOptions.RemoveEmptyEntries);
+            var result = output.Split(new[] { '\r', '\n', '*', '+' }, StringSplitOptions.RemoveEmptyEntries);
 
             // Remove symlink targets as in "origin/HEAD -> origin/master"
             for (var i = 0; i < result.Length; i++)
@@ -3255,19 +3308,45 @@ namespace GitCommands
                     GitBlameCommit commit;
                     if (hasCommitHeader)
                     {
-                        commit = new GitBlameCommit(
-                            objectId,
-                            author,
-                            authorMail,
-                            authorTime,
-                            authorTimeZone,
-                            committer,
-                            committerMail,
-                            committerTime,
-                            committerTimeZone,
-                            summary,
-                            filename);
-                        commitByObjectId[objectId] = commit;
+                        if (!commitByObjectId.ContainsKey(objectId))
+                        {
+                            commit = new GitBlameCommit(
+                                objectId,
+                                author,
+                                authorMail,
+                                authorTime,
+                                authorTimeZone,
+                                committer,
+                                committerMail,
+                                committerTime,
+                                committerTimeZone,
+                                summary,
+                                filename);
+                            commitByObjectId[objectId] = commit;
+                        }
+                        else
+                        {
+                            var commitData = commitByObjectId[objectId];
+                            if (filename == commitData.FileName)
+                            {
+                                commit = commitData;
+                            }
+                            else
+                            {
+                                commit = new GitBlameCommit(
+                                    commitData.ObjectId,
+                                    commitData.Author,
+                                    commitData.AuthorMail,
+                                    commitData.AuthorTime,
+                                    commitData.AuthorTimeZone,
+                                    commitData.Committer,
+                                    commitData.CommitterMail,
+                                    commitData.CommitterTime,
+                                    commitData.CommitterTimeZone,
+                                    commitData.Summary,
+                                    filename);
+                            }
+                        }
                     }
                     else
                     {
@@ -3368,11 +3447,9 @@ namespace GitCommands
         [CanBeNull]
         public ObjectId GetFileBlobHash(string fileName, ObjectId objectId)
         {
-            if (objectId == ObjectId.WorkTreeId)
+            if (objectId == ObjectId.WorkTreeId || objectId == ObjectId.CombinedDiffId)
             {
-                // working directory changes
-                Debug.Assert(false, "Tried to get blob for worktree file");
-                return null;
+                throw new ArgumentException($"Tried to get blob for unsupported revision: {objectId} and file: {fileName}");
             }
 
             // TODO use regex for parsing
@@ -3438,15 +3515,17 @@ namespace GitCommands
             }
         }
 
-        public IEnumerable<string> GetPreviousCommitMessages(int count, string revision = "HEAD")
+        public IEnumerable<string> GetPreviousCommitMessages(int count, string revision = "HEAD", string authorPattern = "")
         {
             var args = new GitArgumentBuilder("log")
             {
                 "-z",
                 $"-n {count}",
                 revision,
-                "--pretty=format:%e%n%s%n%n%b"
+                "--pretty=format:%e%n%s%n%n%b",
+                { !string.IsNullOrEmpty(authorPattern), string.Concat("--author=\"", authorPattern, "\"") }
             };
+
             var messages = _gitExecutable.GetOutput(
                 args,
                 outputEncoding: LosslessEncoding).Split(new[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
@@ -3730,6 +3809,46 @@ namespace GitCommands
                 });
         }
 
+        /// <summary>
+        /// Escapes a UTF8 string <paramref name="s"/> into octal code points.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="s"/> is <c>null</c> then an empty string is returned.
+        /// </remarks>
+        /// <example>
+        /// <code>EscapeOctalCodePoints("두다") == @"\353\221\220\353\213\244"</code>
+        /// </example>
+        /// <param name="s">The string to escape.</param>
+        /// <returns>The escaped string, or <c>""</c> if <paramref name="s"/> is <c>null</c>.</returns>
+        public static string EscapeOctalCodePoints([CanBeNull] string s)
+        {
+            if (s == null)
+            {
+                return null;
+            }
+
+            var resultBuilder = new StringBuilder(s.Length);
+
+            for (int i = 0; i < s.Length; i++)
+            {
+                var charSubstring = s.Substring(i, 1);
+                var charBytes = Encoding.UTF8.GetBytes(charSubstring);
+                if (charBytes.Length == 1)
+                {
+                    resultBuilder.Append(charSubstring);
+                }
+                else
+                {
+                    foreach (var charByte in charBytes)
+                    {
+                        resultBuilder.AppendFormat(@"\{0}", Convert.ToString(charByte, toBase: 8));
+                    }
+                }
+            }
+
+            return resultBuilder.ToString();
+        }
+
         [ContractAnnotation("fileName:null=>null")]
         [ContractAnnotation("fileName:notnull=>notnull")]
         public static string ReEncodeFileNameFromLossless([CanBeNull] string fileName)
@@ -3937,7 +4056,7 @@ namespace GitCommands
                 "--no-commit-id",
                 extraArgs,
                 revisionOfMergeCommit.Guid,
-                { AppSettings.UsePatienceDiffAlgorithm, "--patience" },
+                { AppSettings.UseHistogramDiffAlgorithm, "--histogram" },
                 "--",
                 filePath.ToPosixPath().Quote()
             };
@@ -4065,20 +4184,6 @@ namespace GitCommands
             }
 
             public GitArgumentBuilder UpdateIndexCmd(bool showErrorsWhenStagingFiles) => _gitModule.UpdateIndexCmd(showErrorsWhenStagingFiles);
-        }
-    }
-
-    public readonly struct Remote
-    {
-        public string Name { get; }
-        public string PushUrl { get; }
-        public string FetchUrl { get; }
-
-        public Remote(string name, string pushUrl, string fetchUrl)
-        {
-            Name = name ?? throw new ArgumentNullException(nameof(name));
-            PushUrl = pushUrl ?? throw new ArgumentNullException(nameof(pushUrl));
-            FetchUrl = fetchUrl ?? throw new ArgumentNullException(nameof(fetchUrl));
         }
     }
 }

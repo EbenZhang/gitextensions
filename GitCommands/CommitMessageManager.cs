@@ -1,5 +1,7 @@
-﻿using System.IO.Abstractions;
+﻿using System.IO;
+using System.IO.Abstractions;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace GitCommands
 {
@@ -40,18 +42,22 @@ namespace GitCommands
         private Encoding _commitEncoding;
         private IFileSystem _fileSystem;
 
-        public CommitMessageManager(string workingDirGitDir, Encoding commitEncoding)
-            : this(workingDirGitDir, commitEncoding, new FileSystem())
+        [CanBeNull]
+        private string _overriddenCommitMessage;
+
+        public CommitMessageManager(string workingDirGitDir, Encoding commitEncoding, string overriddenCommitMessage = null)
+            : this(workingDirGitDir, commitEncoding, new FileSystem(), overriddenCommitMessage)
         {
         }
 
-        private CommitMessageManager(string workingDirGitDir, Encoding commitEncoding, IFileSystem fileSystem)
+        internal CommitMessageManager(string workingDirGitDir, Encoding commitEncoding, IFileSystem fileSystem, string overriddenCommitMessage = null)
         {
             _fileSystem = fileSystem;
             _commitEncoding = commitEncoding;
             _amendSaveStatePath = GetFilePath(workingDirGitDir, "GitExtensions.amend");
             _commitMessagePath = GetFilePath(workingDirGitDir, "COMMITMESSAGE");
             _mergeMessagePath = GetFilePath(workingDirGitDir, "MERGE_MSG");
+            _overriddenCommitMessage = overriddenCommitMessage;
         }
 
         public bool AmendState
@@ -88,17 +94,36 @@ namespace GitCommands
         {
             get
             {
+                if (_overriddenCommitMessage != null)
+                {
+                    return _overriddenCommitMessage;
+                }
+
                 var (file, exists) = GetMergeOrCommitMessagePath();
                 return exists ? _fileSystem.File.ReadAllText(file, _commitEncoding) : string.Empty;
             }
             set
             {
-                _fileSystem.File.WriteAllText(GetMergeOrCommitMessagePath().FilePath, value ?? string.Empty, _commitEncoding);
+                var content = value ?? string.Empty;
+
+                // do not remember commit message when they have been specified by the command line
+                if (content != _overriddenCommitMessage)
+                {
+                    var path = GetMergeOrCommitMessagePath().FilePath;
+                    if (!_fileSystem.Directory.Exists(Path.GetDirectoryName(path)))
+                    {
+                        // The repo no longer exists
+                        return;
+                    }
+
+                    _fileSystem.File.WriteAllText(path, content, _commitEncoding);
+                }
             }
         }
 
         public void ResetCommitMessage()
         {
+            _overriddenCommitMessage = null;
             _fileSystem.File.Delete(_commitMessagePath);
             _fileSystem.File.Delete(_amendSaveStatePath);
         }
@@ -113,12 +138,6 @@ namespace GitCommands
             }
 
             return (_commitMessagePath, _fileSystem.File.Exists(_commitMessagePath));
-        }
-
-        internal class TestAccessor
-        {
-            internal static CommitMessageManager Construct(string workingDirGitDir, Encoding commitEncoding, IFileSystem fileSystem)
-                => new CommitMessageManager(workingDirGitDir, commitEncoding, fileSystem);
         }
     }
 }

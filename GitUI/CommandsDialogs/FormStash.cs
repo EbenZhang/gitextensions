@@ -219,16 +219,16 @@ namespace GitUI.CommandsDialogs
                                 Patch patch = Module.GetSingleDiff(gitStash.Name + "^", gitStash.Name, stashedItem.Name, stashedItem.OldName, extraDiffArguments, encoding, true, stashedItem.IsTracked);
                                 if (patch == null)
                                 {
-                                    return (text: string.Empty, openWithDifftool: null /* not applicable */);
+                                    return (text: string.Empty, openWithDifftool: null /* not applicable */, filename: null);
                                 }
 
                                 if (stashedItem.IsSubmodule)
                                 {
                                     return (text: LocalizationHelpers.ProcessSubmodulePatch(Module, stashedItem.Name, patch),
-                                            openWithDifftool: null /* not implemented */);
+                                            openWithDifftool: null /* not implemented */, filename: null);
                                 }
 
-                                return (text: patch.Text, openWithDifftool: null /* not implemented */);
+                                return (text: patch.Text, openWithDifftool: null /* not implemented */, filename: stashedItem.Name);
                             });
                     }
                 }
@@ -437,6 +437,16 @@ namespace GitUI.CommandsDialogs
             {
                 Close();
             }
+        }
+
+        private void CherryPickFileChangesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            View.CherryPickAllChanges();
+        }
+
+        private void ContextMenuStripStashedFiles_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            cherryPickFileChangesToolStripMenuItem.Enabled = Stashed.SelectedItems.Count() == 1;
         }
     }
 }

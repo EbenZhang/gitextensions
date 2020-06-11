@@ -19,8 +19,9 @@
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.CommitInfo = new GitUI.CommitInfo.CommitInfo();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
-            this.BlameCommitter = new GitUI.Editor.FileViewer();
+            this.BlameAuthor = new GitUI.Editor.FileViewer();
             this.contextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.blameRevisionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.blamePreviousRevisionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.showChangesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
@@ -80,7 +81,7 @@
             // 
             // splitContainer2.Panel1
             // 
-            this.splitContainer2.Panel1.Controls.Add(this.BlameCommitter);
+            this.splitContainer2.Panel1.Controls.Add(this.BlameAuthor);
             // 
             // splitContainer2.Panel2
             // 
@@ -91,19 +92,20 @@
             // 
             // BlameCommitter
             // 
-            this.BlameCommitter.ContextMenuStrip = this.contextMenu;
-            this.BlameCommitter.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.BlameCommitter.IsReadOnly = false;
-            this.BlameCommitter.Location = new System.Drawing.Point(0, 0);
-            this.BlameCommitter.Margin = new System.Windows.Forms.Padding(0);
-            this.BlameCommitter.Name = "BlameCommitter";
-            this.BlameCommitter.Size = new System.Drawing.Size(186, 576);
-            this.BlameCommitter.TabIndex = 5;
-            this.BlameCommitter.TabStop = false;
+            this.BlameAuthor.ContextMenuStrip = this.contextMenu;
+            this.BlameAuthor.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.BlameAuthor.IsReadOnly = false;
+            this.BlameAuthor.Location = new System.Drawing.Point(0, 0);
+            this.BlameAuthor.Margin = new System.Windows.Forms.Padding(0);
+            this.BlameAuthor.Name = "BlameAuthor";
+            this.BlameAuthor.Size = new System.Drawing.Size(186, 576);
+            this.BlameAuthor.TabIndex = 5;
+            this.BlameAuthor.TabStop = false;
             // 
             // contextMenu
             // 
             this.contextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.blameRevisionToolStripMenuItem,
             this.blamePreviousRevisionToolStripMenuItem,
             this.showChangesToolStripMenuItem,
             this.toolStripSeparator1,
@@ -116,6 +118,11 @@
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
             this.toolStripSeparator1.Size = new System.Drawing.Size(235, 6);
+            this.blameRevisionToolStripMenuItem.Image = global::GitUI.Properties.Resources.Blame;
+            this.blameRevisionToolStripMenuItem.Name = "blameRevisionToolStripMenuItem";
+            this.blameRevisionToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
+            this.blameRevisionToolStripMenuItem.Text = "Blame this revision";
+            this.blameRevisionToolStripMenuItem.Click += new System.EventHandler(this.blameRevisionToolStripMenuItem_Click);
             // 
             // blamePreviousRevisionToolStripMenuItem
             // 
@@ -203,7 +210,7 @@
         private System.Windows.Forms.SplitContainer splitContainer1;
         private CommitInfo.CommitInfo CommitInfo;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private GitUI.Editor.FileViewer BlameCommitter;
+        private GitUI.Editor.FileViewer BlameAuthor;
         private GitUI.Editor.FileViewer BlameFile;
         private System.Windows.Forms.ToolTip blameTooltip;
         private System.Windows.Forms.ContextMenuStrip contextMenu;
@@ -214,5 +221,6 @@
         private System.Windows.Forms.ToolStripMenuItem commitHashToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem commitMessageToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem allCommitInfoToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem blameRevisionToolStripMenuItem;
     }
 }

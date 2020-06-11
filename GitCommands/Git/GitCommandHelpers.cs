@@ -10,6 +10,7 @@ using GitCommands.Git;
 using GitCommands.Git.Extensions;
 using GitCommands.Patches;
 using GitCommands.Utils;
+using GitExtUtils;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 using Microsoft.VisualStudio.Threading;
@@ -82,9 +83,15 @@ namespace GitCommands
         Mixed,
 
         /// <summary>--hard</summary>
-        Hard
+        Hard,
 
-        // All options are not implemented, like --merge, --keep, --patch
+        /// <summary>--merge</summary>
+        Merge,
+
+        /// <summary>--keep</summary>
+        Keep
+
+        // All options are not implemented, like --patch
     }
 
     public static class GitCommandHelpers
@@ -403,7 +410,7 @@ namespace GitCommands
                 { interactive, "-i" },
                 { interactive && autosquash, "--autosquash" },
                 { interactive && !autosquash, "--no-autosquash" },
-                { preserveMerges, "--preserve-merges" },
+                { preserveMerges, GitVersion.Current.SupportRebaseMerges ? "--rebase-merges" : "--preserve-merges" },
                 { autoStash, "--autostash" },
                 from.QuoteNE(),
                 branch.Quote(),

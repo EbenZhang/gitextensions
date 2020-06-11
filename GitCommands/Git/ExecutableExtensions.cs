@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GitExtUtils;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 
@@ -46,6 +47,38 @@ namespace GitCommands
         {
             return GitUI.ThreadHelper.JoinableTaskFactory.Run(
                 () => executable.GetOutputAsync(arguments, input, outputEncoding, cache, stripAnsiEscapeCodes));
+        }
+
+        /// <summary>
+        /// Launches a process for the executable per batch item and returns its output.
+        /// </summary>
+        /// <remarks>
+        /// This method uses <see cref="GetOutput"/> to get concatenated outputs of multiple commands in batch.
+        /// </remarks>
+        /// <param name="executable">The executable from which to launch processes.</param>
+        /// <param name="batchArguments">The array of batch arguments to pass to the executable</param>
+        /// <param name="input">Bytes to be written to each process's standard input stream, or <c>null</c> if no input is required.</param>
+        /// <param name="outputEncoding">The text encoding to use when decoding bytes read from each process's standard output and standard error streams, or <c>null</c> if the default encoding is to be used.</param>
+        /// <param name="cache">A <see cref="CommandCache"/> to use if command results may be cached, otherwise <c>null</c>.</param>
+        /// <param name="stripAnsiEscapeCodes">A flag indicating whether ANSI escape codes should be removed from output strings.</param>
+        /// <returns>The concatenation of standard output and standard error. To receive these outputs separately, use <see cref="Execute"/> instead.</returns>
+        [NotNull]
+        [MustUseReturnValue("If output text is not required, use " + nameof(RunCommand) + " instead")]
+        public static string GetBatchOutput(
+            this IExecutable executable,
+            ICollection<BatchArgumentItem> batchArguments = default,
+            byte[] input = null,
+            Encoding outputEncoding = null,
+            CommandCache cache = null,
+            bool stripAnsiEscapeCodes = true)
+        {
+            var sb = new StringBuilder();
+            foreach (var batch in batchArguments)
+            {
+                sb.Append(executable.GetOutput(batch.Argument, input, outputEncoding, cache, stripAnsiEscapeCodes));
+            }
+
+            return sb.ToString();
         }
 
         /// <summary>
@@ -139,6 +172,42 @@ namespace GitCommands
         {
             return GitUI.ThreadHelper.JoinableTaskFactory.Run(
                 () => executable.RunCommandAsync(arguments, input, createWindow));
+        }
+
+        /// <summary>
+        /// Launches a process for the executable per batch item, and returns <c>true</c> if all process exit codes were zero.
+        /// </summary>
+        /// <remarks>
+        /// This method uses <see cref="RunCommand"/> to execute multiple commands in batch, used in accordance with
+        /// <see cref="ArgumentBuilderExtensions.BuildBatchArguments(ArgumentBuilder, IEnumerable{string}, int?, int)"/>
+        /// to work around Windows command line length 32767 character limitation
+        /// <see href="https://docs.microsoft.com/en-us/windows/desktop/api/processthreadsapi/nf-processthreadsapi-createprocessa"/>.
+        /// </remarks>
+        /// <param name="executable">The executable from which to launch processes.</param>
+        /// <param name="batchArguments">The array of batch arguments to pass to the executable</param>
+        /// <param name="input">Bytes to be written to each process's standard input stream, or <c>null</c> if no input is required.</param>
+        /// <param name="createWindow">A flag indicating whether a console window should be created and bound to each process.</param>
+        /// <returns><c>true</c> if all process exit codes were zero, otherwise <c>false</c>.</returns>
+        [MustUseReturnValue("Callers should verify that " + nameof(RunBatchCommand) + " returned true")]
+        public static bool RunBatchCommand(
+            this IExecutable executable,
+            ICollection<BatchArgumentItem> batchArguments,
+            Action<BatchProgressEventArgs> action = null,
+            byte[] input = null,
+            bool createWindow = false)
+        {
+            int total = batchArguments.Sum(item => item.BatchItemsCount);
+            var result = true;
+
+            foreach (var item in batchArguments)
+            {
+                result &= executable.RunCommand(item.Argument, input, createWindow);
+
+                // Invoke batch progress callback
+                action?.Invoke(new BatchProgressEventArgs(item.BatchItemsCount, result));
+            }
+
+            return result;
         }
 
         /// <summary>

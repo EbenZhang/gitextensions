@@ -48,18 +48,22 @@
     <Reference Include="PSTaskDialog">
       <HintPath>..\Bin\PSTaskDialog.dll</HintPath>
     </Reference>
-    <PackageReference Include="RestSharp" Version="106.2.1" />
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Data" />
     <Reference Include="System.DirectoryServices" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Management" />
     <Reference Include="System.Security" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AppInsights.WindowsDesktop">
+      <Version>2.10.42-preview</Version>
+    </PackageReference>
     <PackageReference Include="Microsoft-WindowsAPICodePack-Core">
       <Version>1.1.3.3</Version>
     </PackageReference>
@@ -69,7 +73,7 @@
     <PackageReference Include="System.IO.Abstractions">
       <Version>2.0.0.144</Version>
     </PackageReference>
-    <PackageReference Include="System.Reactive" Version="3.1.1" />
+    <PackageReference Include="System.Reactive" Version="4.2.0" />
     <PackageReference Include="System.Runtime.InteropServices.RuntimeInformation">
       <Version>4.3.0</Version>
     </PackageReference>
@@ -313,9 +317,17 @@
     <Compile Include="CommandsDialogs\SettingsDialog\Pages\FormBrowseRepoSettingsPage.Designer.cs">
       <DependentUpon>FormBrowseRepoSettingsPage.cs</DependentUpon>
     </Compile>
+    <Compile Include="CommandsDialogs\SettingsDialog\RevisionLinks\AzureDevopsExternalLinkDefinitionExtractor.cs" />
+    <Compile Include="CommandsDialogs\SettingsDialog\RevisionLinks\CloudProviderExternalLinkDefinitionExtractorFactory.cs" />
+    <Compile Include="CommandsDialogs\SettingsDialog\RevisionLinks\CloudProviderKind.cs" />
+    <Compile Include="CommandsDialogs\SettingsDialog\RevisionLinks\GitHubExternalLinkDefinitionExtractor.cs" />
+    <Compile Include="CommandsDialogs\SettingsDialog\RevisionLinks\ICloudProviderExternalLinkDefinitionExtractor.cs" />
+    <Compile Include="CommandsDialogs\SettingsDialog\RevisionLinks\ICloudProviderExternalLinkDefinitionExtractorFactory.cs" />
+    <Compile Include="CommandsDialogs\SettingsDialog\RevisionLinks\ExternalLinkDefinitionExtractor.cs" />
     <Compile Include="CommandsDialogs\ToolStripPushButton.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="CommitInfo\RefsFormatter.cs" />
     <Compile Include="CommitInfo\CommitInfoHeader.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -329,6 +341,38 @@
     <Compile Include="Editor\GitHighlightingStrategyBase.cs" />
     <Compile Include="Editor\RebaseTodoHighlightingStrategy.cs" />
     <Compile Include="FindFilePredicateProvider.cs" />
+    <Compile Include="Infrastructure\Telemetry\MonitorsTelemetryInitializer.cs" />
+    <Compile Include="NBugReports\BugReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="NBugReports\BugReportForm.Designer.cs">
+      <DependentUpon>BugReportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NBugReports\ErrorReportMarkDownBodyBuilder.cs" />
+    <Compile Include="NBugReports\ExceptionDetails.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="NBugReports\ExceptionDetails.Designer.cs">
+      <DependentUpon>ExceptionDetails.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NBugReports\ExceptionDetailView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="NBugReports\ExceptionDetailView.Designer.cs">
+      <DependentUpon>ExceptionDetailView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NBugReports\GitHubUrlBuilder.cs" />
+    <Compile Include="NBugReports\Info\AssemblyInfo.cs" />
+    <Compile Include="NBugReports\Info\ConfigurationInfo.cs" />
+    <Compile Include="NBugReports\Info\GeneralInfo.cs" />
+    <Compile Include="NBugReports\Info\Report.cs" />
+    <Compile Include="NBugReports\Info\SystemInfo.cs" />
+    <Compile Include="NBugReports\Serialization\SerializableDictionary.cs" />
+    <Compile Include="NBugReports\Serialization\SerializableException.cs" />
+    <Compile Include="Infrastructure\Telemetry\AppInfoTelemetryInitializer.cs" />
+    <Compile Include="Infrastructure\Telemetry\AppEnvironmentTelemetryInitializer.cs" />
+    <Compile Include="Infrastructure\Telemetry\DiagnosticsClient.cs" />
+    <Compile Include="Infrastructure\Telemetry\FormBrowseDiagnosticsReporter.cs" />
     <Compile Include="Properties\Images.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -416,8 +460,10 @@
     <Compile Include="SplitterManager.cs" />
     <Compile Include="SpellChecker\SpellCheckerHelper.cs" />
     <Compile Include="SpellChecker\WordAtCursorExtractor.cs" />
+    <Compile Include="Strings.cs" />
     <Compile Include="TaskbarProgress.cs" />
     <Compile Include="UserControls\GitItemStatusWithParent.cs" />
+    <Compile Include="UserControls\EnterEventArgs.cs" />
     <Compile Include="UserControls\NativeTreeViewDoubleClickDecorator.cs" />
     <Compile Include="UserControls\NativeTreeViewExplorerNavigationDecorator.cs" />
     <Compile Include="UserControls\RevisionGrid\CellStyle.cs" />
@@ -426,7 +472,6 @@
     <Compile Include="UserControls\RevisionGrid\Graph\LaneNodeLocator.cs" />
     <Compile Include="UserControls\RevisionGrid\Columns\RevisionGraphColumnProvider.cs" />
     <Compile Include="UserControls\RevisionGrid\Columns\MultilineIndicator.cs" />
-    <Compile Include="UserControls\HslColor.cs" />
     <Compile Include="UserControls\RevisionGrid\FormQuickStringSelector.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -728,7 +773,6 @@
     <Compile Include="CommandsDialogs\FormBrowse.Designer.cs">
       <DependentUpon>FormBrowse.cs</DependentUpon>
     </Compile>
-    <Compile Include="ColorHelper.cs" />
     <Compile Include="CommandsDialogs\FormCommit.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1295,6 +1339,9 @@
     <EmbeddedResource Include="CommitInfo\CommitInfoHeader.resx">
       <DependentUpon>CommitInfoHeader.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="NBugReports\BugReportForm.resx">
+      <DependentUpon>BugReportForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="HelperDialogs\FormBuildServerCredentials.resx">
       <DependentUpon>FormBuildServerCredentials.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -1310,6 +1357,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="CommandsDialogs\SettingsDialog\Plugins\PluginRootIntroductionPage.resx">
       <DependentUpon>PluginRootIntroductionPage.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NBugReports\ExceptionDetails.resx">
+      <DependentUpon>ExceptionDetails.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NBugReports\ExceptionDetailView.resx">
+      <DependentUpon>ExceptionDetailView.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -1749,109 +1802,14 @@
     <Compile Include="Script\SplitButton.cs">
       <SubType>Component</SubType>
     </Compile>
+    <None Include="ApplicationInsights.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="gituikey.snk.pfx" />
     <None Include="Properties\DataSources\GitCommands.GitItem.datasource" />
     <None Include="Properties\DataSources\GitCommands.GitItemStatus.datasource" />
     <None Include="Properties\DataSources\GitCommands.GitRevision.datasource" />
     <None Include="Resources\ChangeLog.md" />
-    <None Include="Translation\Czech.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Czech.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Dutch.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Dutch.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\English.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\English.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\en_pseudo.Plugins.xlf" />
-    <None Include="Translation\en_pseudo.xlf" />
-    <None Include="Translation\French.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\French.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\German.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\German.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Italian.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Italian.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Japanese.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Japanese.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Korean.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Korean.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Polish.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Polish.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Portuguese %28Brazil%29.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Portuguese %28Brazil%29.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Portuguese %28Portugal%29.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Portuguese %28Portugal%29.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Romanian.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Romanian.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Russian.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Russian.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Simplified Chinese.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Simplified Chinese.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Spanish.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Spanish.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Traditional Chinese.Plugins.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Translation\Traditional Chinese.xlf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Icons\DocumentTree.png" />
@@ -1862,54 +1820,8 @@
     <None Include="Resources\Icons\CommitId.png" />
     <None Include="Resources\Icons\CommitSummary.png" />
     <None Include="Resources\Icons\Message.png" />
-    <Content Include="Translation\Czech.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Dutch.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\English.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\French.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\German.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Italian.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Japanese.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Korean.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Polish.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Portuguese %28Brazil%29.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Portuguese %28Portugal%29.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Romanian.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Russian.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Simplified Chinese.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Spanish.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Translation\Traditional Chinese.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <None Include="Resources\Icons\branch.png" />
+    <None Include="Resources\Icons\RepoOpen.png" />
     <None Include="Properties\DataSources\GitUI.Script.ScriptInfo.datasource" />
     <None Include="Properties\DataSources\GitCommands.Repository.datasource" />
     <None Include="Properties\DataSources\GitCommands.GitSubmodule.datasource" />
@@ -1922,5 +1834,75 @@
     <None Include="Properties\DataSources\GitCommands.GitStash.datasource" />
     <None Include="Properties\DataSources\PatchApply.PatchFile.datasource" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\Delete_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\Develop_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\FileStatusRenamed_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\github_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\GitHub32_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\Link_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\PullRequest_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\RecoverLostObjects_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\ShowWhitespace_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\Translate_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\WhitespaceIgnore_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\WhitespaceIgnoreAll_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\WhitespaceIgnoreEol_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\branch_inv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\bug.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\Blame.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\FileStatusAdded.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\FileStatusRemoved.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\CherryPick.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icons\SyntaxHighlighting.png" />
+  </ItemGroup>
+  <Target Name="CopyTranslations" AfterTargets="AfterBuild">
+    <ItemGroup>
+      <Translations Include="$(ProjectDir)Translation\*.xlf;$(ProjectDir)Translation\*.gif" />
+    </ItemGroup>
+    <Copy SourceFiles="@(Translations)" DestinationFolder="$(TargetDir)Translation" ContinueOnError="false" />
+  </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
 </Project>

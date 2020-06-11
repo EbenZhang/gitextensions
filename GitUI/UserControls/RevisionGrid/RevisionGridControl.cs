@@ -14,6 +14,7 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
 using GitCommands.Git;
+using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.Avatars;
 using GitUI.BuildServerIntegration;
@@ -21,6 +22,7 @@ using GitUI.CommandsDialogs;
 using GitUI.CommandsDialogs.BrowseDialog;
 using GitUI.HelperDialogs;
 using GitUI.Hotkey;
+using GitUI.Properties;
 using GitUI.Script;
 using GitUI.UserControls;
 using GitUI.UserControls.RevisionGrid;
@@ -128,6 +130,9 @@ namespace GitUI
         {
             InitializeComponent();
             InitializeComplete();
+
+            bool light = ColorHelper.IsLightTheme();
+            openPullRequestPageStripMenuItem.Image = light ? Images.PullRequest : Images.PullRequest_inv;
 
             _loadingControlAsync = new Label
             {
@@ -943,7 +948,7 @@ namespace GitUI
                         Committer = userName,
                         CommitDate = DateTime.MaxValue,
                         CommitterEmail = userEmail,
-                        Subject = Strings.Workspace,
+                        Subject = ResourceManager.Strings.Workspace,
                         ParentIds = new[] { ObjectId.IndexId },
                         HasNotes = true
                     };
@@ -958,7 +963,7 @@ namespace GitUI
                         Committer = userName,
                         CommitDate = DateTime.MaxValue,
                         CommitterEmail = userEmail,
-                        Subject = Strings.Index,
+                        Subject = ResourceManager.Strings.Index,
                         ParentIds = new[] { filteredCurrentCheckout },
                         HasNotes = true
                     };
@@ -1340,7 +1345,7 @@ namespace GitUI
             var pt = _gridView.PointToClient(Cursor.Position);
             var hti = _gridView.HitTest(pt.X, pt.Y);
 
-            if (_latestSelectedRowIndex == hti.RowIndex)
+            if (_latestSelectedRowIndex == hti.RowIndex && _gridView.Rows[_latestSelectedRowIndex].Selected)
             {
                 return;
             }
@@ -1507,15 +1512,15 @@ namespace GitUI
             var revision = LatestSelectedRevision;
             var gitRefListsForRevision = new GitRefListsForRevision(revision);
             _rebaseOnTopOf = null;
+
             foreach (var head in gitRefListsForRevision.AllTags)
             {
-                var deleteItem = new ToolStripMenuItem(head.Name);
-                deleteItem.Click += delegate { UICommands.StartDeleteTagDialog(this, head.Name); };
-                deleteTagDropDown.Items.Add(deleteItem);
+                AddBranchMenuItem(deleteTagDropDown, head, delegate { UICommands.StartDeleteTagDialog(this, head.Name); });
 
-                var mergeItem = new ToolStripMenuItem(head.Name) { Tag = GetRefUnambiguousName(head) };
-                mergeItem.Click += delegate { UICommands.StartMergeBranchDialog(this, GetRefUnambiguousName(head)); };
-                mergeBranchDropDown.Items.Add(mergeItem);
+                var refUnambiguousName = GetRefUnambiguousName(head);
+                var mergeItem = AddBranchMenuItem(mergeBranchDropDown, head,
+                    delegate { UICommands.StartMergeBranchDialog(this, refUnambiguousName); });
+                mergeItem.Tag = refUnambiguousName;
             }
 
             // For now there is no action that could be done on currentBranch
@@ -1531,9 +1536,8 @@ namespace GitUI
                 }
                 else
                 {
-                    var toolStripItem = new ToolStripMenuItem(head.Name);
-                    toolStripItem.Click += delegate { UICommands.StartMergeBranchDialog(this, GetRefUnambiguousName(head)); };
-                    mergeBranchDropDown.Items.Add(toolStripItem);
+                    var toolStripItem = AddBranchMenuItem(mergeBranchDropDown, head,
+                        delegate { UICommands.StartMergeBranchDialog(this, GetRefUnambiguousName(head)); });
 
                     if (_rebaseOnTopOf == null)
                     {
@@ -1561,6 +1565,7 @@ namespace GitUI
             }
 
             var allBranches = gitRefListsForRevision.AllBranches;
+            bool firstRemoteBranchForCheckout = false;
             foreach (var head in allBranches)
             {
                 // skip remote branches - they can not be deleted this way
@@ -1568,20 +1573,25 @@ namespace GitUI
                 {
                     if (head.CompleteName != currentBranchRef)
                     {
-                        var deleteBranchMenuItem = new ToolStripMenuItem(head.Name);
-                        deleteBranchMenuItem.Click += delegate { UICommands.StartDeleteBranchDialog(this, head.Name); };
-                        deleteBranchDropDown.Items.Add(deleteBranchMenuItem);
+                        AddBranchMenuItem(deleteBranchDropDown, head, delegate { UICommands.StartDeleteBranchDialog(this, head.Name); });
                     }
 
-                    var renameBranchMenuItem = new ToolStripMenuItem(head.Name);
-                    renameBranchMenuItem.Click += delegate { UICommands.StartRenameDialog(this, head.Name); };
-                    renameDropDown.Items.Add(renameBranchMenuItem);
+                    AddBranchMenuItem(renameDropDown, head, delegate { UICommands.StartRenameDialog(this, head.Name); });
                 }
 
                 if (head.CompleteName != currentBranchRef)
                 {
-                    var checkoutBranchMenuItem = new ToolStripMenuItem(head.Name);
-                    checkoutBranchMenuItem.Click += delegate
+                    if (!head.IsRemote)
+                    {
+                        firstRemoteBranchForCheckout = true;
+                    }
+                    else if (firstRemoteBranchForCheckout)
+                    {
+                        checkoutBranchDropDown.Items.Add(new ToolStripSeparator());
+                        firstRemoteBranchForCheckout = false;
+                    }
+
+                    AddBranchMenuItem(checkoutBranchDropDown, head, delegate
                     {
                         if (head.IsRemote)
                         {
@@ -1591,8 +1601,7 @@ namespace GitUI
                         {
                             UICommands.StartCheckoutBranch(this, head.Name);
                         }
-                    };
-                    checkoutBranchDropDown.Items.Add(checkoutBranchMenuItem);
+                    });
                 }
             }
 
@@ -1610,9 +1619,7 @@ namespace GitUI
                         }
                     }
 
-                    var toolStripItem = new ToolStripMenuItem(head.Name);
-                    toolStripItem.Click += delegate { UICommands.StartDeleteRemoteBranchDialog(this, head.Name); };
-                    deleteBranchDropDown.Items.Add(toolStripItem);
+                    AddBranchMenuItem(deleteBranchDropDown, head, delegate { UICommands.StartDeleteRemoteBranchDialog(this, head.Name); });
                 }
             }
 
@@ -1684,6 +1691,17 @@ namespace GitUI
                         seenItem = true;
                     }
                 }
+            }
+
+            ToolStripMenuItem AddBranchMenuItem(ContextMenuStrip menu, IGitRef gitRef, EventHandler action)
+            {
+                var menuItem = new ToolStripMenuItem(gitRef.Name)
+                {
+                    Image = gitRef.IsRemote ? Images.BranchRemote : Images.BranchLocal
+                };
+                menuItem.Click += action;
+                menu.Items.Add(menuItem);
+                return menuItem;
             }
         }
 
@@ -1789,7 +1807,7 @@ namespace GitUI
                 return;
             }
 
-            GitRevision mainRevision = selectedRevisions.First();
+            GitRevision mainRevision = selectedRevisions.FirstOrDefault();
             GitRevision diffRevision = null;
             if (selectedRevisions.Count == 2)
             {
@@ -1811,6 +1829,18 @@ namespace GitUI
             AppSettings.ShowRemoteBranches = !AppSettings.ShowRemoteBranches;
             MenuCommands.TriggerMenuChanged();
             _gridView.Invalidate();
+        }
+
+        internal void ToggleShowArtificialCommits()
+        {
+            AppSettings.RevisionGraphShowWorkingDirChanges = !AppSettings.RevisionGraphShowWorkingDirChanges;
+            ForceRefreshRevisions();
+        }
+
+        internal void ToggleAuthorDateSort()
+        {
+            AppSettings.SortByAuthorDate = !AppSettings.SortByAuthorDate;
+            ForceRefreshRevisions();
         }
 
         internal void ToggleShowReflogReferences()
@@ -2333,7 +2363,12 @@ namespace GitUI
 
         private void CompareToBranchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var headCommit = GetSelectedRevisions().First();
+            var headCommit = GetSelectedRevisions().FirstOrDefault();
+            if (headCommit == null)
+            {
+                return;
+            }
+
             using (var form = new FormCompareToBranch(UICommands, headCommit.ObjectId))
             {
                 if (form.ShowDialog(this) == DialogResult.OK)
@@ -2354,15 +2389,20 @@ namespace GitUI
                 return;
             }
 
-            var baseCommit = GetSelectedRevisions().First();
+            var baseCommit = GetSelectedRevisions().FirstOrDefault();
+            if (baseCommit == null)
+            {
+                return;
+            }
+
             var headBranchName = Module.RevParse(headBranch);
             UICommands.ShowFormDiff(IsFirstParentValid(), baseCommit.ObjectId, headBranchName, baseCommit.Subject, headBranch);
         }
 
         private void selectAsBaseToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            _baseCommitToCompare = GetSelectedRevisions().First();
-            compareToBaseToolStripMenuItem.Enabled = true;
+            _baseCommitToCompare = GetSelectedRevisions().FirstOrDefault();
+            compareToBaseToolStripMenuItem.Enabled = _baseCommitToCompare != null;
         }
 
         private void compareToBaseToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2373,13 +2413,23 @@ namespace GitUI
                 return;
             }
 
-            var headCommit = GetSelectedRevisions().First();
+            var headCommit = GetSelectedRevisions().FirstOrDefault();
+            if (headCommit == null)
+            {
+                return;
+            }
+
             UICommands.ShowFormDiff(IsFirstParentValid(), _baseCommitToCompare.ObjectId, headCommit.ObjectId, _baseCommitToCompare.Subject, headCommit.Subject);
         }
 
         private void compareToWorkingDirectoryMenuItem_Click(object sender, EventArgs e)
         {
-            var baseCommit = GetSelectedRevisions().First();
+            var baseCommit = GetSelectedRevisions().FirstOrDefault();
+            if (baseCommit == null)
+            {
+                return;
+            }
+
             if (baseCommit.ObjectId == ObjectId.WorkTreeId)
             {
                 MessageBox.Show(this, "Cannot diff working directory to itself");
@@ -2412,9 +2462,9 @@ namespace GitUI
 
         private void openBuildReportToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var revision = GetSelectedRevisions().First();
+            var revision = GetSelectedRevisions().FirstOrDefault();
 
-            if (!string.IsNullOrWhiteSpace(revision.BuildStatus?.Url))
+            if (revision != null && !string.IsNullOrWhiteSpace(revision.BuildStatus?.Url))
             {
                 Process.Start(revision.BuildStatus.Url);
             }
@@ -2422,9 +2472,9 @@ namespace GitUI
 
         private void openPullRequestPageStripMenuItem_Click(object sender, EventArgs e)
         {
-            var revision = GetSelectedRevisions().First();
+            var revision = GetSelectedRevisions().FirstOrDefault();
 
-            if (!string.IsNullOrWhiteSpace(revision.BuildStatus?.PullRequestUrl))
+            if (revision != null && !string.IsNullOrWhiteSpace(revision.BuildStatus?.PullRequestUrl))
             {
                 Process.Start(revision.BuildStatus.PullRequestUrl);
             }

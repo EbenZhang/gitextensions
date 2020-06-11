@@ -181,6 +181,7 @@ namespace GitUI.CommandsDialogs
             this.reportAnIssueToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.checkForUpdatesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiTelemetryEnabled = new System.Windows.Forms.ToolStripMenuItem();
             this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gitcommandLogToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator7 = new System.Windows.Forms.ToolStripSeparator();
@@ -188,6 +189,7 @@ namespace GitUI.CommandsDialogs
             this.gitItemBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.gitRevisionBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.toolPanel = new System.Windows.Forms.ToolStripContainer();
+            this._addUpstreamRemoteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             toolStripMenuItem2 = new System.Windows.Forms.ToolStripMenuItem();
             toolStripMenuItem4 = new System.Windows.Forms.ToolStripMenuItem();
             toolStripSeparator14 = new System.Windows.Forms.ToolStripSeparator();
@@ -367,6 +369,7 @@ namespace GitUI.CommandsDialogs
             // 
             // _NO_TRANSLATE_WorkingDir
             // 
+            this._NO_TRANSLATE_WorkingDir.Image = global::GitUI.Properties.Resources.RepoOpen;
             this._NO_TRANSLATE_WorkingDir.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this._NO_TRANSLATE_WorkingDir.ImageTransparentColor = System.Drawing.Color.Magenta;
             this._NO_TRANSLATE_WorkingDir.Name = "_NO_TRANSLATE_WorkingDir";
@@ -380,6 +383,7 @@ namespace GitUI.CommandsDialogs
             // 
             // branchSelect
             // 
+            this.branchSelect.Image = global::GitUI.Properties.Resources.branch;
             this.branchSelect.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.branchSelect.Name = "branchSelect";
             this.branchSelect.Size = new System.Drawing.Size(60, 22);
@@ -626,7 +630,7 @@ namespace GitUI.CommandsDialogs
             // 
             this.toolStripRevisionFilterTextBox.BackColor = System.Drawing.SystemColors.Control;
             this.toolStripRevisionFilterTextBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.toolStripRevisionFilterTextBox.ForeColor = System.Drawing.Color.Black;
+            this.toolStripRevisionFilterTextBox.ForeColor = System.Drawing.SystemColors.ControlText;
             this.toolStripRevisionFilterTextBox.Name = "toolStripRevisionFilterTextBox";
             this.toolStripRevisionFilterTextBox.Size = new System.Drawing.Size(100, 25);
             // 
@@ -835,7 +839,7 @@ namespace GitUI.CommandsDialogs
             // 
             // statusStrip
             // 
-            this.statusStrip.BackColor = System.Drawing.Color.FromArgb(218, 218, 218);
+            this.statusStrip.BackColor = System.Drawing.SystemColors.Control;
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.closeStatusBarItem});
             this.statusStrip.Location = new System.Drawing.Point(0, 551);
@@ -1508,7 +1512,8 @@ namespace GitUI.CommandsDialogs
             this._repositoryHostsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this._forkCloneRepositoryToolStripMenuItem,
             this._viewPullRequestsToolStripMenuItem,
-            this._createPullRequestsToolStripMenuItem});
+            this._createPullRequestsToolStripMenuItem,
+            this._addUpstreamRemoteToolStripMenuItem});
             this._repositoryHostsToolStripMenuItem.Name = "_repositoryHostsToolStripMenuItem";
             this._repositoryHostsToolStripMenuItem.Size = new System.Drawing.Size(114, 20);
             this._repositoryHostsToolStripMenuItem.Text = "(Repository hosts)";
@@ -1583,12 +1588,14 @@ namespace GitUI.CommandsDialogs
             this.translateToolStripMenuItem,
             this.toolStripSeparator16,
             this.donateToolStripMenuItem,
+            this.tsmiTelemetryEnabled,
             this.reportAnIssueToolStripMenuItem,
             this.checkForUpdatesToolStripMenuItem,
             this.aboutToolStripMenuItem});
             this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
             this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
             this.helpToolStripMenuItem.Text = "&Help";
+            this.helpToolStripMenuItem.DropDownOpening += new System.EventHandler(this.HelpToolStripMenuItem_DropDownOpening);
             // 
             // userManualToolStripMenuItem
             // 
@@ -1655,6 +1662,15 @@ namespace GitUI.CommandsDialogs
             this.aboutToolStripMenuItem.Size = new System.Drawing.Size(170, 22);
             this.aboutToolStripMenuItem.Text = "About";
             this.aboutToolStripMenuItem.Click += new System.EventHandler(this.AboutToolStripMenuItemClick);
+            // 
+            // tsmiTelemetryEnabled
+            // 
+            this.tsmiTelemetryEnabled.Checked = true;
+            this.tsmiTelemetryEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.tsmiTelemetryEnabled.Name = "tsmiTelemetryEnabled";
+            this.tsmiTelemetryEnabled.Size = new System.Drawing.Size(278, 34);
+            this.tsmiTelemetryEnabled.Text = "Yes, I allow telemetry";
+            this.tsmiTelemetryEnabled.Click += new System.EventHandler(this.TsmiTelemetryEnabled_Click);
             // 
             // toolsToolStripMenuItem
             // 
@@ -1728,6 +1744,13 @@ namespace GitUI.CommandsDialogs
             // 
             this.toolPanel.TopToolStripPanel.Controls.Add(this.ToolStrip);
             // 
+            // addUpstreamRemoteToolStripMenuItem
+            // 
+            this._addUpstreamRemoteToolStripMenuItem.Name = "_addUpstreamRemoteToolStripMenuItem";
+            this._addUpstreamRemoteToolStripMenuItem.Size = new System.Drawing.Size(360, 38);
+            this._addUpstreamRemoteToolStripMenuItem.Text = "Add upstream remote";
+            this._addUpstreamRemoteToolStripMenuItem.Click += new System.EventHandler(this._addUpstreamRemoteToolStripMenuItem_Click);
+            // 
             // FormBrowse
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
@@ -1774,7 +1797,7 @@ namespace GitUI.CommandsDialogs
 
         #endregion
 
-        private SplitContainer MainSplitContainer;
+        internal SplitContainer MainSplitContainer;
         private SplitContainer RightSplitContainer;
         private SplitContainer RevisionsSplitContainer;
 
@@ -1871,6 +1894,7 @@ namespace GitUI.CommandsDialogs
         private ToolStripMenuItem _forkCloneRepositoryToolStripMenuItem;
         private ToolStripMenuItem _viewPullRequestsToolStripMenuItem;
         private ToolStripMenuItem _createPullRequestsToolStripMenuItem;
+        private ToolStripMenuItem _addUpstreamRemoteToolStripMenuItem;
         private ToolStripMenuItem dashboardToolStripMenuItem;
         private ToolStripMenuItem manageSubmodulesToolStripMenuItem;
         private ToolStripSeparator toolStripSeparator8;
@@ -1942,5 +1966,6 @@ namespace GitUI.CommandsDialogs
         private ToolStripMenuItem commitInfoBelowMenuItem;
         private ToolStripMenuItem commitInfoLeftwardMenuItem;
         private ToolStripMenuItem commitInfoRightwardMenuItem;
+        private ToolStripMenuItem tsmiTelemetryEnabled;
     }
 }

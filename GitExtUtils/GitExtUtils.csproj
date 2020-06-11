@@ -53,7 +53,10 @@
     <Compile Include="BinarySearch.cs" />
     <Compile Include="ClipboardUtil.cs" />
     <Compile Include="GitArgumentBuilder.cs" />
+    <Compile Include="GitCommandConfiguration.cs" />
+    <Compile Include="GitConfigItem.cs" />
     <Compile Include="GitUI\CancellationTokenSequence.cs" />
+    <Compile Include="GitUI\ColorHelper.cs" />
     <Compile Include="GitUI\ComboBoxExtensions.cs" />
     <Compile Include="GitUI\ControlDpiExtensions.cs" />
     <Compile Include="GitUI\ControlHotkeyExtensions.cs" />
@@ -66,6 +69,7 @@
     <Compile Include="GitUI\ThreadHelper.cs" />
     <Compile Include="GitUI\UIExtensions.cs" />
     <Compile Include="GitUI\Win32ApiUtil.cs" />
+    <Compile Include="GitUI\HslColor.cs" />
     <Compile Include="Linq\LinqExtensions.cs" />
     <Compile Include="MruCache.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

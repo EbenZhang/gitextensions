@@ -61,6 +61,7 @@
     <Compile Include="ExternalLinks\ExternalLinksManagerIntegrationTests.cs" />
     <Compile Include="ExternalLinks\ExternalLinksStorageIntegrationTests.cs" />
     <Compile Include="FileAssociatedIconProviderTests.cs" />
+    <Compile Include="Settings\FileSettingsCacheTests.cs" />
     <Compile Include="FullPathResolverTests.cs" />
     <Compile Include="GitItemStatusFileExtensionComparerTests.cs" />
     <Compile Include="Git\AheadBehindDataProviderTests.cs" />
@@ -68,9 +69,10 @@
     <Compile Include="Git\GitDescribeProviderTests.cs" />
     <Compile Include="Git\GitRefNameTests.cs" />
     <Compile Include="PlinkTests.cs" />
+    <Compile Include="Remote\AzureDevOpsRemoteParserTests.cs" />
+    <Compile Include="Remote\GitHubRemoteParserTests.cs" />
     <Compile Include="RevisionReaderTests.cs" />
     <Compile Include="StreamExtensionsTests.cs" />
-    <Compile Include="MockExecutable.cs" />
     <Compile Include="RepoNameExtractorTest.cs" />
     <Compile Include="GitModuleTests.cs" />
     <Compile Include="GitRevisionInfoProviderTests.cs" />

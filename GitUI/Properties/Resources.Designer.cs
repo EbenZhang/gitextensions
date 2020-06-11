@@ -61,25 +61,73 @@ namespace GitUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Blame {
+            get {
+                object obj = ResourceManager.GetObject("Blame", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap branch {
+            get {
+                object obj = ResourceManager.GetObject("branch", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap branch_inv {
+            get {
+                object obj = ResourceManager.GetObject("branch_inv", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap bug {
+            get {
+                object obj = ResourceManager.GetObject("bug", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Changelog
         ///=========
         ///
-        ///### Version 3.0.2 (16 Feb 2019)
+        ///### Version 3.1.1 (2 June 2019)
         ///
         ///#### Fixes:
-        ///* QuickPull&apos;s hotkey is not working - Issue [6200]
-        ///* Can&apos;t delete a repository included in the categories of the dashboard - Issue [6192]
-        ///* Fix loading of some plugins that failed - PR [6159]
-        ///* Regression: Pull Dialog Title when changing merge option - Issue [6150]
-        ///* Shell Extension Menu Pull  - Issue [6144]
-        ///* gitexe.cmd pull - always opens dialog window in do not merge, only fetch changes - Issue [6060]
-        ///
-        ///
-        ///[6200]:https://github. [rest of string was truncated]&quot;;.
+        ///* Ctrl+Backspace affects ReadOnly TextBox - Issue [6667]
+        ///* incorrect {sRemotePathFromUrl} parameter evaluation - Issue [6567]
+        ///* [NBug] Remote URLs should appear in pairs. - Issue [6562]
+        ///* Commit Dialog: New submodule without text if unstaged - Issue [6559]
+        ///* Pull dialog stopped &quot;remembering&quot; previous user selection - Issue [6503]
+        ///* Commit message not stored after reverting a commit - Issue [6244]
+        ///* System.Exception opening an exis [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ChangeLog {
             get {
                 return ResourceManager.GetString("ChangeLog", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap CherryPick {
+            get {
+                object obj = ResourceManager.GetObject("CherryPick", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
@@ -137,6 +185,16 @@ namespace GitUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
+        internal static System.Drawing.Icon GitExtensionsLogoIcon {
+            get {
+                object obj = ResourceManager.GetObject("GitExtensionsLogoIcon", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         internal static System.Drawing.Bitmap information {
@@ -162,6 +220,46 @@ namespace GitUI.Properties {
         internal static System.Drawing.Bitmap RecentRepositories {
             get {
                 object obj = ResourceManager.GetObject("RecentRepositories", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap FileStatusAdded {
+            get {
+                object obj = ResourceManager.GetObject("FileStatusAdded", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap FileStatusRemoved {
+            get {
+                object obj = ResourceManager.GetObject("FileStatusRemoved", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap RepoOpen {
+            get {
+                object obj = ResourceManager.GetObject("RepoOpen", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap SyntaxHighlighting {
+            get {
+                object obj = ResourceManager.GetObject("SyntaxHighlighting", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

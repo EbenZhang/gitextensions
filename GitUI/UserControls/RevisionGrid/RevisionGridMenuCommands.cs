@@ -203,6 +203,13 @@ namespace GitUI.UserControls.RevisionGrid
                 },
                 new MenuCommand
                 {
+                    Name = "ShowArtificialCommits",
+                    Text = "Show artificial commits",
+                    ExecuteAction = () => _revisionGrid.ToggleShowArtificialCommits(),
+                    IsCheckedFunc = () => AppSettings.RevisionGraphShowWorkingDirChanges
+                },
+                new MenuCommand
+                {
                     Name = "ShowReflogReferences",
                     Text = "Show reflog references",
                     ExecuteAction = () => _revisionGrid.ToggleShowReflogReferences(),
@@ -293,6 +300,13 @@ namespace GitUI.UserControls.RevisionGrid
                     Text = "Draw non relatives gray",
                     ExecuteAction = () => _revisionGrid.ToggleDrawNonRelativesGray(),
                     IsCheckedFunc = () => AppSettings.RevisionGraphDrawNonRelativesGray
+                },
+                new MenuCommand
+                {
+                    Name = "AuthorDateSort",
+                    Text = "Sort commits by author date",
+                    ExecuteAction = () => _revisionGrid.ToggleAuthorDateSort(),
+                    IsCheckedFunc = () => AppSettings.SortByAuthorDate
                 },
                 new MenuCommand
                 {

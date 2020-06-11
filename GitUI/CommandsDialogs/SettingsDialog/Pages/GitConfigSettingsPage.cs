@@ -51,9 +51,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             GlobalKeepMergeBackup.Enabled = canFindGitCmd;
             InvalidGitPathGlobal.Visible = !canFindGitCmd;
 
-            var isKdiff3 = _NO_TRANSLATE_GlobalMergeTool.Text.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase);
-
-            MergeToolCmd.Enabled = !isKdiff3 || !string.IsNullOrEmpty(MergeToolCmd.Text);
+            MergeToolCmd.Enabled = !string.IsNullOrEmpty(MergeToolCmd.Text);
         }
 
         protected override void SettingsToPage()
@@ -146,9 +144,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             MergetoolPath.Text = CurrentSettings.GetValue($"mergetool.{mergeTool}.path");
             MergeToolCmd.Text = CurrentSettings.GetValue($"mergetool.{mergeTool}.cmd");
 
-            var isKdiff3 = mergeTool.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase);
-
-            MergeToolCmd.Enabled = !isKdiff3 || !string.IsNullOrEmpty(MergeToolCmd.Text);
+            MergeToolCmd.Enabled = !string.IsNullOrEmpty(MergeToolCmd.Text);
 
             MergeToolCmdSuggest_Click(null, null);
         }
@@ -160,12 +156,14 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 return;
             }
 
-            CurrentSettings.SetPathValue(string.Format("mergetool.{0}.path", _NO_TRANSLATE_GlobalMergeTool.Text.Trim()), MergetoolPath.Text?.Trim() ?? "");
+            var mergeToolPath = MergetoolPath.Text.Trim().Trim('"', '\'');
+
+            CurrentSettings.SetPathValue(string.Format("mergetool.{0}.path", _NO_TRANSLATE_GlobalMergeTool.Text.Trim()), mergeToolPath ?? "");
             string exeName;
             string exeFile;
-            if (!string.IsNullOrEmpty(MergetoolPath.Text))
+            if (!string.IsNullOrEmpty(mergeToolPath))
             {
-                exeFile = MergetoolPath.Text;
+                exeFile = mergeToolPath;
                 exeName = Path.GetFileName(exeFile);
             }
             else
@@ -194,23 +192,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             MergeToolCmd.SelectedText = MergeToolsHelper.MergeToolcmdSuggest(_NO_TRANSLATE_GlobalMergeTool.Text, exeFile);
         }
 
-        private void ResolveDiffToolPath()
-        {
-            string kdiff3Path = MergeToolsHelper.FindPathForKDiff(CurrentSettings.GetValue("difftool.kdiff3.path"));
-            if (string.IsNullOrEmpty(kdiff3Path))
-            {
-                return;
-            }
-
-            kdiff3Path = MergeToolsHelper.FindFileInFolders("kdiff3.exe", MergetoolPath.Text);
-            if (string.IsNullOrEmpty(kdiff3Path))
-            {
-                return;
-            }
-
-            DifftoolPath.Text = kdiff3Path;
-        }
-
         private void DiffToolCmdSuggest_Click(object sender, EventArgs e)
         {
             if (!EnvUtils.RunningOnWindows())
@@ -218,12 +199,14 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 return;
             }
 
-            CurrentSettings.SetPathValue(string.Format("difftool.{0}.path", _NO_TRANSLATE_GlobalDiffTool.Text.Trim()), DifftoolPath.Text?.Trim() ?? "");
+            var diffToolPath = DifftoolPath.Text.Trim().Trim('"', '\'');
+
+            CurrentSettings.SetPathValue(string.Format("difftool.{0}.path", _NO_TRANSLATE_GlobalDiffTool.Text.Trim()), diffToolPath ?? "");
             string exeName;
             string exeFile;
-            if (!string.IsNullOrEmpty(DifftoolPath.Text))
+            if (!string.IsNullOrEmpty(diffToolPath))
             {
-                exeFile = DifftoolPath.Text;
+                exeFile = diffToolPath;
                 exeName = Path.GetFileName(exeFile);
             }
             else
@@ -274,11 +257,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             string diffTool = _NO_TRANSLATE_GlobalDiffTool.Text.Trim();
             DifftoolPath.Text = CurrentSettings.GetValue($"difftool.{diffTool}.path");
             DifftoolCmd.Text = CurrentSettings.GetValue($"difftool.{diffTool}.cmd");
-
-            if (diffTool.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase))
-            {
-                ResolveDiffToolPath();
-            }
 
             DiffToolCmdSuggest_Click(null, null);
         }

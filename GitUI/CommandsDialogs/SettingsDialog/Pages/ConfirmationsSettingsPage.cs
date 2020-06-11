@@ -21,13 +21,14 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             chkConfirmStashDrop.Checked = !AppSettings.StashConfirmDropShow;
             chkPushNewBranch.Checked = AppSettings.DontConfirmPushNewBranch;
             chkAddTrackingRef.Checked = AppSettings.DontConfirmAddTrackingRef;
-            chkUpdateModules.CheckState = AppSettings.UpdateSubmodulesOnCheckout.ToCheckboxState();
+            chkUpdateModules.CheckState = AppSettings.DontConfirmUpdateSubmodulesOnCheckout.ToCheckboxState();
             chkResolveConflicts.Checked = AppSettings.DontConfirmResolveConflicts;
             chkCommitAfterConflictsResolved.Checked = AppSettings.DontConfirmCommitAfterConflictsResolved;
             chkSecondAbortConfirmation.Checked = AppSettings.DontConfirmSecondAbortConfirmation;
             chkRebaseOnTopOfSelectedCommit.Checked = AppSettings.DontConfirmRebase;
             chkUndoLastCommitConfirmation.Checked = AppSettings.DontConfirmUndoLastCommit;
             chkFetchAndPruneAllConfirmation.Checked = AppSettings.DontConfirmFetchAndPruneAll;
+            chkSwitchWorktree.Checked = AppSettings.DontConfirmSwitchWorktree;
         }
 
         protected override void PageToSettings()
@@ -39,13 +40,14 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             AppSettings.StashConfirmDropShow = !chkConfirmStashDrop.Checked;
             AppSettings.DontConfirmPushNewBranch = chkPushNewBranch.Checked;
             AppSettings.DontConfirmAddTrackingRef = chkAddTrackingRef.Checked;
-            AppSettings.UpdateSubmodulesOnCheckout = chkUpdateModules.CheckState.ToBoolean();
+            AppSettings.DontConfirmUpdateSubmodulesOnCheckout = chkUpdateModules.CheckState.ToBoolean();
             AppSettings.DontConfirmResolveConflicts = chkResolveConflicts.Checked;
             AppSettings.DontConfirmCommitAfterConflictsResolved = chkCommitAfterConflictsResolved.Checked;
             AppSettings.DontConfirmSecondAbortConfirmation = chkSecondAbortConfirmation.Checked;
             AppSettings.DontConfirmRebase = chkRebaseOnTopOfSelectedCommit.Checked;
             AppSettings.DontConfirmUndoLastCommit = chkUndoLastCommitConfirmation.Checked;
             AppSettings.DontConfirmFetchAndPruneAll = chkFetchAndPruneAllConfirmation.Checked;
+            AppSettings.DontConfirmSwitchWorktree = chkSwitchWorktree.Checked;
         }
 
         public static SettingsPageReference GetPageReference()

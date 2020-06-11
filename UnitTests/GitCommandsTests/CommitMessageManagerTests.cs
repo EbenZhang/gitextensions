@@ -15,6 +15,7 @@ namespace GitCommandsTests
         private const string _commitMessage = "commit message";
         private const string _mergeMessage = "merge message";
         private const string _newMessage = "new message";
+        private const string _overriddenCommitMessage = "commandline message";
 
         private readonly string _workingDirGitDir = @"c:\dev\repo\.git";
         private readonly Encoding _encoding = Encoding.UTF8;
@@ -25,6 +26,7 @@ namespace GitCommandsTests
         private readonly bool _rememberAmendCommitState;
 
         private FileBase _file;
+        private DirectoryBase _directory;
         private IFileSystem _fileSystem;
         private CommitMessageManager _manager;
 
@@ -42,15 +44,22 @@ namespace GitCommandsTests
             _file = Substitute.For<FileBase>();
             _file.ReadAllText(_commitMessagePath, _encoding).Returns(_commitMessage);
             _file.ReadAllText(_mergeMessagePath, _encoding).Returns(_mergeMessage);
+            _directory = Substitute.For<DirectoryBase>();
 
             var path = Substitute.For<PathBase>();
             path.Combine(Arg.Any<string>(), Arg.Any<string>()).Returns(x => Path.Combine((string)x[0], (string)x[1]));
 
             _fileSystem = Substitute.For<IFileSystem>();
             _fileSystem.File.Returns(_file);
+            _fileSystem.Directory.Returns(_directory);
             _fileSystem.Path.Returns(path);
 
-            _manager = CommitMessageManager.TestAccessor.Construct(_workingDirGitDir, _encoding, _fileSystem);
+            _manager = new CommitMessageManager(_workingDirGitDir, _encoding, _fileSystem, overriddenCommitMessage: null);
+        }
+
+        public void SetupExtra(string overriddenCommitMessage)
+        {
+            _manager = new CommitMessageManager(_workingDirGitDir, _encoding, _fileSystem, overriddenCommitMessage);
         }
 
         [TearDown]
@@ -180,6 +189,18 @@ namespace GitCommandsTests
         }
 
         [Test]
+        public void MergeOrCommitMessage_should_return_overridden_message_if_set()
+        {
+            SetupExtra(overriddenCommitMessage: _overriddenCommitMessage);
+            _file.Exists(_commitMessagePath).Returns(true);
+            _file.Exists(_mergeMessagePath).Returns(true);
+
+            _manager.MergeOrCommitMessage.Should().Be(_overriddenCommitMessage);
+
+            _manager.IsMergeCommit.Should().BeTrue();
+        }
+
+        [Test]
         public void MergeOrCommitMessage_should_return_commit_message_if_exists_and_no_merge_message()
         {
             _file.Exists(_commitMessagePath).Returns(true);
@@ -202,16 +223,43 @@ namespace GitCommandsTests
         }
 
         [Test]
+        public void MergeOrCommitMessage_should_return_overridden_if_exist_and_if_no_file_exists()
+        {
+            SetupExtra(_overriddenCommitMessage);
+            _file.Exists(_commitMessagePath).Returns(false);
+            _file.Exists(_mergeMessagePath).Returns(false);
+
+            _manager.MergeOrCommitMessage.Should().Be(_overriddenCommitMessage);
+
+            _manager.IsMergeCommit.Should().BeFalse();
+        }
+
+        [Test]
         public void MergeOrCommitMessage_should_write_merge_message_if_exists()
         {
             bool correctlyWritten = false;
             _file.When(x => x.WriteAllText(_mergeMessagePath, _newMessage, _encoding)).Do(_ => correctlyWritten = true);
             _file.Exists(_commitMessagePath).Returns(true);
             _file.Exists(_mergeMessagePath).Returns(true);
+            _directory.Exists(Path.GetDirectoryName(_commitMessagePath)).Returns(true);
 
             _manager.MergeOrCommitMessage = _newMessage;
 
             Assert.That(correctlyWritten);
+        }
+
+        [Test]
+        public void MergeOrCommitMessage_should_not_write_merge_message_if_exist_if_it_is_the_overridding_commitmessage_exists()
+        {
+            SetupExtra(_overriddenCommitMessage);
+            bool hasBeenWritten = false;
+            _file.When(x => x.WriteAllText(_mergeMessagePath, _newMessage, _encoding)).Do(_ => hasBeenWritten = true);
+            _file.Exists(_commitMessagePath).Returns(true);
+            _file.Exists(_mergeMessagePath).Returns(true);
+
+            _manager.MergeOrCommitMessage = _overriddenCommitMessage;
+
+            hasBeenWritten.Should().BeFalse();
         }
 
         [Test]
@@ -221,6 +269,7 @@ namespace GitCommandsTests
             _file.When(x => x.WriteAllText(_commitMessagePath, _newMessage, _encoding)).Do(_ => correctlyWritten = true);
             _file.Exists(_commitMessagePath).Returns(true);
             _file.Exists(_mergeMessagePath).Returns(false);
+            _directory.Exists(Path.GetDirectoryName(_commitMessagePath)).Returns(true);
 
             _manager.MergeOrCommitMessage = _newMessage;
 
@@ -234,6 +283,7 @@ namespace GitCommandsTests
             _file.When(x => x.WriteAllText(_commitMessagePath, _newMessage, _encoding)).Do(_ => correctlyWritten = true);
             _file.Exists(_commitMessagePath).Returns(false);
             _file.Exists(_mergeMessagePath).Returns(false);
+            _directory.Exists(Path.GetDirectoryName(_commitMessagePath)).Returns(true);
 
             _manager.MergeOrCommitMessage = _newMessage;
 
@@ -247,10 +297,25 @@ namespace GitCommandsTests
             _file.When(x => x.WriteAllText(_commitMessagePath, string.Empty, _encoding)).Do(_ => correctlyWritten = true);
             _file.Exists(_commitMessagePath).Returns(false);
             _file.Exists(_mergeMessagePath).Returns(false);
+            _directory.Exists(Path.GetDirectoryName(_commitMessagePath)).Returns(true);
 
             _manager.MergeOrCommitMessage = null;
 
             Assert.That(correctlyWritten);
+        }
+
+        [Test]
+        public void MergeOrCommitMessage_should_not_write_if_dir_no_longer_exists()
+        {
+            bool correctlyWritten = false;
+            _file.When(x => x.WriteAllText(_commitMessagePath, string.Empty, _encoding)).Do(_ => correctlyWritten = true);
+            _file.Exists(_commitMessagePath).Returns(false);
+            _file.Exists(_mergeMessagePath).Returns(false);
+            _directory.Exists(Path.GetDirectoryName(_commitMessagePath)).Returns(false);
+
+            _manager.MergeOrCommitMessage = null;
+
+            Assert.That(!correctlyWritten);
         }
 
         [Test]

@@ -31,6 +31,8 @@ namespace GitUI
 
                 try
                 {
+                    ManagedExtensibility.SetUserPluginsPath(AppSettings.UserPluginsPath);
+
                     foreach (var plugin in ManagedExtensibility.GetExports<IGitPlugin>().Select(lazy => lazy.Value))
                     {
                         plugin.SettingsContainer = new GitPluginSettingsContainer(plugin.Name);
@@ -58,7 +60,7 @@ namespace GitUI
                 return null;
             }
 
-            return GitHosters.FirstOrDefault(gitHoster => gitHoster.GitModuleIsRelevantToMe(module));
+            return GitHosters.FirstOrDefault(gitHoster => gitHoster.GitModuleIsRelevantToMe());
         }
 
         public static void Register(IGitUICommands gitUiCommands)

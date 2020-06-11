@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
@@ -252,11 +253,14 @@ namespace GitUI.CommandsDialogs
                     branch = null;
                 }
 
-                var cloneCmd = GitCommandHelpers.CloneCmd(_NO_TRANSLATE_From.Text, dirTo,
-                            CentralRepository.Checked, cbIntializeAllSubmodules.Checked, branch, depth, isSingleBranch, cbLfs.Checked);
+                string sourceRepo = _NO_TRANSLATE_From.Text;
+                var cloneCmd = GitCommandHelpers.CloneCmd(sourceRepo, dirTo,
+                                                          CentralRepository.Checked,
+                                                          cbIntializeAllSubmodules.Checked,
+                                                          branch, depth, isSingleBranch, cbLfs.Checked);
                 using (var fromProcess = new FormRemoteProcess(Module, AppSettings.GitCommand, cloneCmd))
                 {
-                    fromProcess.SetUrlTryingToConnect(_NO_TRANSLATE_From.Text);
+                    fromProcess.SetUrlTryingToConnect(sourceRepo);
                     fromProcess.ShowDialog(this);
 
                     if (fromProcess.ErrorOccurred() || Module.InTheMiddleOfPatch())
@@ -265,7 +269,13 @@ namespace GitUI.CommandsDialogs
                     }
                 }
 
-                ThreadHelper.JoinableTaskFactory.Run(() => RepositoryHistoryManager.Locals.AddAsMostRecentAsync(dirTo));
+                ThreadHelper.JoinableTaskFactory.Run(() =>
+                {
+                    RepositoryHistoryManager.Remotes.AddAsMostRecentAsync(sourceRepo);
+                    RepositoryHistoryManager.Locals.AddAsMostRecentAsync(dirTo);
+                    return Task.CompletedTask;
+                });
+
                 if (!string.IsNullOrEmpty(_puttySshKey))
                 {
                     var clonedGitModule = new GitModule(dirTo);
@@ -358,53 +368,32 @@ namespace GitUI.CommandsDialogs
 
         private void ToTextUpdate(object sender, EventArgs e)
         {
-            string destinationPath = string.Empty;
+            bool destinationUnfilled = string.IsNullOrEmpty(_NO_TRANSLATE_To.Text);
+            bool subDirectoryUnfilled = string.IsNullOrEmpty(_NO_TRANSLATE_NewDirectory.Text);
 
-            if (string.IsNullOrEmpty(_NO_TRANSLATE_To.Text))
-            {
-                destinationPath += "[" + label2.Text + "]";
-            }
-            else
-            {
-                destinationPath += _NO_TRANSLATE_To.Text.TrimEnd('\\', '/');
-            }
+            string destinationDirectory = destinationUnfilled ? $@"[{destinationLabel.Text}]" : _NO_TRANSLATE_To.Text;
+            string destinationSubDirectory = subDirectoryUnfilled ? $@"[{subdirectoryLabel.Text}]" : _NO_TRANSLATE_NewDirectory.Text;
 
-            destinationPath += "\\";
+            string destinationPath = Path.Combine(destinationDirectory, destinationSubDirectory);
 
-            if (string.IsNullOrEmpty(_NO_TRANSLATE_NewDirectory.Text))
-            {
-                destinationPath += "[" + label3.Text + "]";
-            }
-            else
-            {
-                destinationPath += _NO_TRANSLATE_NewDirectory.Text;
-            }
+            string newRepositoryLocationInfo = string.Format(_infoNewRepositoryLocation.Text, destinationPath);
 
-            Info.Text = string.Format(_infoNewRepositoryLocation.Text, destinationPath);
-
-            if (destinationPath.Contains("[") || destinationPath.Contains("]"))
+            if (destinationUnfilled || subDirectoryUnfilled)
             {
+                Info.Text = newRepositoryLocationInfo;
                 Info.ForeColor = Color.Red;
                 return;
             }
 
-            if (Directory.Exists(destinationPath))
+            if (Directory.Exists(destinationPath) && Directory.EnumerateFileSystemEntries(destinationPath).Any())
             {
-                if (Directory.GetDirectories(destinationPath).Length > 0 || Directory.GetFiles(destinationPath).Length > 0)
-                {
-                    Info.Text += " " + _infoDirectoryExists.Text;
-                    Info.ForeColor = Color.Red;
-                }
-                else
-                {
-                    Info.ForeColor = Color.Black;
-                }
+                Info.Text = $@"{newRepositoryLocationInfo} {_infoDirectoryExists.Text}";
+                Info.ForeColor = Color.Red;
+                return;
             }
-            else
-            {
-                Info.Text += " " + _infoDirectoryNew.Text;
-                Info.ForeColor = Color.Black;
-            }
+
+            Info.Text = $@"{newRepositoryLocationInfo} {_infoDirectoryNew.Text}";
+            Info.ForeColor = SystemColors.ControlText;
         }
 
         private void NewDirectoryTextChanged(object sender, EventArgs e)

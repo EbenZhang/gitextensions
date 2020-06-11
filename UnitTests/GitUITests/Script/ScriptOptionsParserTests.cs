@@ -24,7 +24,7 @@ namespace GitUITests.Script
         public void ScriptOptionsParser_resolve_cDefaultRemotePathFromUrl_currentRemote_unset()
         {
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
-                argument: "{openUrl} https://gitlab.com{cDefaultRemotePathFromUrl}/tree/{sBranch}", option: "cDefaultRemotePathFromUrl",
+                arguments: "{openUrl} https://gitlab.com{cDefaultRemotePathFromUrl}/tree/{sBranch}", option: "cDefaultRemotePathFromUrl",
                 owner: null, revisionGrid: null, module: null, allSelectedRevisions: null, selectedTags: null,
                 selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, selectedRemotes: null, selectedRevision: null,
                 currentTags: null,
@@ -40,7 +40,7 @@ namespace GitUITests.Script
             _module.GetSetting(string.Format(SettingKeyString.RemoteUrl, currentRemote)).Returns("https://gitlab.com/gitlabhq/gitlabhq.git");
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
-                argument: "{openUrl} https://gitlab.com{cDefaultRemotePathFromUrl}/tree/{sBranch}", option: "cDefaultRemotePathFromUrl",
+                arguments: "{openUrl} https://gitlab.com{cDefaultRemotePathFromUrl}/tree/{sBranch}", option: "cDefaultRemotePathFromUrl",
                 owner: null, revisionGrid: null, _module, allSelectedRevisions: null, selectedTags: null,
                 selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, selectedRemotes: null, selectedRevision: null,
                 currentTags: null,
@@ -55,7 +55,7 @@ namespace GitUITests.Script
             var noSelectedRemotes = new List<string>();
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
-                argument: "{openUrl} https://gitlab.com{sRemotePathFromUrl}/tree/{sBranch}", option: "sRemotePathFromUrl",
+                arguments: "{openUrl} https://gitlab.com{sRemotePathFromUrl}/tree/{sBranch}", option: "sRemotePathFromUrl",
                 owner: null, revisionGrid: null, module: null, allSelectedRevisions: null, selectedTags: null,
                 selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, noSelectedRemotes, selectedRevision: null,
                 currentTags: null,
@@ -72,13 +72,121 @@ namespace GitUITests.Script
             _module.GetSetting(string.Format(SettingKeyString.RemoteUrl, currentRemote)).Returns("https://gitlab.com/gitlabhq/gitlabhq.git");
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
-                argument: "{openUrl} https://gitlab.com{sRemotePathFromUrl}/tree/{sBranch}", option: "sRemotePathFromUrl",
+                arguments: "{openUrl} https://gitlab.com{sRemotePathFromUrl}/tree/{sBranch}", option: "sRemotePathFromUrl",
                 owner: null, revisionGrid: null, _module, allSelectedRevisions: null, selectedTags: null,
                 selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, selectedRemotes, selectedRevision: null,
                 currentTags: null,
                 currentBranches: null, currentLocalBranches: null, currentRemoteBranches: null, currentRevision: null, currentRemote: null);
 
             result.Should().Be("{openUrl} https://gitlab.com/gitlabhq/gitlabhq/tree/{sBranch}");
+        }
+
+        [Test]
+        public void ScriptOptionsParser_resolve_sRemoteBranch(
+            [Values("", "origin", "upstream", "remote")] string remoteName,
+            [Values("", "branch", "feature/branch")] string branchName)
+        {
+            var option = "sRemoteBranch";
+            var branch = remoteName + '/' + branchName;
+            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+
+            var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
+                arguments: "{" + option + "}", option,
+                owner: null, revisionGrid: null, module: null, allSelectedRevisions: null, selectedTags: null,
+                selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: remoteBranches, selectedRemotes: null, selectedRevision: null,
+                currentTags: null,
+                currentBranches: null, currentLocalBranches: null, currentRemoteBranches: null, currentRevision: null, currentRemote: null);
+
+            result.Should().Be(branch);
+        }
+
+        [Test]
+        public void ScriptOptionsParser_resolve_sRemoteBranchName(
+            [Values("", "origin", "upstream", "remote")] string remoteName,
+            [Values("", "branch", "feature/branch")] string branchName)
+        {
+            var option = "sRemoteBranchName";
+            var branch = remoteName + '/' + branchName;
+            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+
+            var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
+                arguments: "{" + option + "}", option,
+                owner: null, revisionGrid: null, module: null, allSelectedRevisions: null, selectedTags: null,
+                selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: remoteBranches, selectedRemotes: null, selectedRevision: null,
+                currentTags: null,
+                currentBranches: null, currentLocalBranches: null, currentRemoteBranches: null, currentRevision: null, currentRemote: null);
+
+            result.Should().Be(branchName);
+        }
+
+        [Test]
+        public void ScriptOptionsParser_resolve_cRemoteBranch(
+            [Values("", "origin", "upstream", "remote")] string remoteName,
+            [Values("", "branch", "feature/branch")] string branchName)
+        {
+            var option = "cRemoteBranch";
+            var branch = remoteName + '/' + branchName;
+            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+
+            var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
+                arguments: "{" + option + "}", option,
+                owner: null, revisionGrid: null, module: null, allSelectedRevisions: null, selectedTags: null,
+                selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, selectedRemotes: null, selectedRevision: null,
+                currentTags: null,
+                currentBranches: null, currentLocalBranches: null, currentRemoteBranches: remoteBranches, currentRevision: null, currentRemote: null);
+
+            result.Should().Be(branch);
+        }
+
+        [Test]
+        public void ScriptOptionsParser_resolve_cRemoteBranchName(
+            [Values("", "origin", "upstream", "remote")] string remoteName,
+            [Values("", "branch", "feature/branch")] string branchName)
+        {
+            var option = "cRemoteBranchName";
+            var branch = remoteName + '/' + branchName;
+            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+
+            var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
+                arguments: "{" + option + "}", option,
+                owner: null, revisionGrid: null, module: null, allSelectedRevisions: null, selectedTags: null,
+                selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, selectedRemotes: null, selectedRevision: null,
+                currentTags: null,
+                currentBranches: null, currentLocalBranches: null, currentRemoteBranches: remoteBranches, currentRevision: null, currentRemote: null);
+
+            result.Should().Be(branchName);
+        }
+
+        [Test]
+        public void ScriptOptionsParser_resolve_RepoName_null()
+        {
+            var option = "RepoName";
+
+            var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
+                arguments: "{" + option + "}", option,
+                owner: null, revisionGrid: null, module: null, allSelectedRevisions: null, selectedTags: null,
+                selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, selectedRemotes: null, selectedRevision: null,
+                currentTags: null,
+                currentBranches: null, currentLocalBranches: null, currentRemoteBranches: null, currentRevision: null, currentRemote: null);
+
+            result.Should().Be(string.Empty);
+        }
+
+        [Test]
+        public void ScriptOptionsParser_resolve_RepoName()
+        {
+            var option = "RepoName";
+            var dirName = "Windows"; // chose one which will never contain a repo
+            _module.WorkingDir.Returns("C:\\" + dirName);
+
+            var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
+                arguments: "{" + option + "}", option,
+                owner: null, revisionGrid: null, _module, allSelectedRevisions: null, selectedTags: null,
+                selectedBranches: null, selectedLocalBranches: null, selectedRemoteBranches: null, selectedRemotes: null, selectedRevision: null,
+                currentTags: null,
+                currentBranches: null, currentLocalBranches: null, currentRemoteBranches: null, currentRevision: null, currentRemote: null);
+
+            result.Should().Be(dirName);
         }
 
         [Test]

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using GitCommands;
+using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.Properties;
 using JetBrains.Annotations;
@@ -130,6 +131,12 @@ namespace GitUI.CommandsDialogs
                 ignoreWhitespaceToolStripMenuItem.Checked = AppSettings.IgnoreWhitespaceOnBlame;
                 detectMoveAndCopyInAllFilesToolStripMenuItem.Checked = AppSettings.DetectCopyInAllOnBlame;
                 detectMoveAndCopyInThisFileToolStripMenuItem.Checked = AppSettings.DetectCopyInFileOnBlame;
+                displayAuthorFirstToolStripMenuItem.Checked = AppSettings.BlameDisplayAuthorFirst;
+                showAuthorToolStripMenuItem.Checked = AppSettings.BlameShowAuthor;
+                showAuthorDateToolStripMenuItem.Checked = AppSettings.BlameShowAuthorDate;
+                showAuthorTimeToolStripMenuItem.Checked = AppSettings.BlameShowAuthorTime;
+                showLineNumbersToolStripMenuItem.Checked = AppSettings.BlameShowLineNumbers;
+                showOriginalFilePathToolStripMenuItem.Checked = AppSettings.BlameShowOriginalFilePath;
             }
 
             if (filterByRevision && revision?.Guid != null)
@@ -201,20 +208,13 @@ namespace GitUI.CommandsDialogs
             {
                 var fileName = FileName;
 
-                // we will need this later to look up proper casing for the file
-                var fullFilePath = _fullPathResolver.Resolve(fileName);
-
-                if (_controller.TryGetExactPath(fullFilePath, out fileName))
-                {
-                    fileName = fileName.Substring(Module.WorkingDir.Length);
-                }
-
                 // Replace windows path separator to Linux path separator.
                 // This is needed to keep the file history working when started from file tree in
                 // browse dialog.
                 FileName = fileName.ToPosixPath();
 
                 var res = (revision: (string)null, path: $" \"{fileName}\"");
+                var fullFilePath = _fullPathResolver.Resolve(fileName);
 
                 if (AppSettings.FollowRenamesInFileHistory && !Directory.Exists(fullFilePath))
                 {
@@ -231,6 +231,7 @@ namespace GitUI.CommandsDialogs
                     {
                         "--format=\"%n\"",
                         "--name-only",
+                        "--follow",
                         GitCommandHelpers.FindRenamesAndCopiesOpts(),
                         "--",
                         fileName.Quote()
@@ -422,7 +423,7 @@ namespace GitUI.CommandsDialogs
                 {
                     InitialDirectory = Path.GetDirectoryName(fullName),
                     FileName = Path.GetFileName(fullName),
-                    DefaultExt = PathUtil.GetFileExtension(fullName),
+                    DefaultExt = Path.GetExtension(fullName),
                     AddExtension = true
                 })
                 {
@@ -631,5 +632,64 @@ namespace GitUI.CommandsDialogs
         }
 
         #endregion
+
+        private void displayAuthorFirstToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppSettings.BlameDisplayAuthorFirst = !AppSettings.BlameDisplayAuthorFirst;
+            displayAuthorFirstToolStripMenuItem.Checked = AppSettings.BlameDisplayAuthorFirst;
+            UpdateSelectedFileViewers(true);
+        }
+
+        private void showAuthorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppSettings.BlameShowAuthor = !AppSettings.BlameShowAuthor;
+            showAuthorToolStripMenuItem.Checked = AppSettings.BlameShowAuthor;
+
+            if (!AppSettings.BlameShowAuthor)
+            {
+                showAuthorDateToolStripMenuItem.Checked = true;
+                AppSettings.BlameShowAuthorDate = true;
+            }
+
+            UpdateSelectedFileViewers(true);
+        }
+
+        private void showAuthorDateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppSettings.BlameShowAuthorDate = !AppSettings.BlameShowAuthorDate;
+            showAuthorDateToolStripMenuItem.Checked = AppSettings.BlameShowAuthorDate;
+
+            showAuthorTimeToolStripMenuItem.Enabled = AppSettings.BlameShowAuthorDate;
+
+            if (!AppSettings.BlameShowAuthorDate)
+            {
+                showAuthorToolStripMenuItem.Checked = true;
+                AppSettings.BlameShowAuthor = true;
+            }
+
+            UpdateSelectedFileViewers(true);
+        }
+
+        private void showAuthorTimeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppSettings.BlameShowAuthorTime = !AppSettings.BlameShowAuthorTime;
+            showAuthorTimeToolStripMenuItem.Checked = AppSettings.BlameShowAuthorTime;
+            UpdateSelectedFileViewers(true);
+        }
+
+        private void showLineNumbersToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppSettings.BlameShowLineNumbers = !AppSettings.BlameShowLineNumbers;
+            showLineNumbersToolStripMenuItem.Checked = AppSettings.BlameShowLineNumbers;
+            Blame.UpdateShowLineNumbers();
+            UpdateSelectedFileViewers(true);
+        }
+
+        private void showOriginalFilePathToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppSettings.BlameShowOriginalFilePath = !AppSettings.BlameShowOriginalFilePath;
+            showOriginalFilePathToolStripMenuItem.Checked = AppSettings.BlameShowOriginalFilePath;
+            UpdateSelectedFileViewers(true);
+        }
     }
 }

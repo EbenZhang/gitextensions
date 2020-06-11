@@ -55,10 +55,13 @@ namespace GitCommands
         public static Version AppVersion => Assembly.GetCallingAssembly().GetName().Version;
         public static string ProductVersion => Application.ProductVersion;
         public static readonly string SettingsFileName = "GitExtensions.settings";
+        public static readonly string UserPluginsDirectoryName = "UserPlugins";
         private static readonly ISshPathLocator SshPathLocatorInstance = new SshPathLocator();
 
         public static readonly Lazy<string> ApplicationDataPath;
+        public static readonly Lazy<string> LocalApplicationDataPath;
         public static string SettingsFilePath => Path.Combine(ApplicationDataPath.Value, SettingsFileName);
+        public static string UserPluginsPath => Path.Combine(LocalApplicationDataPath.Value, UserPluginsDirectoryName);
 
         public static RepoDistSettings SettingsContainer { get; private set; }
 
@@ -75,11 +78,26 @@ namespace GitCommands
                 {
                     return GetGitExtensionsDirectory();
                 }
-                else
+
+                // Make ApplicationDataPath version independent
+                return Application.UserAppDataPath.Replace(Application.ProductVersion, string.Empty)
+                                                  .Replace("Git Extensions", "GitExtensions"); // 'GitExtensions' has been changed to 'Git Extensions' in v3.0
+            });
+
+            LocalApplicationDataPath = new Lazy<string>(() =>
+            {
+                if (IsPortable())
                 {
-                    // Make ApplicationDataPath version independent
-                    return Application.UserAppDataPath.Replace(Application.ProductVersion, string.Empty);
+                    return GetGitExtensionsDirectory();
                 }
+
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitExtensions");
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+
+                return path;
             });
 
             SettingsContainer = new RepoDistSettings(null, GitExtSettingsCache.FromCache(SettingsFilePath), SettingLevel.Unknown);
@@ -88,6 +106,12 @@ namespace GitCommands
             {
                 ImportFromRegistry();
             }
+        }
+
+        public static bool? TelemetryEnabled
+        {
+            get => GetBool("TelemetryEnabled");
+            set => SetBool("TelemetryEnabled", value);
         }
 
         public static bool AutoNormaliseBranchName
@@ -313,8 +337,9 @@ namespace GitCommands
             set => SetBool("applypatchignorewhitespace", value);
         }
 
-        public static bool UsePatienceDiffAlgorithm
+        public static bool UseHistogramDiffAlgorithm
         {
+            // The settings key has patience in the name for historical reasons
             get => GetBool("usepatiencediffalgorithm", false);
             set => SetBool("usepatiencediffalgorithm", value);
         }
@@ -325,7 +350,7 @@ namespace GitCommands
             set => SetBool("showerrorswhenstagingfiles", value);
         }
 
-        public static bool AddNewlineToCommitMessageWhenMissing
+        public static bool EnsureCommitMessageSecondLineEmpty
         {
             get => GetBool("addnewlinetocommitmessagewhenmissing", true);
             set => SetBool("addnewlinetocommitmessagewhenmissing", value);
@@ -341,6 +366,12 @@ namespace GitCommands
         {
             get => GetInt("commitDialogNumberOfPreviousMessages", 6);
             set => SetInt("commitDialogNumberOfPreviousMessages", value);
+        }
+
+        public static bool CommitDialogShowOnlyMyMessages
+        {
+            get => GetBool("commitDialogShowOnlyMyMessages", false);
+            set => SetBool("commitDialogShowOnlyMyMessages", value);
         }
 
         public static bool ShowCommitAndPush
@@ -365,7 +396,7 @@ namespace GitCommands
         public static readonly StringSetting ConEmuStyle = new StringSetting("ConEmuStyle", DetailedSettingsPath, "<Ubuntu>");
         public static readonly StringSetting ConEmuTerminal = new StringSetting("ConEmuTerminal", DetailedSettingsPath, "bash");
         public static readonly StringSetting ConEmuFontSize = new StringSetting("ConEmuFontSize", DetailedSettingsPath, "12");
-        public static readonly BoolNullableSetting ShowGpgInformation = new BoolNullableSetting("ShowGpgInformation", DetailedSettingsPath, false);
+        public static readonly BoolNullableSetting ShowGpgInformation = new BoolNullableSetting("ShowGpgInformation", DetailedSettingsPath, true);
 
         public static CommitInfoPosition CommitInfoPosition
         {
@@ -404,6 +435,12 @@ namespace GitCommands
         {
             get => GetBool("showgitstatusforartificialcommits", true);
             set => SetBool("showgitstatusforartificialcommits", value);
+        }
+
+        public static bool SortByAuthorDate
+        {
+            get => GetBool("sortbyauthordate", false);
+            set => SetBool("sortbyauthordate", value);
         }
 
         public static bool CommitInfoShowContainedInBranches => CommitInfoShowContainedInBranchesLocal ||
@@ -463,11 +500,11 @@ namespace GitCommands
         [NotNull]
         public static string AvatarImageCachePath => Path.Combine(ApplicationDataPath.Value, "Images\\");
 
-        public static DefaultImageType GravatarDefaultImageType
+        public static GravatarFallbackAvatarType GravatarFallbackAvatarType
         {
-            get => Enum.TryParse(GetString("GravatarDefaultImageType", "Identicon"), out DefaultImageType type)
+            get => Enum.TryParse(GetString("GravatarDefaultImageType", "Identicon"), out GravatarFallbackAvatarType type)
                 ? type
-                : DefaultImageType.Identicon;
+                : GravatarFallbackAvatarType.Identicon;
             set => SetString("GravatarDefaultImageType", value.ToString());
         }
 
@@ -487,6 +524,12 @@ namespace GitCommands
         {
             get => GetBool("showauthorgravatar", true);
             set => SetBool("showauthorgravatar", value);
+        }
+
+        public static AvatarProvider AvatarProvider
+        {
+            get => GetEnum("Appearance.AvatarProvider", AvatarProvider.Gravatar);
+            set => SetEnum("Appearance.AvatarProvider", value);
         }
 
         #endregion
@@ -847,6 +890,12 @@ namespace GitCommands
             set => SetBool("DontConfirmFetchAndPruneAll", value);
         }
 
+        public static bool DontConfirmSwitchWorktree
+        {
+            get => GetBool("DontConfirmSwitchWorktree", false);
+            set => SetBool("DontConfirmSwitchWorktree", value);
+        }
+
         public static bool IncludeUntrackedFilesInAutoStash
         {
             get => GetBool("includeUntrackedFilesInAutoStash", false);
@@ -893,6 +942,12 @@ namespace GitCommands
         {
             get => GetBool("updateSubmodulesOnCheckout");
             set => SetBool("updateSubmodulesOnCheckout", value);
+        }
+
+        public static bool? DontConfirmUpdateSubmodulesOnCheckout
+        {
+            get => GetBool("dontConfirmUpdateSubmodulesOnCheckout");
+            set => SetBool("dontConfirmUpdateSubmodulesOnCheckout", value);
         }
 
         public static string Dictionary
@@ -1227,6 +1282,12 @@ namespace GitCommands
             set => SetColor("diffaddedextracolor", value);
         }
 
+        public static Color HighlightAllOccurencesColor
+        {
+            get { return GetColor("highlightalloccurencesncolor", Color.LightYellow); }
+            set { SetColor("highlightalloccurencesncolor", value); }
+        }
+
         #endregion
 
         #region Fonts
@@ -1343,6 +1404,24 @@ namespace GitCommands
         {
             get => GetBool("RememberNumberOfContextLines", false);
             set => SetBool("RememberNumberOfContextLines", value);
+        }
+
+        public static bool ShowSyntaxHighlightingInDiff
+        {
+            get => RememberShowSyntaxHighlightingInDiff && GetBool("ShowSyntaxHighlightingInDiff", true);
+            set
+            {
+                if (RememberShowSyntaxHighlightingInDiff)
+                {
+                    SetBool("ShowSyntaxHighlightingInDiff", value);
+                }
+            }
+        }
+
+        public static bool RememberShowSyntaxHighlightingInDiff
+        {
+            get => GetBool("RememberShowSyntaxHighlightingInDiff", true);
+            set => SetBool("RememberShowSyntaxHighlightingInDiff", value);
         }
 
         public static string GetDictionaryDir()
@@ -1620,6 +1699,42 @@ namespace GitCommands
         {
             get => GetInt("RepoObjectsTree.SubmodulesIndex", 3);
             set => SetInt("RepoObjectsTree.SubmodulesIndex", value);
+        }
+
+        public static bool BlameDisplayAuthorFirst
+        {
+            get => GetBool("Blame.DisplayAuthorFirst", false);
+            set => SetBool("Blame.DisplayAuthorFirst", value);
+        }
+
+        public static bool BlameShowAuthor
+        {
+            get => GetBool("Blame.ShowAuthor", true);
+            set => SetBool("Blame.ShowAuthor", value);
+        }
+
+        public static bool BlameShowAuthorDate
+        {
+            get => GetBool("Blame.ShowAuthorDate", true);
+            set => SetBool("Blame.ShowAuthorDate", value);
+        }
+
+        public static bool BlameShowAuthorTime
+        {
+            get => GetBool("Blame.ShowAuthorTime", true);
+            set => SetBool("Blame.ShowAuthorTime", value);
+        }
+
+        public static bool BlameShowLineNumbers
+        {
+            get => GetBool("Blame.ShowLineNumbers", false);
+            set => SetBool("Blame.ShowLineNumbers", value);
+        }
+
+        public static bool BlameShowOriginalFilePath
+        {
+            get => GetBool("Blame.ShowOriginalFilePath", true);
+            set => SetBool("Blame.ShowOriginalFilePath", value);
         }
 
         public static bool IsPortable()

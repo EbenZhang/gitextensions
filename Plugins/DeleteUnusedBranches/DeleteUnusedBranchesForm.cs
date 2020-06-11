@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using DeleteUnusedBranches.Properties;
 using GitCommands;
+using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI;
 using GitUIPluginInterfaces;
@@ -34,6 +35,7 @@ namespace DeleteUnusedBranches
         private readonly IGitModule _gitCommands;
         private readonly IGitUICommands _gitUiCommands;
         private readonly IGitPlugin _gitPlugin;
+        private readonly GitBranchOutputCommandParser _commandOutputParser;
         private CancellationTokenSource _refreshCancellation;
 
         public DeleteUnusedBranchesForm(DeleteUnusedBranchesFormSettings settings, IGitModule gitCommands, IGitUICommands gitUiCommands, IGitPlugin gitPlugin)
@@ -42,6 +44,7 @@ namespace DeleteUnusedBranches
             _gitCommands = gitCommands;
             _gitUiCommands = gitUiCommands;
             _gitPlugin = gitPlugin;
+            _commandOutputParser = new GitBranchOutputCommandParser();
 
             InitializeComponent();
 
@@ -58,6 +61,11 @@ namespace DeleteUnusedBranches
             Message.DataPropertyName = nameof(Branch.Message);
 
             InitializeComplete();
+
+            if (gitUiCommands == null)
+            {
+                return;
+            }
 
             ThreadHelper.JoinableTaskFactory.RunAsync(() => RefreshObsoleteBranchesAsync());
         }
@@ -82,7 +90,7 @@ namespace DeleteUnusedBranches
             BranchesGrid.DataSource = _branches;
         }
 
-        private static IEnumerable<Branch> GetObsoleteBranches(RefreshContext context, string curBranch)
+        private IEnumerable<Branch> GetObsoleteBranches(RefreshContext context, string curBranch)
         {
             foreach (string branchName in GetObsoleteBranchNames(context, curBranch))
             {
@@ -103,7 +111,7 @@ namespace DeleteUnusedBranches
             }
         }
 
-        private static IEnumerable<string> GetObsoleteBranchNames(RefreshContext context, string curBranch)
+        private IEnumerable<string> GetObsoleteBranchNames(RefreshContext context, string curBranch)
         {
             RegexOptions options;
             if (context.RegexIgnoreCase)
@@ -120,21 +128,24 @@ namespace DeleteUnusedBranches
 
             var args = new GitArgumentBuilder("branch")
             {
+                 "--list",
                  { context.IncludeRemotes, "-r" },
                  { !context.IncludeUnmerged, "--merged" },
                  context.ReferenceBranch
             };
 
-            string[] branches = context.Commands.GitExecutable.GetOutput(args)
-                .Split('\n')
-                .Where(branchName => !string.IsNullOrEmpty(branchName))
-                .Select(branchName => branchName.Trim('*', ' ', '\n', '\r'))
-                .Where(branchName => branchName != "HEAD" && branchName != curBranch &&
-                                   branchName != context.ReferenceBranch)
-                .ToArray();
+            var result = context.Commands.GitExecutable.Execute(args);
 
-            return branches.Where(branchName => (!context.IncludeRemotes || branchName.StartsWith(context.RemoteRepositoryName + "/")) &&
-                                   (regex == null || regex.IsMatch(branchName) == regexMustMatch)).ToArray();
+            if (!result.ExitedSuccessfully)
+            {
+                MessageBox.Show(this, result.AllOutput, $"git {args}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return Array.Empty<string>();
+            }
+
+            return _commandOutputParser.GetBranchNames(result.AllOutput)
+                                        .Where(branchName => branchName != curBranch && branchName != context.ReferenceBranch)
+                                        .Where(branchName => (!context.IncludeRemotes || branchName.StartsWith(context.RemoteRepositoryName + "/"))
+                                                            && (regex == null || regex.IsMatch(branchName) == regexMustMatch));
         }
 
         private void Delete_Click(object sender, EventArgs e)

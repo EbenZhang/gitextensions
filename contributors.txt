@@ -1,4 +1,4 @@
-﻿Git Extensions Project Contributors Certification of Origin and Rights
+Git Extensions Project Contributors Certification of Origin and Rights
 
 All contributors to Git Extensions must formally agree to abide by this
 certificate of origin by signing on the bottom with their github
@@ -47,38 +47,64 @@ the end of the following contributors list.
 CONTRIBUTORS:
 
 YYYY/MM/DD, github id, Full name, email
-2019/01/23, spdr870, Henk Westhuis, henk.westhuis@gmail.com
-2019/01/23, RussKie, Igor Velikorossov, russkie@gmail.com
-2019/01/23, gerhardol, Gerhard Olsson, gerhard.nospam@gmail.com
-2019/01/23, drewnoakes, Drew Noakes, git@drewnoakes.com
-2019/01/23, amaiorano, Antonio Maiorano, amaiorano@gmail.com
-2019/01/23, sharwell, Sam Harwell, sam@tunnelvisionlabs.com
-2019/01/24, KindDragon, Arkadii Shapkin, arkady.shapkin@gmail.com
-2019/01/24, jbialobr, Janusz Białobrzewski, jbialobr@o2.pl
-2019/01/24, SetoKaiba, Jie Situ, 61304189@qq.com
-2019/01/24, mstv, Michael Seibt, mstv@gmx.net
-2019/01/24, DCFerg, Dan Ferguson, dferguson.gh@gmail.com
-2019/01/24, NikolayXHD, Nikolai Idalgo Dias, hidalgo1984@list.ru
-2019/01/24, mast-eu, Martin Steinisch, martin.steinisch@gmail.com
-2019/01/24, pmiossec, Philippe Miossec, pmiossec@gmail.com
-2019/01/24, IEVin, Ivan Vinogradov, i.e.vin@ya.ru
-2019/01/29, maraf, Marek Fišera, mara@neptuo.com
-2019/01/30, stivx0, Ivan Sterkhov, stivx0@gmail.com
-2019/01/30, markonius, Marko Bakšić, markonius@protonmail.ch
-2019/02/07, crypto-rsa, Pavel Kotrč, pkotrc@gmail.com
-2019/02/09, glen-nicol, Glen Nicol, glen.nicol@live.com
-2019/02/16, mdonatas, Donatas Mačiūnas, mdonatas@gmail.com
-2019/02/16, DmitryZhelnin, Dmitry Zhelnin, mitya_zh@mail.ru
-2019/02/18, wachulski, Marcin Wachulski, marcin.wachulski@gmail.com
-2019/02/25, oriash93, Ori Ashual, oriash93@gmail.com
-2019/02/25, coreyasmith, Corey Smith, coreyas@gmail.com
-2019/02/27, ivangrek, Ivan Grek, kvant@outlook.com
-2019/02/28, leorohr, Leo Rohr, rohrleo@gmail.com
-2019/03/02, seshonaar, Andrei Balint, andrei.balint@gmail.com
-2019/03/04, DeadDuck, Onur Safak, onur.safak@radity.com
-2019/03/12, Carl-Hugo, Carl-Hugo Marcotte, carlhugo@gmail.com
-2019/03/20, ignacioerrico, Ignacio Errico, ignacio.errico@gmail.com
+2019/01/23, spdr870, Henk Westhuis, henk.westhuis(at)gmail.com
+2019/01/23, RussKie, Igor Velikorossov, russkie(at)gmail.com
+2019/01/23, gerhardol, Gerhard Olsson, gerhard.nospam(at)gmail.com
+2019/01/23, drewnoakes, Drew Noakes, git(at)drewnoakes.com
+2019/01/23, amaiorano, Antonio Maiorano, amaiorano(at)gmail.com
+2019/01/23, sharwell, Sam Harwell, sam(at)tunnelvisionlabs.com
+2019/01/24, KindDragon, Arkadii Shapkin, arkady.shapkin(at)gmail.com
+2019/01/24, jbialobr, Janusz Białobrzewski, jbialobr(at)o2.pl
+2019/01/24, SetoKaiba, Jie Situ, 61304189(at)qq.com
+2019/01/24, mstv, Michael Seibt, mstv(at)gmx.net
+2019/01/24, DCFerg, Dan Ferguson, dferguson.gh(at)gmail.com
+2019/01/24, NikolayXHD, Nikolai Idalgo Dias, hidalgo1984(at)list.ru
+2019/01/24, mast-eu, Martin Steinisch, martin.steinisch(at)gmail.com
+2019/01/24, pmiossec, Philippe Miossec, pmiossec(at)gmail.com
+2019/01/24, IEVin, Ivan Vinogradov, i.e.vin(at)ya.ru
+2019/01/29, maraf, Marek Fišera, mara(at)neptuo.com
+2019/01/30, stivx0, Ivan Sterkhov, stivx0(at)gmail.com
+2019/01/30, markonius, Marko Bakšić, markonius(at)protonmail.ch
+2019/02/07, crypto-rsa, Pavel Kotrč, pkotrc(at)gmail.com
+2019/02/09, glen-nicol, Glen Nicol, glen.nicol(at)live.com
+2019/02/16, mdonatas, Donatas Mačiūnas, mdonatas(at)gmail.com
+2019/02/16, DmitryZhelnin, Dmitry Zhelnin, mitya_zh(at)mail.ru
+2019/02/18, wachulski, Marcin Wachulski, marcin.wachulski(at)gmail.com
+2019/02/25, oriash93, Ori Ashual, oriash93(at)gmail.com
+2019/02/25, coreyasmith, Corey Smith, coreyas(at)gmail.com
+2019/02/27, ivangrek, Ivan Grek, kvant(at)outlook.com
+2019/02/28, leorohr, Leo Rohr, rohrleo(at)gmail.com
+2019/03/02, seshonaar, Andrei Balint, andrei.balint(at)gmail.com
+2019/03/04, DeadDuck, Onur Safak, onur.safak(at)radity.com
+2019/03/12, Carl-Hugo, Carl-Hugo Marcotte, carlhugo(at)gmail.com
+2019/03/20, ignacioerrico, Ignacio Errico, ignacio.errico(at)gmail.com
 2019/03/24, fschmied, Fabian Schmied, fabian.schmied(at)gmail.com
-2019/03/29, realkompot, Andrei Matsei, therealkompot@gmail.com
-2019/04/09, vbjay, Jay Asbury, vbjay.net@gmail.com
-2019/04/20, Hemaolle, Oskari Leppäaho, oskari.leppaaho@gmail.com
+2019/03/29, realkompot, Andrei Matsei, therealkompot(at)gmail.com
+2019/04/09, vbjay, Jay Asbury, vbjay.net(at)gmail.com
+2019/04/20, Hemaolle, Oskari Leppäaho, oskari.leppaaho(at)gmail.com
+2019/05/24, cryham, Crystal Hammer, cryham(at)gmail.com
+2019/05/29, Johno-ACSLive, Jonathon Aroutsidis, thunder2518(at)hotmail.com
+2019/06/05, AOrlov, Andrei Orlov, gooshift(at)gmail.com
+2019/06/07, veremenko-y, Yaroslav Veremenko, yaroslav(at)veremenko.info
+2019/07/28, FisherTsai, Fisher Tsai, fishy0903(at)gmail.com
+2019/07/28, manuelspezzani, Manuel Spezzani, manuel.spezzani(at)gmail.com
+2019/07/31, asfarley, Alexander Farley, alexander.s.farley(at)gmail.com
+2019/08/11, KarstenRa, Karsten Rathlev, krathlev(at)gmail.com
+2019/08/15, phdussud, Patrick Dussud, phdussud[at]hotmail.com
+2019/08/18, manuc66, Emmanuel Counasse, manuc66(at)gmail.com
+2019/08/25, kvanttt, Ivan Kochurkin, kvanttt(at)gmail.com
+2019/08/27, palver123, Levente Koncz, palver123(at)gmail.com
+2019/09/02, MelnikovIG, Igor Melnikov, zero_88(at)bk.ru
+2019/09/24, lekhmanrus, Ruslan Lekhman, lekhman112(at)gmail.com
+2019/09/27, kbilsted, Kasper B. Graversen, redbeard1945redbeard(at)gmail.com
+2019/09/30, hieuxlu, Hieu Do, xlu.untitled(at)gmail.com
+2019/10/13, R0nd, Roland Gneev, rgneev(at)gmail.com
+2019/10/13, bansan85, Le Garrec Vincent, legarrec.vincent{at]gmail.com
+2019/10/13, meaney, Chris Meaney, meaney(at)iinet.net.au
+2019/10/14, FabMan08, Fabrizio Mancin, fabman08(at)gmail.com
+2019/10/15, manishkungwani, Manish Kungwani, manishkungwani{at]yahoo.com
+2019/10/18, lhiginbotham, Logan Higinbotham, logan.higinbotham(at)gmail.com
+2019/10/18, RalphJSmart, Ralph J Smart, id1508-gitextensions_github(at)yahoo.com
+2019/10/24, jvitkauskas, Julius Vitkauskas, zadintuvas(at)gmail.com
+2019/10/31, rickaas, Ricky Lindeman, saakcir(at)gmail.com
+2019/11/27, andrewcartwright1, Andrew Cartwright, kickme93(at)hotmail.co.uk

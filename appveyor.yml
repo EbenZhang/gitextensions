@@ -1,4 +1,4 @@
-version: 3.2.0.{build}
+version: 3.3.1.{build}
 
 os: Visual Studio 2017
 
@@ -78,7 +78,9 @@ build_script:
 test_script:
 - ps: |
     Write-Host "Ignore the tests and codecov util we figure out how to use OpenCover"
+    Write-Host $pwd
     # & .\Build\Run-Tests.ps1
+
 
 # scripts to run after tests
 after_test:

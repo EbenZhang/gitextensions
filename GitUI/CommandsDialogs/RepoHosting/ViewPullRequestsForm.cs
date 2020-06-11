@@ -27,8 +27,13 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private readonly TranslationString _strCouldNotAddRemote = new TranslationString("Could not add remote with name {0} and URL {1}");
         #endregion
 
+        private GitProtocol _cloneGitProtocol;
+        private IPullRequestInformation _currentPullRequestInfo;
+        private Dictionary<string, string> _diffCache;
         private readonly IRepositoryHostPlugin _gitHoster;
+        private IReadOnlyList<IHostedRemote> _hostedRemotes;
         private bool _isFirstLoad;
+        private IReadOnlyList<IPullRequestInformation> _pullRequestsInfo;
         private readonly AsyncLoader _loader = new AsyncLoader();
 
         [Obsolete("For VS designer and translation test only. Do not remove.")]
@@ -56,10 +61,6 @@ namespace GitUI.CommandsDialogs.RepoHosting
             _gitHoster = gitHoster;
         }
 
-        private IReadOnlyList<IHostedRemote> _hostedRemotes;
-        private IReadOnlyList<IPullRequestInformation> _pullRequestsInfo;
-        private IPullRequestInformation _currentPullRequestInfo;
-
         private void ViewPullRequestsForm_Load(object sender, EventArgs e)
         {
             _fileStatusList.SelectedIndexChanged += _fileStatusList_SelectedIndexChanged;
@@ -71,7 +72,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
             _loader.LoadAsync(
                 () =>
                 {
-                    var t = _gitHoster.GetHostedRemotesForModule(Module).ToList();
+                    var t = _gitHoster.GetHostedRemotesForModule().ToList();
                     foreach (var el in t)
                     {
                         el.GetHostedRepository(); // We do this now because we want to do it in the async part.
@@ -154,6 +155,13 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private void SelectHostedRepositoryForCurrentRemote()
         {
             var currentRemote = Module.GetCurrentRemote();
+
+            // Local branches have no current remote, return value is empty string.
+            // In this case we fallback to the first remote in the list.
+            // Currently, local git repo with no remote will show error message and can not open this dialog.
+            // So there will always be at least 1 remote when this dialog is open
+            _cloneGitProtocol = ThreadHelper.JoinableTaskFactory.Run(async () => (await Module.GetRemotesAsync())
+                .First(r => string.IsNullOrEmpty(currentRemote) || r.Name == currentRemote).FetchUrl.IsUrlUsingHttp() ? GitProtocol.Https : GitProtocol.Ssh);
             var hostedRemote = _selectHostedRepoCB.Items.
                 Cast<IHostedRemote>().
                 FirstOrDefault(remote => remote.Name.Equals(currentRemote, StringComparison.OrdinalIgnoreCase));
@@ -258,6 +266,8 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 return;
             }
 
+            _currentPullRequestInfo.HeadRepo.CloneProtocol = _cloneGitProtocol;
+
             _discussionWB.DocumentText = DiscussionHtmlCreator.CreateFor(_currentPullRequestInfo);
             _diffViewer.ViewPatch(null);
             _fileStatusList.SetDiffs();
@@ -329,7 +339,6 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 .FileAndForget();
         }
 
-        private Dictionary<string, string> _diffCache;
         private void SplitAndLoadDiff(string diffData)
         {
             _diffCache = new Dictionary<string, string>();
@@ -401,10 +410,12 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 var existingRepo = _hostedRemotes.FirstOrDefault(el => el.Name == remoteName);
                 if (existingRepo != null)
                 {
-                    if (existingRepo.GetHostedRepository().CloneReadOnlyUrl != remoteUrl)
+                    var hostedRepository = existingRepo.GetHostedRepository();
+                    hostedRepository.CloneProtocol = _cloneGitProtocol;
+                    if (hostedRepository.CloneReadOnlyUrl != remoteUrl)
                     {
                         MessageBox.Show(this, string.Format(_strRemoteAlreadyExist.Text,
-                                            remoteName, existingRepo.GetHostedRepository().CloneReadOnlyUrl, remoteUrl));
+                                            remoteName, hostedRepository.CloneReadOnlyUrl, remoteUrl));
                         return;
                     }
                 }

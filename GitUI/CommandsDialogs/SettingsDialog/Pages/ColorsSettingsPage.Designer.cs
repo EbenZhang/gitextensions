@@ -49,6 +49,7 @@
             this.lblColorTag = new System.Windows.Forms.Label();
             this.gbDiffView = new System.Windows.Forms.GroupBox();
             this.tlpnlDiffView = new System.Windows.Forms.TableLayoutPanel();
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel = new System.Windows.Forms.Label();
             this.lblColorLineRemoved = new System.Windows.Forms.Label();
             this.lblColorSection = new System.Windows.Forms.Label();
             this._NO_TRANSLATE_ColorSectionLabel = new System.Windows.Forms.Label();
@@ -59,6 +60,7 @@
             this._NO_TRANSLATE_ColorRemovedLine = new System.Windows.Forms.Label();
             this.lblColorLineAdded = new System.Windows.Forms.Label();
             this._NO_TRANSLATE_ColorAddedLineLabel = new System.Windows.Forms.Label();
+            this.lblColorHighlightAllOccurrences = new System.Windows.Forms.Label();
             tlpnlMain = new System.Windows.Forms.TableLayoutPanel();
             tlpnlMain.SuspendLayout();
             this.gbRevisionGraph.SuspendLayout();
@@ -152,7 +154,7 @@
             this._NO_TRANSLATE_ColorHighlightAuthoredLabel.Location = new System.Drawing.Point(176, 138);
             this._NO_TRANSLATE_ColorHighlightAuthoredLabel.Name = "_NO_TRANSLATE_ColorHighlightAuthoredLabel";
             this._NO_TRANSLATE_ColorHighlightAuthoredLabel.Size = new System.Drawing.Size(27, 19);
-            this._NO_TRANSLATE_ColorHighlightAuthoredLabel.TabIndex = 8;
+            this._NO_TRANSLATE_ColorHighlightAuthoredLabel.TabIndex = 7;
             this._NO_TRANSLATE_ColorHighlightAuthoredLabel.Text = "Red";
             this._NO_TRANSLATE_ColorHighlightAuthoredLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this._NO_TRANSLATE_ColorHighlightAuthoredLabel.Click += new System.EventHandler(this.ColorLabel_Click);
@@ -166,7 +168,7 @@
             this.lblColorHighlightAuthored.Margin = new System.Windows.Forms.Padding(3);
             this.lblColorHighlightAuthored.Name = "lblColorHighlightAuthored";
             this.lblColorHighlightAuthored.Size = new System.Drawing.Size(167, 13);
-            this.lblColorHighlightAuthored.TabIndex = 7;
+            this.lblColorHighlightAuthored.TabIndex = 6;
             this.lblColorHighlightAuthored.Text = "Color authored revisions";
             // 
             // chkHighlightAuthored
@@ -176,7 +178,7 @@
             this.chkHighlightAuthored.Location = new System.Drawing.Point(3, 118);
             this.chkHighlightAuthored.Name = "chkHighlightAuthored";
             this.chkHighlightAuthored.Size = new System.Drawing.Size(167, 17);
-            this.chkHighlightAuthored.TabIndex = 6;
+            this.chkHighlightAuthored.TabIndex = 5;
             this.chkHighlightAuthored.Text = "Highlight authored revisions";
             this.chkHighlightAuthored.UseVisualStyleBackColor = true;
             this.chkHighlightAuthored.CheckedChanged += new System.EventHandler(this.chkHighlightAuthored_CheckedChanged);
@@ -202,7 +204,7 @@
             this._NO_TRANSLATE_ColorRemoteBranchLabel.Location = new System.Drawing.Point(176, 195);
             this._NO_TRANSLATE_ColorRemoteBranchLabel.Name = "_NO_TRANSLATE_ColorRemoteBranchLabel";
             this._NO_TRANSLATE_ColorRemoteBranchLabel.Size = new System.Drawing.Size(27, 19);
-            this._NO_TRANSLATE_ColorRemoteBranchLabel.TabIndex = 14;
+            this._NO_TRANSLATE_ColorRemoteBranchLabel.TabIndex = 13;
             this._NO_TRANSLATE_ColorRemoteBranchLabel.Text = "Red";
             this._NO_TRANSLATE_ColorRemoteBranchLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this._NO_TRANSLATE_ColorRemoteBranchLabel.Click += new System.EventHandler(this.ColorLabel_Click);
@@ -215,7 +217,7 @@
             this.lblColorBranchRemote.Margin = new System.Windows.Forms.Padding(3);
             this.lblColorBranchRemote.Name = "lblColorBranchRemote";
             this.lblColorBranchRemote.Size = new System.Drawing.Size(167, 13);
-            this.lblColorBranchRemote.TabIndex = 13;
+            this.lblColorBranchRemote.TabIndex = 12;
             this.lblColorBranchRemote.Text = "Color remote branch";
             // 
             // _NO_TRANSLATE_ColorOtherLabel
@@ -227,7 +229,7 @@
             this._NO_TRANSLATE_ColorOtherLabel.Location = new System.Drawing.Point(176, 214);
             this._NO_TRANSLATE_ColorOtherLabel.Name = "_NO_TRANSLATE_ColorOtherLabel";
             this._NO_TRANSLATE_ColorOtherLabel.Size = new System.Drawing.Size(27, 19);
-            this._NO_TRANSLATE_ColorOtherLabel.TabIndex = 16;
+            this._NO_TRANSLATE_ColorOtherLabel.TabIndex = 15;
             this._NO_TRANSLATE_ColorOtherLabel.Text = "Red";
             this._NO_TRANSLATE_ColorOtherLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this._NO_TRANSLATE_ColorOtherLabel.Click += new System.EventHandler(this.ColorLabel_Click);
@@ -240,7 +242,7 @@
             this.lblColorLabel.Margin = new System.Windows.Forms.Padding(3);
             this.lblColorLabel.Name = "lblColorLabel";
             this.lblColorLabel.Size = new System.Drawing.Size(167, 13);
-            this.lblColorLabel.TabIndex = 15;
+            this.lblColorLabel.TabIndex = 14;
             this.lblColorLabel.Text = "Color other label";
             // 
             // chkDrawAlternateBackColor
@@ -250,7 +252,7 @@
             this.chkDrawAlternateBackColor.Location = new System.Drawing.Point(3, 49);
             this.chkDrawAlternateBackColor.Name = "chkDrawAlternateBackColor";
             this.chkDrawAlternateBackColor.Size = new System.Drawing.Size(167, 17);
-            this.chkDrawAlternateBackColor.TabIndex = 3;
+            this.chkDrawAlternateBackColor.TabIndex = 2;
             this.chkDrawAlternateBackColor.Text = "Draw alternate background";
             this.chkDrawAlternateBackColor.UseVisualStyleBackColor = true;
             // 
@@ -261,7 +263,7 @@
             this.DrawNonRelativesTextGray.Location = new System.Drawing.Point(3, 95);
             this.DrawNonRelativesTextGray.Name = "DrawNonRelativesTextGray";
             this.DrawNonRelativesTextGray.Size = new System.Drawing.Size(167, 17);
-            this.DrawNonRelativesTextGray.TabIndex = 5;
+            this.DrawNonRelativesTextGray.TabIndex = 4;
             this.DrawNonRelativesTextGray.Text = "Draw non relatives text gray";
             this.DrawNonRelativesTextGray.UseVisualStyleBackColor = true;
             // 
@@ -286,7 +288,7 @@
             this.DrawNonRelativesGray.Location = new System.Drawing.Point(3, 72);
             this.DrawNonRelativesGray.Name = "DrawNonRelativesGray";
             this.DrawNonRelativesGray.Size = new System.Drawing.Size(167, 17);
-            this.DrawNonRelativesGray.TabIndex = 4;
+            this.DrawNonRelativesGray.TabIndex = 3;
             this.DrawNonRelativesGray.Text = "Draw non relatives graph gray";
             this.DrawNonRelativesGray.UseVisualStyleBackColor = true;
             // 
@@ -298,7 +300,7 @@
             this.lblColorBranchLocal.Margin = new System.Windows.Forms.Padding(3);
             this.lblColorBranchLocal.Name = "lblColorBranchLocal";
             this.lblColorBranchLocal.Size = new System.Drawing.Size(167, 13);
-            this.lblColorBranchLocal.TabIndex = 11;
+            this.lblColorBranchLocal.TabIndex = 10;
             this.lblColorBranchLocal.Text = "Color branch";
             // 
             // _NO_TRANSLATE_ColorBranchLabel
@@ -310,7 +312,7 @@
             this._NO_TRANSLATE_ColorBranchLabel.Location = new System.Drawing.Point(176, 176);
             this._NO_TRANSLATE_ColorBranchLabel.Name = "_NO_TRANSLATE_ColorBranchLabel";
             this._NO_TRANSLATE_ColorBranchLabel.Size = new System.Drawing.Size(27, 19);
-            this._NO_TRANSLATE_ColorBranchLabel.TabIndex = 12;
+            this._NO_TRANSLATE_ColorBranchLabel.TabIndex = 11;
             this._NO_TRANSLATE_ColorBranchLabel.Text = "Red";
             this._NO_TRANSLATE_ColorBranchLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this._NO_TRANSLATE_ColorBranchLabel.Click += new System.EventHandler(this.ColorLabel_Click);
@@ -324,7 +326,7 @@
             this._NO_TRANSLATE_ColorTagLabel.Location = new System.Drawing.Point(176, 157);
             this._NO_TRANSLATE_ColorTagLabel.Name = "_NO_TRANSLATE_ColorTagLabel";
             this._NO_TRANSLATE_ColorTagLabel.Size = new System.Drawing.Size(27, 19);
-            this._NO_TRANSLATE_ColorTagLabel.TabIndex = 10;
+            this._NO_TRANSLATE_ColorTagLabel.TabIndex = 9;
             this._NO_TRANSLATE_ColorTagLabel.Text = "Red";
             this._NO_TRANSLATE_ColorTagLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this._NO_TRANSLATE_ColorTagLabel.Click += new System.EventHandler(this.ColorLabel_Click);
@@ -337,7 +339,7 @@
             this.lblColorTag.Margin = new System.Windows.Forms.Padding(3);
             this.lblColorTag.Name = "lblColorTag";
             this.lblColorTag.Size = new System.Drawing.Size(167, 13);
-            this.lblColorTag.TabIndex = 9;
+            this.lblColorTag.TabIndex = 8;
             this.lblColorTag.Text = "Color tag";
             // 
             // gbDiffView
@@ -362,6 +364,7 @@
             this.tlpnlDiffView.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tlpnlDiffView.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tlpnlDiffView.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpnlDiffView.Controls.Add(this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel, 1, 5);
             this.tlpnlDiffView.Controls.Add(this.lblColorLineRemoved, 0, 0);
             this.tlpnlDiffView.Controls.Add(this.lblColorSection, 0, 4);
             this.tlpnlDiffView.Controls.Add(this._NO_TRANSLATE_ColorSectionLabel, 1, 4);
@@ -372,10 +375,12 @@
             this.tlpnlDiffView.Controls.Add(this._NO_TRANSLATE_ColorRemovedLine, 1, 0);
             this.tlpnlDiffView.Controls.Add(this.lblColorLineAdded, 0, 1);
             this.tlpnlDiffView.Controls.Add(this._NO_TRANSLATE_ColorAddedLineLabel, 1, 1);
+            this.tlpnlDiffView.Controls.Add(this.lblColorHighlightAllOccurrences, 0, 5);
             this.tlpnlDiffView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tlpnlDiffView.Location = new System.Drawing.Point(8, 21);
             this.tlpnlDiffView.Name = "tlpnlDiffView";
-            this.tlpnlDiffView.RowCount = 5;
+            this.tlpnlDiffView.RowCount = 6;
+            this.tlpnlDiffView.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tlpnlDiffView.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tlpnlDiffView.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tlpnlDiffView.RowStyles.Add(new System.Windows.Forms.RowStyle());
@@ -383,6 +388,21 @@
             this.tlpnlDiffView.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tlpnlDiffView.Size = new System.Drawing.Size(1372, 95);
             this.tlpnlDiffView.TabIndex = 0;
+            // 
+            // _NO_TRANSLATE_ColorHighlightAllOccurencesLabel
+            // 
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.AutoSize = true;
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.BackColor = System.Drawing.Color.Red;
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.Location = new System.Drawing.Point(159, 95);
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.Name = "_NO_TRANSLATE_ColorHighlightAllOccurencesLabel";
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.Size = new System.Drawing.Size(29, 19);
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.TabIndex = 11;
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.Text = "Red";
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._NO_TRANSLATE_ColorHighlightAllOccurrencesLabel.Click += new System.EventHandler(this.ColorLabel_Click);
             // 
             // lblColorLineRemoved
             // 
@@ -509,6 +529,17 @@
             this._NO_TRANSLATE_ColorAddedLineLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this._NO_TRANSLATE_ColorAddedLineLabel.Click += new System.EventHandler(this.ColorLabel_Click);
             // 
+            // lblColorHighlightAllOccurences
+            // 
+            this.lblColorHighlightAllOccurrences.AutoSize = true;
+            this.lblColorHighlightAllOccurrences.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblColorHighlightAllOccurrences.Location = new System.Drawing.Point(3, 98);
+            this.lblColorHighlightAllOccurrences.Margin = new System.Windows.Forms.Padding(3);
+            this.lblColorHighlightAllOccurrences.Name = "lblColorHighlightAllOccurences";
+            this.lblColorHighlightAllOccurrences.Size = new System.Drawing.Size(150, 13);
+            this.lblColorHighlightAllOccurrences.TabIndex = 10;
+            this.lblColorHighlightAllOccurrences.Text = "Color highlight all occurences";
+            // 
             // ColorsSettingsPage
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
@@ -561,6 +592,8 @@
         private System.Windows.Forms.CheckBox chkDrawAlternateBackColor;
         private System.Windows.Forms.TableLayoutPanel tlpnlRevisionGraph;
         private System.Windows.Forms.TableLayoutPanel tlpnlDiffView;
+        private System.Windows.Forms.Label _NO_TRANSLATE_ColorHighlightAllOccurrencesLabel;
+        private System.Windows.Forms.Label lblColorHighlightAllOccurrences;
         private System.Windows.Forms.Label lblColorHighlightAuthored;
         private System.Windows.Forms.CheckBox chkHighlightAuthored;
         private System.Windows.Forms.Label _NO_TRANSLATE_ColorHighlightAuthoredLabel;

@@ -69,7 +69,7 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _pullRepository =
             new TranslationString("The push was rejected because the tip of your current branch is behind its remote counterpart. " +
                 "Merge the remote changes before pushing again.");
-        private readonly TranslationString _pullRepositoryButtons = new TranslationString("Pull with the default pull action ({0})|Pull with rebase|Pull with merge|Force push|Cancel");
+        private readonly TranslationString _pullRepositoryButtons = new TranslationString("Pull with the default pull action ({0})|Pull with rebase|Pull with merge|Force push with lease|Cancel");
         private readonly TranslationString _pullActionNone = new TranslationString("none");
         private readonly TranslationString _pullActionFetch = new TranslationString("fetch");
         private readonly TranslationString _pullActionRebase = new TranslationString("rebase");
@@ -204,7 +204,7 @@ namespace GitUI.CommandsDialogs
 
         private void PushClick(object sender, EventArgs e)
         {
-            DialogResult = PushChanges(this) ? DialogResult.OK : DialogResult.Abort;
+            DialogResult = PushChanges(this) ? DialogResult.OK : DialogResult.None;
         }
 
         private void BindRemotesDropDown(string selectedRemoteName)
@@ -266,7 +266,7 @@ namespace GitUI.CommandsDialogs
         private bool PushChanges(IWin32Window owner)
         {
             ErrorOccurred = false;
-            if (PushToUrl.Checked && string.IsNullOrEmpty(PushDestination.Text))
+            if (PushToUrl.Checked && !PathUtil.IsUrl(PushDestination.Text))
             {
                 MessageBox.Show(owner, _selectDestinationDirectory.Text);
                 return false;
@@ -977,6 +977,8 @@ namespace GitUI.CommandsDialogs
                 var localHeads = GetLocalBranches().ToList();
                 var remoteBranches = remoteHeads.ToHashSet(h => h.LocalName);
 
+                _branchTable.BeginLoadData();
+
                 // Add all the local branches.
                 foreach (var head in localHeads)
                 {
@@ -1015,6 +1017,7 @@ namespace GitUI.CommandsDialogs
                     }
                 }
 
+                _branchTable.EndLoadData();
                 BranchGrid.Enabled = true;
             }
         }
@@ -1082,6 +1085,32 @@ namespace GitUI.CommandsDialogs
             {
                 BranchGrid.EndEdit();
                 ((BindingSource)BranchGrid.DataSource).EndEdit();
+            }
+        }
+
+        private void BranchGrid_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            foreach (DataGridViewRow row in BranchGrid.Rows)
+            {
+                if (row.Cells[0].Value == DBNull.Value)
+                {
+                    row.Cells[3].ReadOnly = true;
+                    row.Cells[4].ReadOnly = true;
+                }
+            }
+        }
+
+        private void BranchGrid_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0)
+            {
+                return;
+            }
+
+            if ((e.ColumnIndex == 3 || e.ColumnIndex == 4) && BranchGrid.Rows[e.RowIndex].Cells[0].Value == DBNull.Value)
+            {
+                e.PaintBackground(e.ClipBounds, true);
+                e.Handled = true;
             }
         }
 

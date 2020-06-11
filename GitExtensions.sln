@@ -97,8 +97,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Externals", "Externals", "{
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Git.hub", "Externals\Git.hub\Git.hub\Git.hub.csproj", "{F50B1DBF-1C9F-4437-87EC-7ABA805CC446}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NBug", "Externals\NBug\NBug\NBug.csproj", "{62CED1D5-F603-40DE-8BF5-3E49D3A392F4}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bitbucket", "Plugins\Bitbucket\Bitbucket.csproj", "{50AEAB6C-83C4-45F8-AA01-90E1405C48AF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JenkinsIntegration", "Plugins\BuildServerIntegration\JenkinsIntegration\JenkinsIntegration.csproj", "{E6AAC693-815B-4D1A-83D7-F4DE36072793}"
@@ -159,11 +157,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		GitExtensions.ruleset = GitExtensions.ruleset
 		GitExtensionsTest.ruleset = GitExtensionsTest.ruleset
 		LICENSE.md = LICENSE.md
+		PrivacyPolicy.md = PrivacyPolicy.md
+		PrivacyPolicy.rtf = PrivacyPolicy.rtf
 		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{472B72D9-9336-4C8B-A199-300F0CA7669E}"
 	ProjectSection(SolutionItems) = preProject
+		Build\Mark-RepoClean.ps1 = Build\Mark-RepoClean.ps1
+		Build\Prepare-Artifacts.ps1 = Build\Prepare-Artifacts.ps1
+		Build\Run-Tests.ps1 = Build\Run-Tests.ps1
 		Build\stylecop.json = Build\stylecop.json
 		Build\vs-threading.MainThreadAssertingMethods.txt = Build\vs-threading.MainThreadAssertingMethods.txt
 		Build\vs-threading.MainThreadSwitchingMethods.txt = Build\vs-threading.MainThreadSwitchingMethods.txt
@@ -193,12 +196,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ISSUE_TEMPLATE", "ISSUE_TEM
 		.github\ISSUE_TEMPLATE\feature_request.md = .github\ISSUE_TEMPLATE\feature_request.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "transifex", "transifex", "{3B54384D-4314-45B7-95A8-2652BBB288AA}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "transifex", "transifex", "{D017F26A-694F-4127-B917-9B1BD3F01E2F}"
 	ProjectSection(SolutionItems) = preProject
-		Build\transifex\.tx\config = Build\transifex\.tx\config
 		Build\transifex\DownloadTransifexTranslations.ps1 = Build\transifex\DownloadTransifexTranslations.ps1
 		Build\transifex\UpdateLocalEnglishTranslations.ps1 = Build\transifex\UpdateLocalEnglishTranslations.ps1
 	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".tx", ".tx", "{EFBCA0B9-9E08-4464-BEAA-DAF2FF85C6AB}"
+	ProjectSection(SolutionItems) = preProject
+		Build\transifex\.tx\config = Build\transifex\.tx\config
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeleteUnusedBranchesTests", "UnitTests\Plugins\DeleteUnusedBranchesTests\DeleteUnusedBranchesTests.csproj", "{3FD5B353-17C0-4122-A693-27B707D06EFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -296,10 +305,6 @@ Global
 		{F50B1DBF-1C9F-4437-87EC-7ABA805CC446}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F50B1DBF-1C9F-4437-87EC-7ABA805CC446}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F50B1DBF-1C9F-4437-87EC-7ABA805CC446}.Release|Any CPU.Build.0 = Release|Any CPU
-		{62CED1D5-F603-40DE-8BF5-3E49D3A392F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{62CED1D5-F603-40DE-8BF5-3E49D3A392F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{62CED1D5-F603-40DE-8BF5-3E49D3A392F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{62CED1D5-F603-40DE-8BF5-3E49D3A392F4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{50AEAB6C-83C4-45F8-AA01-90E1405C48AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{50AEAB6C-83C4-45F8-AA01-90E1405C48AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{50AEAB6C-83C4-45F8-AA01-90E1405C48AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -388,6 +393,10 @@ Global
 		{2828E531-7EB3-4A52-A71E-DCE73B9907FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2828E531-7EB3-4A52-A71E-DCE73B9907FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2828E531-7EB3-4A52-A71E-DCE73B9907FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FD5B353-17C0-4122-A693-27B707D06EFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FD5B353-17C0-4122-A693-27B707D06EFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FD5B353-17C0-4122-A693-27B707D06EFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FD5B353-17C0-4122-A693-27B707D06EFF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -411,7 +420,6 @@ Global
 		{121965D1-4399-4538-B8BF-403EB5B847C3} = {F1B97F5D-CA42-4280-94A1-CE412BEA20DF}
 		{F1B97F5D-CA42-4280-94A1-CE412BEA20DF} = {3D5CA0E0-EF51-4488-A8B7-86CC330D7AD8}
 		{F50B1DBF-1C9F-4437-87EC-7ABA805CC446} = {0E859634-B3DF-46AC-A73C-D49734F19D6A}
-		{62CED1D5-F603-40DE-8BF5-3E49D3A392F4} = {0E859634-B3DF-46AC-A73C-D49734F19D6A}
 		{50AEAB6C-83C4-45F8-AA01-90E1405C48AF} = {3D5CA0E0-EF51-4488-A8B7-86CC330D7AD8}
 		{E6AAC693-815B-4D1A-83D7-F4DE36072793} = {F1B97F5D-CA42-4280-94A1-CE412BEA20DF}
 		{452CBBA1-8AF0-4F3B-8BEB-B8B31DC2B749} = {F1B97F5D-CA42-4280-94A1-CE412BEA20DF}
@@ -438,7 +446,9 @@ Global
 		{6E2BE70D-0B5C-45D6-9D42-4497A46C370D} = {BC90FFE0-7770-4979-884E-9F9F294C58C0}
 		{2828E531-7EB3-4A52-A71E-DCE73B9907FC} = {BC90FFE0-7770-4979-884E-9F9F294C58C0}
 		{95A371C3-77B9-437A-892E-17CA0097106B} = {17FD2A6B-4005-41DC-BFAC-59F936DF33AA}
-		{3B54384D-4314-45B7-95A8-2652BBB288AA} = {472B72D9-9336-4C8B-A199-300F0CA7669E}
+		{D017F26A-694F-4127-B917-9B1BD3F01E2F} = {472B72D9-9336-4C8B-A199-300F0CA7669E}
+		{EFBCA0B9-9E08-4464-BEAA-DAF2FF85C6AB} = {D017F26A-694F-4127-B917-9B1BD3F01E2F}
+		{3FD5B353-17C0-4122-A693-27B707D06EFF} = {C2276A26-13DF-485A-8B2C-414CF507798F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {ECECB7EA-BCCF-44AD-B63E-C2FA45589FB0}

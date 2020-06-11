@@ -41,7 +41,8 @@ namespace GitUIPluginInterfaces
 
             public override TextBox CreateControl()
             {
-                return new TextBox();
+                Setting.CustomControl = new TextBox();
+                return Setting.CustomControl;
             }
 
             public override void LoadSetting(ISettingsSource settings, TextBox control)
@@ -61,8 +62,9 @@ namespace GitUIPluginInterfaces
                     settingVal = Setting.ValueOrDefault(settings);
                 }
 
+                // for multiline control, transform "\n" in "\r\n" but prevent "\r\n" to be transformed in "\r\r\n"
                 control.Text = control.Multiline
-                    ? settingVal?.Replace("\n", Environment.NewLine)
+                    ? settingVal?.Replace(Environment.NewLine, "\n").Replace("\n", Environment.NewLine)
                     : settingVal;
             }
 

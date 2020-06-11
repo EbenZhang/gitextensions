@@ -605,7 +605,7 @@ namespace GitCommandsTests.Git
                 "-c rebase.autoSquash=false rebase -i --no-autosquash \"branch\"",
                 GitCommandHelpers.RebaseCmd("branch", interactive: true, preserveMerges: false, autosquash: false, autoStash: false).Arguments);
             Assert.AreEqual(
-                "-c rebase.autoSquash=false rebase --preserve-merges \"branch\"",
+                GitVersion.Current.SupportRebaseMerges ? "-c rebase.autoSquash=false rebase --rebase-merges \"branch\"" : "-c rebase.autoSquash=false rebase --preserve-merges \"branch\"",
                 GitCommandHelpers.RebaseCmd("branch", interactive: false, preserveMerges: true, autosquash: false, autoStash: false).Arguments);
             Assert.AreEqual(
                 "-c rebase.autoSquash=false rebase \"branch\"",
@@ -617,7 +617,7 @@ namespace GitCommandsTests.Git
                 "-c rebase.autoSquash=false rebase -i --autosquash \"branch\"",
                 GitCommandHelpers.RebaseCmd("branch", interactive: true, preserveMerges: false, autosquash: true, autoStash: false).Arguments);
             Assert.AreEqual(
-                "-c rebase.autoSquash=false rebase -i --autosquash --preserve-merges --autostash \"branch\"",
+                GitVersion.Current.SupportRebaseMerges ? "-c rebase.autoSquash=false rebase -i --autosquash --rebase-merges --autostash \"branch\"" : "-c rebase.autoSquash=false rebase -i --autosquash --preserve-merges --autostash \"branch\"",
                 GitCommandHelpers.RebaseCmd("branch", interactive: true, preserveMerges: true, autosquash: true, autoStash: true).Arguments);
 
             // TODO quote 'onto'?
@@ -658,15 +658,23 @@ namespace GitCommandsTests.Git
         [TestCase(ResetMode.Soft, null, null, @"reset --soft --")]
         [TestCase(ResetMode.Mixed, null, null, @"reset --mixed --")]
         [TestCase(ResetMode.Hard, null, null, @"reset --hard --")]
+        [TestCase(ResetMode.Merge, null, null, @"reset --merge --")]
+        [TestCase(ResetMode.Keep, null, null, @"reset --keep --")]
         [TestCase(ResetMode.Soft, "tree-ish", null, @"reset --soft ""tree-ish"" --")]
         [TestCase(ResetMode.Mixed, "tree-ish", null, @"reset --mixed ""tree-ish"" --")]
         [TestCase(ResetMode.Hard, "tree-ish", null, @"reset --hard ""tree-ish"" --")]
+        [TestCase(ResetMode.Merge, "tree-ish", null, @"reset --merge ""tree-ish"" --")]
+        [TestCase(ResetMode.Keep, "tree-ish", null, @"reset --keep ""tree-ish"" --")]
         [TestCase(ResetMode.Soft, null, "file.txt", @"reset --soft -- ""file.txt""")]
         [TestCase(ResetMode.Mixed, null, "file.txt", @"reset --mixed -- ""file.txt""")]
         [TestCase(ResetMode.Hard, null, "file.txt", @"reset --hard -- ""file.txt""")]
+        [TestCase(ResetMode.Merge, null, "file.txt", @"reset --merge -- ""file.txt""")]
+        [TestCase(ResetMode.Keep, null, "file.txt", @"reset --keep -- ""file.txt""")]
         [TestCase(ResetMode.Soft, "tree-ish", "file.txt", @"reset --soft ""tree-ish"" -- ""file.txt""")]
         [TestCase(ResetMode.Mixed, "tree-ish", "file.txt", @"reset --mixed ""tree-ish"" -- ""file.txt""")]
         [TestCase(ResetMode.Hard, "tree-ish", "file.txt", @"reset --hard ""tree-ish"" -- ""file.txt""")]
+        [TestCase(ResetMode.Merge, "tree-ish", "file.txt", @"reset --merge ""tree-ish"" -- ""file.txt""")]
+        [TestCase(ResetMode.Keep, "tree-ish", "file.txt", @"reset --keep ""tree-ish"" -- ""file.txt""")]
         public void ResetCmd(ResetMode mode, string commit, string file, string expected)
         {
             Assert.AreEqual(expected, GitCommandHelpers.ResetCmd(mode, commit, file).Arguments);

@@ -24,10 +24,12 @@ using GitUI.CommandsDialogs.BrowseDialog;
 using GitUI.CommandsDialogs.BrowseDialog.DashboardControl;
 using GitUI.CommandsDialogs.WorktreeDialog;
 using GitUI.Hotkey;
+using GitUI.Infrastructure.Telemetry;
 using GitUI.Properties;
 using GitUI.Script;
 using GitUI.UserControls;
 using GitUIPluginInterfaces;
+using GitUIPluginInterfaces.RepositoryHosts;
 using JetBrains.Annotations;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.Win32;
@@ -40,11 +42,11 @@ namespace GitUI.CommandsDialogs
     {
         #region Translation
 
-        private readonly TranslationString _warningMiddleOfBisect = new TranslationString("You are in the middle of a bisect");
-        private readonly TranslationString _warningMiddleOfRebase = new TranslationString("You are in the middle of a rebase");
-        private readonly TranslationString _warningMiddleOfPatchApply = new TranslationString("You are in the middle of a patch apply");
+        private readonly TranslationString _warningMiddleOfBisect = new TranslationString("You are in the middle of a bisect. C&ontinue...");
+        private readonly TranslationString _warningMiddleOfRebase = new TranslationString("You are in the middle of a rebase. C&ontinue...");
+        private readonly TranslationString _warningMiddleOfPatchApply = new TranslationString("You are in the middle of a patch apply. C&ontinue...");
 
-        private readonly TranslationString _hintUnresolvedMergeConflicts = new TranslationString("There are unresolved merge conflicts!");
+        private readonly TranslationString _hintUnresolvedMergeConflicts = new TranslationString("There are unresolved merge conflicts. Res&olve...");
 
         private readonly TranslationString _noBranchTitle = new TranslationString("no branch");
         private readonly TranslationString _noSubmodulesPresent = new TranslationString("No submodules");
@@ -84,6 +86,7 @@ namespace GitUI.CommandsDialogs
 
         private readonly TranslationString _undoLastCommitText = new TranslationString("You will still be able to find all the commit's changes in the staging area\n\nDo you want to continue?");
         private readonly TranslationString _undoLastCommitCaption = new TranslationString("Undo last commit");
+
         #endregion
 
         private readonly SplitterManager _splitterManager = new SplitterManager(new AppSettingsPath("FormBrowse"));
@@ -98,7 +101,7 @@ namespace GitUI.CommandsDialogs
         [CanBeNull] private readonly IAheadBehindDataProvider _aheadBehindDataProvider;
         private readonly WindowsJumpListManager _windowsJumpListManager;
         private readonly SubmoduleStatusProvider _submoduleStatusProvider;
-
+        private readonly FormBrowseDiagnosticsReporter _formBrowseDiagnosticsReporter;
         [CanBeNull] private BuildReportTabPageExtension _buildReportTabPageExtension;
         private ConEmuControl _terminal;
         private Dashboard _dashboard;
@@ -119,6 +122,8 @@ namespace GitUI.CommandsDialogs
 
         private UpdateTargets _selectedRevisionUpdatedTargets = UpdateTargets.None;
 
+        public override RevisionGridControl RevisionGridControl { get => RevisionGrid; }
+
         [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormBrowse()
         {
@@ -130,6 +135,13 @@ namespace GitUI.CommandsDialogs
             : base(commands)
         {
             InitializeComponent();
+
+            bool light = ColorHelper.IsLightTheme();
+            translateToolStripMenuItem.Image = light ? Images.Translate : Images.Translate_inv;
+            recoverLostObjectsToolStripMenuItem.Image = light ? Images.RecoverLostObjects : Images.RecoverLostObjects_inv;
+            branchSelect.Image = light ? Resources.branch : Resources.branch_inv;
+
+            _formBrowseDiagnosticsReporter = new FormBrowseDiagnosticsReporter(this);
 
             commandsToolStripMenuItem.DropDownOpening += CommandsToolStripMenuItem_DropDownOpening;
 
@@ -247,17 +259,26 @@ namespace GitUI.CommandsDialogs
 
             ManageWorktreeSupport();
 
-            var toolBackColor = Color.FromArgb(218, 218, 218);
+            var toolBackColor = SystemColors.Window;
+            var toolForeColor = SystemColors.WindowText;
             BackColor = toolBackColor;
+            ForeColor = toolForeColor;
             ToolStrip.BackColor = toolBackColor;
+            ToolStrip.ForeColor = toolForeColor;
             toolStripRevisionFilterDropDownButton.BackColor = toolBackColor;
+            toolStripRevisionFilterDropDownButton.ForeColor = toolForeColor;
             menuStrip1.BackColor = toolBackColor;
+            menuStrip1.ForeColor = toolForeColor;
             toolPanel.TopToolStripPanel.BackColor = toolBackColor;
+            toolPanel.TopToolStripPanel.ForeColor = toolForeColor;
             statusStrip.BackColor = toolBackColor;
+            statusStrip.ForeColor = toolForeColor;
 
-            var toolTextBoxBackColor = Color.FromArgb(235, 235, 235);
+            var toolTextBoxBackColor = SystemColors.Window;
             toolStripBranchFilterComboBox.BackColor = toolTextBoxBackColor;
+            toolStripBranchFilterComboBox.ForeColor = toolForeColor;
             toolStripRevisionFilterTextBox.BackColor = toolTextBoxBackColor;
+            toolStripRevisionFilterTextBox.ForeColor = toolForeColor;
 
             // Scale tool strip items according to DPI
             toolStripBranchFilterComboBox.Size = DpiUtil.Scale(toolStripBranchFilterComboBox.Size);
@@ -507,12 +528,14 @@ namespace GitUI.CommandsDialogs
             toolStripButtonPush.Initialize(_aheadBehindDataProvider);
             toolStripButtonPush.DisplayAheadBehindInformation(Module.GetSelectedBranch());
 
+            _formBrowseDiagnosticsReporter.Report();
+
             base.OnLoad(e);
         }
 
         protected override void OnActivated(EventArgs e)
         {
-            this.InvokeAsyncDoNotUseInNewCode(OnActivate);
+            this.InvokeAsync(OnActivate).FileAndForget();
             base.OnActivated(e);
         }
 
@@ -641,6 +664,8 @@ namespace GitUI.CommandsDialogs
             _dashboard.RefreshContent();
             _dashboard.Visible = true;
             _dashboard.BringToFront();
+
+            DiagnosticsClient.TrackPageView("Dashboard");
         }
 
         private void HideDashboard()
@@ -658,6 +683,8 @@ namespace GitUI.CommandsDialogs
             toolPanel.LeftToolStripPanelVisible = true;
             toolPanel.RightToolStripPanelVisible = true;
             toolPanel.ResumeLayout();
+
+            DiagnosticsClient.TrackPageView("Revision graph");
         }
 
         private void UpdatePluginMenu(bool validWorkingDir)
@@ -934,7 +961,6 @@ namespace GitUI.CommandsDialogs
         private void OnActivate()
         {
             CheckForMergeConflicts();
-
             return;
 
             void CheckForMergeConflicts()
@@ -1306,12 +1332,6 @@ namespace GitUI.CommandsDialogs
             UICommands.StartPushDialog(this, pushOnShow: ModifierKeys.HasFlag(Keys.Shift));
         }
 
-        private void RefreshStatus()
-        {
-            UpdateSubmodulesStructure();
-            UpdateStashCount();
-        }
-
         private void RefreshToolStripMenuItemClick(object sender, EventArgs e)
         {
             // Broadcast RepoChanged in case repo was changed outside of GE
@@ -1441,6 +1461,8 @@ namespace GitUI.CommandsDialogs
             _dashboard?.RefreshContent();
 
             _gitStatusMonitor.Active = NeedsGitStatusMonitor() && Module.IsValidGitWorkingDir();
+
+            RefreshDefaultPullAction();
         }
 
         private void TagToolStripMenuItemClick(object sender, EventArgs e)
@@ -1481,7 +1503,7 @@ namespace GitUI.CommandsDialogs
         private void ArchiveToolStripMenuItemClick(object sender, EventArgs e)
         {
             var revisions = RevisionGrid.GetSelectedRevisions();
-            if (revisions.Count > 2)
+            if (revisions.Count < 1 || revisions.Count > 2)
             {
                 MessageBox.Show(this, @"Select only one or two revisions. Abort.", @"Archive revision");
                 return;
@@ -1526,6 +1548,11 @@ namespace GitUI.CommandsDialogs
         private void RebaseToolStripMenuItemClick(object sender, EventArgs e)
         {
             var revisions = RevisionGrid.GetSelectedRevisions();
+
+            if (revisions.Count == 0)
+            {
+                return;
+            }
 
             if (revisions.Count == 2)
             {
@@ -2076,10 +2103,8 @@ namespace GitUI.CommandsDialogs
 
         private void _viewPullRequestsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var repoHost = PluginRegistry.TryGetGitHosterForModule(Module);
-            if (repoHost == null)
+            if (!TryGetRepositoryHost(out var repoHost))
             {
-                MessageBox.Show(this, _noReposHostFound.Text, _errorCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -2088,14 +2113,38 @@ namespace GitUI.CommandsDialogs
 
         private void _createPullRequestToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var repoHost = PluginRegistry.TryGetGitHosterForModule(Module);
-            if (repoHost == null)
+            if (!TryGetRepositoryHost(out var repoHost))
             {
-                MessageBox.Show(this, _noReposHostFound.Text, _errorCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             UICommands.StartCreatePullRequest(this, repoHost);
+        }
+
+        private async void _addUpstreamRemoteToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (!TryGetRepositoryHost(out var repoHost))
+            {
+                return;
+            }
+
+            var remoteName = await repoHost.AddUpstreamRemoteAsync();
+            if (!string.IsNullOrEmpty(remoteName))
+            {
+                UICommands.StartPullDialogAndPullImmediately(this, null, remoteName, AppSettings.PullAction.Fetch);
+            }
+        }
+
+        private bool TryGetRepositoryHost(out IRepositoryHostPlugin repoHost)
+        {
+            repoHost = PluginRegistry.TryGetGitHosterForModule(Module);
+            if (repoHost == null)
+            {
+                MessageBox.Show(this, _noReposHostFound.Text, _errorCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            return true;
         }
 
         #region Hotkey commands
@@ -2178,7 +2227,14 @@ namespace GitUI.CommandsDialogs
 
         private void QuickFetch()
         {
-            FormProcess.ShowDialog(this, Module.FetchCmd(string.Empty, string.Empty, string.Empty));
+            ScriptManager.RunEventScripts(this, ScriptEvent.BeforeFetch);
+            var success = FormProcess.ShowDialog(this, Module.FetchCmd(string.Empty, string.Empty, string.Empty));
+            if (!success)
+            {
+                return;
+            }
+
+            ScriptManager.RunEventScripts(this, ScriptEvent.AfterFetch);
             UICommands.RepoChangedNotifier.Notify();
         }
 
@@ -2540,6 +2596,9 @@ namespace GitUI.CommandsDialogs
                     break;
                 case "navigateforward":
                     RevisionGrid.NavigateForward();
+                    break;
+                case "showall":
+                    RevisionInfo.ShowAll(e.Data);
                     break;
             }
         }
@@ -2920,7 +2979,18 @@ namespace GitUI.CommandsDialogs
                     }
                 }
 
-                _terminal.Start(startInfo, ThreadHelper.JoinableTaskFactory);
+                try
+                {
+                    _terminal.Start(startInfo, ThreadHelper.JoinableTaskFactory);
+                }
+                catch (InvalidOperationException)
+                {
+#if DEBUG
+                    MessageBox.Show(@"ConEmu appears to be missing. Please perform a full rebuild and try again.", @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+#else
+                    throw;
+#endif
+                }
             };
         }
 
@@ -2987,12 +3057,18 @@ namespace GitUI.CommandsDialogs
         private void toggleSplitViewLayout_Click(object sender, EventArgs e)
         {
             AppSettings.ShowSplitViewLayout = !AppSettings.ShowSplitViewLayout;
+            DiagnosticsClient.TrackEvent("Layout change",
+                new Dictionary<string, string> { { nameof(AppSettings.ShowSplitViewLayout), AppSettings.ShowSplitViewLayout.ToString() } });
+
             RefreshSplitViewLayout();
         }
 
         private void toggleBranchTreePanel_Click(object sender, EventArgs e)
         {
             MainSplitContainer.Panel1Collapsed = !MainSplitContainer.Panel1Collapsed;
+            DiagnosticsClient.TrackEvent("Layout change",
+                new Dictionary<string, string> { { "ShowLeftPanel", MainSplitContainer.Panel1Collapsed.ToString() } });
+
             RefreshLayoutToggleButtonStates();
         }
 
@@ -3018,6 +3094,9 @@ namespace GitUI.CommandsDialogs
         private void SetCommitInfoPosition(CommitInfoPosition position)
         {
             AppSettings.CommitInfoPosition = position;
+            DiagnosticsClient.TrackEvent("Layout change",
+                new Dictionary<string, string> { { nameof(AppSettings.CommitInfoPosition), AppSettings.CommitInfoPosition.ToString() } });
+
             LayoutRevisionInfo();
             RefreshLayoutToggleButtonStates();
         }
@@ -3025,6 +3104,9 @@ namespace GitUI.CommandsDialogs
         private void RefreshSplitViewLayout()
         {
             RightSplitContainer.Panel2Collapsed = !AppSettings.ShowSplitViewLayout;
+            DiagnosticsClient.TrackEvent("Layout change",
+                new Dictionary<string, string> { { nameof(AppSettings.ShowSplitViewLayout), AppSettings.ShowSplitViewLayout.ToString() } });
+
             RefreshLayoutToggleButtonStates();
         }
 
@@ -3140,7 +3222,7 @@ namespace GitUI.CommandsDialogs
         internal TestAccessor GetTestAccessor()
             => new TestAccessor(this);
 
-        public readonly struct TestAccessor
+        internal readonly struct TestAccessor
         {
             private readonly FormBrowse _form;
 
@@ -3195,6 +3277,16 @@ namespace GitUI.CommandsDialogs
             {
                 e.Effect = DragDropEffects.Move;
             }
+        }
+
+        private void TsmiTelemetryEnabled_Click(object sender, EventArgs e)
+        {
+            UICommands.StartGeneralSettingsDialog(this);
+        }
+
+        private void HelpToolStripMenuItem_DropDownOpening(object sender, EventArgs e)
+        {
+            tsmiTelemetryEnabled.Checked = AppSettings.TelemetryEnabled ?? false;
         }
     }
 }

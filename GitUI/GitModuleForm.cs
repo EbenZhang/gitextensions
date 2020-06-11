@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Windows.Forms;
 using GitCommands;
+using GitUI.Infrastructure.Telemetry;
 using GitUI.Script;
 using JetBrains.Annotations;
 
@@ -19,6 +20,8 @@ namespace GitUI
         /// Indicates that the process is run by unit tests runner.
         /// </summary>
         internal static bool IsUnitTestActive { get; set; }
+
+        public virtual RevisionGridControl RevisionGridControl { get => null; }
 
         [CanBeNull] private GitUICommands _uiCommands;
 
@@ -62,11 +65,12 @@ namespace GitUI
             : base(enablePositionRestore: true)
         {
             _uiCommands = commands;
+            DiagnosticsClient.TrackPageView(GetType().FullName);
         }
 
         protected override CommandStatus ExecuteCommand(int command)
         {
-            var result = ScriptRunner.ExecuteScriptCommand(this, Module, command, UICommands);
+            var result = ScriptRunner.ExecuteScriptCommand(this, Module, command, UICommands, RevisionGridControl);
 
             if (!result.Executed)
             {

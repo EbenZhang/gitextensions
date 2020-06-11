@@ -54,7 +54,7 @@
   <ItemGroup>
     <PackageReference Include="JetBrains.Annotations" Version="2018.2.1" />
     <PackageReference Include="System.IO.Abstractions" Version="2.0.0.144" />
-    <PackageReference Include="System.Reactive.Linq" Version="3.1.1" />
+    <PackageReference Include="System.Reactive.Linq" Version="4.2.0" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +64,7 @@
     <Compile Include="AppTitleGenerator.cs" />
     <Compile Include="ArgumentBuilderExtensions.cs" />
     <Compile Include="AsyncLoader.cs" />
+    <Compile Include="BatchArgumentItem.cs" />
     <Compile Include="CommandStatus.cs" />
     <Compile Include="CommitData.cs" />
     <Compile Include="CommitDataManager.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="GitRevisionInfoProvider.cs" />
     <Compile Include="Git\AheadBehindData.cs" />
     <Compile Include="Git\AheadBehindDataProvider.cs" />
+    <Compile Include="Git\BatchProgressEventArgs.cs" />
     <Compile Include="Git\ConflictData.cs" />
     <Compile Include="Git\ConflictedFileData.cs" />
     <Compile Include="Git\ExecutableExtensions.cs" />
@@ -123,8 +125,12 @@
     <Compile Include="IDiffListSortService.cs" />
     <Compile Include="Plink.cs" />
     <Compile Include="Remotes\ConfigFileRemoteSettingsManager.cs" />
+    <Compile Include="Remotes\AzureDevOpsRemoteParser.cs" />
+    <Compile Include="Remotes\GitHubRemoteParser.cs" />
+    <Compile Include="Remotes\RemoteParser.cs" />
     <Compile Include="Remotes\RepoNameExtractor.cs" />
-    <Compile Include="Settings\DefaultImageType.cs" />
+    <Compile Include="Settings\AvatarProvider.cs" />
+    <Compile Include="Settings\GravatarFallbackAvatarType.cs" />
     <Compile Include="Settings\IgnoreWhitespaceKind.cs" />
     <Compile Include="Submodules\DetailedSubmoduleInfo.cs" />
     <Compile Include="Submodules\SubmoduleInfo.cs" />
@@ -168,6 +174,7 @@
     <Compile Include="Settings\SettingsPath.cs" />
     <Compile Include="StreamExtensions.cs" />
     <Compile Include="StringPool.cs" />
+    <Compile Include="Utils\EnumHelper.cs" />
     <Compile Include="Utils\EnvUtils.cs" />
     <Compile Include="ExternalLinks\ExternalLink.cs" />
     <Compile Include="Git\GitBisectOption.cs" />

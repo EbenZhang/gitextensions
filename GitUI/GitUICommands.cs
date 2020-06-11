@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Settings;
+using GitExtUtils;
 using GitUI.CommandsDialogs;
 using GitUI.CommandsDialogs.RepoHosting;
 using GitUI.CommandsDialogs.SettingsDialog;
@@ -392,11 +393,11 @@ namespace GitUI
             return StartCreateBranchDialog(owner, objectId);
         }
 
-        public bool StartCreateBranchDialog(IWin32Window owner = null, ObjectId objectId = null)
+        public bool StartCreateBranchDialog(IWin32Window owner = null, ObjectId objectId = null, string newBranchNamePrefix = null)
         {
             bool Action()
             {
-                using (var form = new FormCreateBranch(this, objectId))
+                using (var form = new FormCreateBranch(this, objectId, newBranchNamePrefix))
                 {
                     return form.ShowDialog(owner) == DialogResult.OK;
                 }
@@ -464,7 +465,7 @@ namespace GitUI
             return DoActionOnRepo(Action);
         }
 
-        public bool StartCommitDialog(IWin32Window owner, bool showOnlyWhenChanges = false)
+        public bool StartCommitDialog(IWin32Window owner, string commitMessage = null, bool showOnlyWhenChanges = false)
         {
             if (Module.IsBareRepository())
             {
@@ -493,7 +494,7 @@ namespace GitUI
                         });
                     }
 
-                    using (var form = new FormCommit(this))
+                    using (var form = new FormCommit(this, commitMessage: commitMessage))
                     {
                         if (showOnlyWhenChanges)
                         {
@@ -624,9 +625,9 @@ namespace GitUI
             return DoActionOnRepo(owner, true, false, null, null, Action);
         }
 
-        public void AddCommitTemplate(string key, Func<string> addingText)
+        public void AddCommitTemplate(string key, Func<string> addingText, Image icon)
         {
-            _commitTemplateManager.Register(key, addingText);
+            _commitTemplateManager.Register(key, addingText, icon);
         }
 
         public void RemoveCommitTemplate(string key)
@@ -1116,12 +1117,17 @@ namespace GitUI
                 return;
             }
 
-            var updateSubmodules = AppSettings.UpdateSubmodulesOnCheckout ?? MessageBoxes.ConfirmUpdateSubmodules(win);
+            var updateSubmodules = AppSettings.UpdateSubmodulesOnCheckout ?? (AppSettings.DontConfirmUpdateSubmodulesOnCheckout ?? MessageBoxes.ConfirmUpdateSubmodules(win));
 
             if (updateSubmodules)
             {
                 StartUpdateSubmodulesDialog(win);
             }
+        }
+
+        public bool StartGeneralSettingsDialog(IWin32Window owner)
+        {
+            return StartSettingsDialog(owner, CommandsDialogs.SettingsDialog.Pages.GeneralSettingsPage.GetPageReference());
         }
 
         public bool StartPluginSettingsDialog(IWin32Window owner)
@@ -1326,7 +1332,7 @@ namespace GitUI
 
         public void StartCloneForkFromHoster(IWin32Window owner, IRepositoryHostPlugin gitHoster, EventHandler<GitModuleEventArgs> gitModuleChanged)
         {
-            WrapRepoHostingCall("View pull requests", gitHoster, gh =>
+            WrapRepoHostingCall(Strings.ForkCloneRepo, gitHoster, gh =>
             {
                 using (var frm = new ForkAndCloneForm(gitHoster, gitModuleChanged))
                 {
@@ -1337,7 +1343,7 @@ namespace GitUI
 
         internal void StartPullRequestsDialog(IWin32Window owner, IRepositoryHostPlugin gitHoster)
         {
-            WrapRepoHostingCall("View pull requests", gitHoster,
+            WrapRepoHostingCall(Strings.ViewPullRequest, gitHoster,
                                 gh =>
                                 {
                                     var frm = new ViewPullRequestsForm(this, gitHoster) { ShowInTaskbar = true };
@@ -1348,7 +1354,7 @@ namespace GitUI
         public void StartCreatePullRequest(IWin32Window owner)
         {
             List<IRepositoryHostPlugin> relevantHosts =
-                PluginRegistry.GitHosters.Where(gh => gh.GitModuleIsRelevantToMe(Module)).ToList();
+                PluginRegistry.GitHosters.Where(gh => gh.GitModuleIsRelevantToMe()).ToList();
 
             if (relevantHosts.Count == 0)
             {
@@ -1367,7 +1373,7 @@ namespace GitUI
         public void StartCreatePullRequest(IWin32Window owner, IRepositoryHostPlugin gitHoster, string chooseRemote = null, string chooseBranch = null)
         {
             WrapRepoHostingCall(
-                "Create pull request",
+                Strings.CreatePullRequest,
                 gitHoster,
                 gh =>
                 {
@@ -1699,8 +1705,17 @@ namespace GitUI
             // long while there is room left when the workingdir was not in the path.
             string fileHistoryFileName = string.IsNullOrEmpty(Module.WorkingDir) ? args[2] :
                 args[2].Replace(Module.WorkingDir, "").ToPosixPath();
+            var fullFilePath = _fullPathResolver.Resolve(fileHistoryFileName);
+            if (new FormFileHistoryController().TryGetExactPath(fullFilePath, out var exactFileName) &&
+                exactFileName.Length > Module.WorkingDir.Length)
+            {
+                fileHistoryFileName = exactFileName.Substring(Module.WorkingDir.Length);
+            }
 
-            StartFileHistoryDialog(null, fileHistoryFileName);
+            if (fileHistoryFileName.IsNotNullOrWhitespace())
+            {
+                StartFileHistoryDialog(null, fileHistoryFileName);
+            }
         }
 
         private void RunCloneCommand(IReadOnlyList<string> args)
@@ -1777,7 +1792,9 @@ namespace GitUI
 
         private void Commit(IReadOnlyDictionary<string, string> arguments)
         {
-            StartCommitDialog(null, arguments.ContainsKey("quiet"));
+            arguments.TryGetValue("message", out string overridingMessage);
+            var showOnlyWhenChanges = arguments.ContainsKey("quiet");
+            StartCommitDialog(null, overridingMessage, showOnlyWhenChanges);
         }
 
         private void Push(IReadOnlyDictionary<string, string> arguments)

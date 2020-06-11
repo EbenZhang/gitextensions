@@ -64,7 +64,9 @@
     <Compile Include="Avatars\InitialsAvatarGeneratorTests.cs" />
     <Compile Include="Avatars\BackupAvatarProviderTests.cs" />
     <Compile Include="BranchTreePanel\GitRefMenuItemsTest.cs" />
+    <Compile Include="NBugReports\BugReportFormTests.cs" />
     <Compile Include="CancellationTokenSequenceTests.cs" />
+    <Compile Include="CommandsDialogs\FormAddSubmoduleTests.cs" />
     <Compile Include="CommandsDialogs\FormBrowseTests.LeftPanel.ReorderNodes.cs" />
     <Compile Include="CommandsDialogs\FormBrowseTests.LeftPanel.Submodules.cs" />
     <Compile Include="CommandsDialogs\FormBrowseTests.LeftPanel.Remotes.cs" />
@@ -81,7 +83,12 @@
     <Compile Include="CommandsDialogs\RevisionDiffContextMenuControllerTests.cs" />
     <Compile Include="CommandsDialogs\RevisionFileTreeControllerTests.cs" />
     <Compile Include="CommandsDialogs\RevisionDiffControllerTests.cs" />
+    <Compile Include="CommandsDialogs\Settings\GitHubExternalLinkDefinitionExtractorTests.cs" />
+    <Compile Include="CommandsDialogs\Settings\AzureDevOpsExternalLinkDefinitionExtractorTests.cs" />
+    <Compile Include="CommitInfo\CommitInfoTests.cs" />
+    <Compile Include="CommitInfo\RefsFormatterTests.cs" />
     <Compile Include="ControlThreadingExtensionsTests.cs" />
+    <Compile Include="UserEnvironmentInformationTests.cs" />
     <Compile Include="Editor\FileViewerInternal.CurrentViewPositionCacheTests.cs" />
     <Compile Include="Editor\FileViewerTests.cs" />
     <Compile Include="Editor\FileViewerTextTests.cs" />
@@ -92,12 +99,14 @@
     <Compile Include="ControlUtilTests.cs" />
     <Compile Include="LinqExtensionsTests.cs" />
     <Compile Include="Script\ScriptOptionsParserTests.cs" />
+    <Compile Include="Script\ScriptRunnerTests.cs" />
     <Compile Include="SpellChecker\WordAtCursorExtractorTests.cs" />
     <Compile Include="SplitterManagerTest.cs" />
     <Compile Include="StringBuilderExtensionsTests.cs" />
     <Compile Include="ThreadHelperTests.cs" />
     <Compile Include="TranslationTest.cs" />
     <Compile Include="UITest.cs" />
+    <Compile Include="UserControls\BlameControlTests.cs" />
     <Compile Include="UserControls\AuthorRevisionHighlightingTests.cs" />
     <Compile Include="UserControls\ConsoleEmulatorOutputControlFixture.cs" />
     <Compile Include="Editor\Diff\DiffLineNumAnalyzerTests.cs" />

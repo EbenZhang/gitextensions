@@ -36,6 +36,7 @@ namespace GitUI
         private int _nextIndexToSelect = -1;
         private bool _groupByRevision;
         private bool _enableSelectedIndexChangeEvent = true;
+        private bool _mouseEntered;
         private ToolStripItem _openSubmoduleMenuItem;
         private Rectangle _dragBoxFromMouseDown;
         private IReadOnlyList<(GitRevision revision, IReadOnlyList<GitItemStatus> statuses)> _itemsWithParent = Array.Empty<(GitRevision, IReadOnlyList<GitItemStatus>)>();
@@ -44,11 +45,14 @@ namespace GitUI
 
         private bool _updatingColumnWidth;
 
+        public delegate void EnterEventHandler(object sender, EnterEventArgs e);
+
         public event EventHandler SelectedIndexChanged;
         public event EventHandler DataSourceChanged;
 
         public new event EventHandler DoubleClick;
         public new event KeyEventHandler KeyDown;
+        public new event EnterEventHandler Enter;
 
         public FileStatusList()
         {
@@ -58,7 +62,6 @@ namespace GitUI
             _sortByContextMenu = CreateSortByContextMenuItem();
             SetupUnifiedDiffListSorting();
             lblSplitter.Height = DpiUtil.Scale(1);
-            FilterComboBox.Font = new Font(FilterComboBox.Font, FontStyle.Bold);
             InitializeComplete();
             FilterVisible = false;
 
@@ -72,13 +75,20 @@ namespace GitUI
             HandleVisibility_NoFilesLabel_FilterComboBox(filesPresent: true);
             Controls.SetChildIndex(NoFiles, 0);
             NoFiles.Font = new Font(NoFiles.Font, FontStyle.Italic);
+            FilterWatermarkLabel.Font = new Font(FilterWatermarkLabel.Font, FontStyle.Italic);
+            FilterComboBox.Font = new Font(FilterComboBox.Font, FontStyle.Bold);
 
             _fullPathResolver = new FullPathResolver(() => Module.WorkingDir);
             _revisionTester = new GitRevisionTester(_fullPathResolver);
 
+            base.Enter += FileStatusList_Enter;
+
+            return;
+
             ImageList CreateImageList()
             {
                 const int rowHeight = 18;
+                bool light = ColorHelper.IsLightTheme();
 
                 return new ImageList
                 {
@@ -88,7 +98,7 @@ namespace GitUI
                         ScaleHeight(Images.FileStatusRemoved), // 0
                         ScaleHeight(Images.FileStatusAdded), // 1
                         ScaleHeight(Images.FileStatusModified), // 2
-                        ScaleHeight(Images.FileStatusRenamed), // 3
+                        ScaleHeight(light ? Images.FileStatusRenamed : Images.FileStatusRenamed_inv), // 3
                         ScaleHeight(Images.FileStatusCopied), // 4
                         ScaleHeight(Images.SubmoduleDirty), // 5
                         ScaleHeight(Images.SubmoduleRevisionUp), // 6
@@ -209,6 +219,7 @@ namespace GitUI
 
         private bool FilterVisibleInternal
         {
+            get => FilterComboBox.Visible;
             set
             {
                 FilterComboBox.Visible = value;
@@ -261,6 +272,13 @@ namespace GitUI
             set => _groupByRevision = value;
         }
 
+        [DefaultValue(true)]
+        public bool MultiSelect
+        {
+            get => FileStatusListView.MultiSelect;
+            set => FileStatusListView.MultiSelect = value;
+        }
+
         [Browsable(false)]
         [DefaultValue(true)]
         public bool IsEmpty => GitItemStatuses == null || !GitItemStatuses.Any();
@@ -286,16 +304,7 @@ namespace GitUI
 
                 return -1;
             }
-            set
-            {
-                ClearSelected();
-                if (value >= 0)
-                {
-                    FileStatusListView.Items[value].Selected = true;
-                    FileStatusListView.Items[value].Focused = true;
-                    FileStatusListView.Items[value].EnsureVisible();
-                }
-            }
+            set => SelectItems(item => item.Index == value);
         }
 
         [CanBeNull]
@@ -303,42 +312,39 @@ namespace GitUI
         [Browsable(false)]
         public GitItemStatus SelectedItem
         {
-            get
-            {
-                return FileStatusListView.LastSelectedItem()?.Tag<GitItemStatus>();
-            }
-
+            get => FileStatusListView.LastSelectedItem()?.Tag<GitItemStatus>();
             set
             {
-                ClearSelected();
-                if (value == null)
-                {
-                    return;
-                }
+                var itemToBeSelected = GetItemByStatus(value);
+                SelectItems(item => item == itemToBeSelected);
+                return;
 
-                ListViewItem newSelected = null;
-                foreach (ListViewItem item in FileStatusListView.Items)
+                ListViewItem GetItemByStatus(GitItemStatus status)
                 {
-                    var gitItemStatus = item.Tag<GitItemStatus>();
-
-                    if (value.CompareTo(gitItemStatus) == 0)
+                    if (status == null)
                     {
-                        if (newSelected == null)
+                        return null;
+                    }
+
+                    ListViewItem newSelected = null;
+                    foreach (ListViewItem item in FileStatusListView.Items)
+                    {
+                        var gitItemStatus = item.Tag<GitItemStatus>();
+
+                        if (status.CompareTo(gitItemStatus) == 0)
                         {
-                            newSelected = item;
-                        }
-                        else if (gitItemStatus == value)
-                        {
-                            newSelected = item;
-                            break;
+                            if (newSelected == null)
+                            {
+                                newSelected = item;
+                            }
+                            else if (gitItemStatus == status)
+                            {
+                                return item;
+                            }
                         }
                     }
-                }
 
-                if (newSelected != null)
-                {
-                    newSelected.Selected = true;
-                    newSelected.EnsureVisible();
+                    return newSelected;
                 }
             }
         }
@@ -347,60 +353,39 @@ namespace GitUI
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public GitRevision SelectedItemParent
-        {
-            get
-            {
-                return FileStatusListView.LastSelectedItem()?.Group?.Tag<GitRevision>();
-            }
-        }
+            => FileStatusListView.LastSelectedItem()?.Group?.Tag<GitRevision>();
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
-        public IEnumerable<GitRevision> SelectedItemParents =>
-            FileStatusListView.SelectedItems()
+        public IEnumerable<GitRevision> SelectedItemParents
+            => FileStatusListView.SelectedItems()
                 .Select(i => i.Group?.Tag<GitRevision>())
-                .Where(r => r != null);
+                .Where(r => r != null)
+                .Distinct(); // Parents should be distinct to avoid iterating same items
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public IEnumerable<GitItemStatus> SelectedItems
         {
-            get
-            {
-                return FileStatusListView.SelectedItemTags<GitItemStatus>();
-            }
-
+            get => FileStatusListView.SelectedItemTags<GitItemStatus>();
             set
             {
-                ClearSelected();
                 if (value == null)
                 {
+                    ClearSelected();
                     return;
                 }
 
-                foreach (var item in FileStatusListView.Items()
-                    .Where(i => value.Contains(i.Tag<GitItemStatus>())))
-                {
-                    item.Selected = true;
-                }
-
-                var first = FileStatusListView.SelectedItems().FirstOrDefault(x => x.Selected);
-                first?.EnsureVisible();
-                StoreNextIndexToSelect();
+                SelectItems(item => value.Contains(item.Tag<GitItemStatus>()));
             }
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public IEnumerable<GitItemStatusWithParent> SelectedItemsWithParent
-        {
-            get
-            {
-                return FileStatusListView.SelectedItems()
-                    .Where(i => i.Group?.Tag is GitRevision)
-                    .Select(i => new GitItemStatusWithParent(i.Group.Tag<GitRevision>(), i.Tag<GitItemStatus>()));
-            }
-        }
+            => FileStatusListView.SelectedItems()
+                .Where(i => i.Group?.Tag is GitRevision)
+                .Select(i => new GitItemStatusWithParent(i.Group.Tag<GitRevision>(), i.Tag<GitItemStatus>()));
 
         [DefaultValue(true)]
         public bool SelectFirstItemOnSetItems { get; set; }
@@ -580,25 +565,7 @@ namespace GitUI
             }
         }
 
-        public void SelectAll()
-        {
-            try
-            {
-                SuspendLayout();
-
-                var itemCount = AllItems.Count();
-
-                for (var i = 0; i < itemCount; i++)
-                {
-                    FileStatusListView.Items[i].Selected = true;
-                    i++;
-                }
-            }
-            finally
-            {
-                ResumeLayout(true);
-            }
-        }
+        public void SelectAll() => SelectItems(_ => true);
 
         public void SelectFirstVisibleItem()
         {
@@ -613,12 +580,12 @@ namespace GitUI
                 ListViewItem sortedFirstGroupItem = FileStatusListView.Items().FirstOrDefault(item => item.Group == group);
                 if (sortedFirstGroupItem != null)
                 {
-                    sortedFirstGroupItem.Selected = true;
+                    SelectedIndex = sortedFirstGroupItem.Index;
                 }
             }
             else
             {
-                FileStatusListView.Items[0].Selected = true;
+                SelectedIndex = 0;
             }
         }
 
@@ -715,28 +682,9 @@ namespace GitUI
 
         public int SetSelectionFilter(string selectionFilter)
         {
-            return SelectFiles(RegexForSelecting(selectionFilter));
-
-            int SelectFiles(Regex regex)
-            {
-                try
-                {
-                    SuspendLayout();
-
-                    var i = 0;
-                    foreach (var item in AllItems)
-                    {
-                        FileStatusListView.Items[i].Selected = regex.IsMatch(item.Name);
-                        i++;
-                    }
-
-                    return FileStatusListView.SelectedIndices.Count;
-                }
-                finally
-                {
-                    ResumeLayout(true);
-                }
-            }
+            var regex = RegexForSelecting(selectionFilter);
+            SelectItems(item => regex.IsMatch(item.Name));
+            return FileStatusListView.SelectedIndices.Count;
 
             Regex RegexForSelecting(string value)
             {
@@ -766,6 +714,16 @@ namespace GitUI
         {
             _selectedIndexChangeSubscription?.Dispose();
             _diffListSortSubscription?.Dispose();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == NativeConstants.WM_MOUSEACTIVATE)
+            {
+                _mouseEntered = !Focused;
+            }
+
+            base.WndProc(ref m);
         }
 
         // Private methods
@@ -814,9 +772,39 @@ namespace GitUI
             process.Start();
         }
 
+        private void SelectItems(Func<ListViewItem, bool> predicate)
+        {
+            try
+            {
+                FileStatusListView.BeginUpdate();
+
+                ListViewItem firstSelectedItem = null;
+                foreach (var item in FileStatusListView.Items())
+                {
+                    item.Selected = predicate(item);
+                    if (item.Selected && firstSelectedItem == null)
+                    {
+                        firstSelectedItem = item;
+                    }
+                }
+
+                if (firstSelectedItem != null)
+                {
+                    firstSelectedItem.Focused = true;
+                    firstSelectedItem.EnsureVisible();
+                }
+            }
+            finally
+            {
+                FileStatusListView.EndUpdate();
+            }
+
+            StoreNextIndexToSelect();
+        }
+
         private void SetFilterWatermarkLabelVisibility()
         {
-            FilterWatermarkLabel.Visible = FilterVisible && !FilterComboBox.Focused && string.IsNullOrEmpty(FilterComboBox.Text);
+            FilterWatermarkLabel.Visible = FilterVisibleInternal && !FilterComboBox.Focused && string.IsNullOrEmpty(FilterComboBox.Text);
         }
 
         private void UpdateFileStatusListView(bool updateCausedByFilter = false)
@@ -1162,21 +1150,8 @@ namespace GitUI
             {
                 case Keys.Control | Keys.A:
                     {
-                        FileStatusListView.BeginUpdate();
-                        try
-                        {
-                            for (var i = 0; i < FileStatusListView.Items.Count; i++)
-                            {
-                                FileStatusListView.Items[i].Selected = true;
-                            }
-
-                            e.Handled = true;
-                        }
-                        finally
-                        {
-                            FileStatusListView.EndUpdate();
-                        }
-
+                        SelectAll();
+                        e.Handled = true;
                         break;
                     }
 
@@ -1197,9 +1172,7 @@ namespace GitUI
 
                 if (hover.Item != null && !hover.Item.Selected)
                 {
-                    ClearSelected();
-
-                    hover.Item.Selected = true;
+                    SelectedIndex = hover.Item.Index;
                 }
             }
 
@@ -1323,12 +1296,18 @@ namespace GitUI
             UpdateColumnWidth();
         }
 
+        private void FileStatusList_Enter(object sender, EventArgs e)
+        {
+            Enter?.Invoke(this, new EnterEventArgs(_mouseEntered));
+            _mouseEntered = false;
+        }
+
         #region Filtering
 
         private string _toolTipText = "";
         private readonly Subject<string> _filterSubject = new Subject<string>();
         [CanBeNull] private Regex _filter;
-        private bool _filterVisible;
+        private bool _filterVisible = true;
 
         public void SetFilter(string value)
         {

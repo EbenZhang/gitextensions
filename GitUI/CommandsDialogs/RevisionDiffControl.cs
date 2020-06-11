@@ -194,7 +194,7 @@ namespace GitUI.CommandsDialogs
             if (objectId == null)
             {
                 // No parent at all, present as working directory
-                return Strings.Workspace;
+                return ResourceManager.Strings.Workspace;
             }
 
             var revision = _revisionGrid.GetRevision(objectId);
@@ -504,25 +504,7 @@ namespace GitUI.CommandsDialogs
 
         private void UnstageFileToolStripMenuItemClick(object sender, EventArgs e)
         {
-            var files = new List<GitItemStatus>();
-            foreach (var item in DiffFiles.SelectedItems.Where(item => item.Staged == StagedStatus.Index))
-            {
-                if (!item.IsNew)
-                {
-                    Module.UnstageFileToRemove(item.Name);
-
-                    if (item.IsRenamed)
-                    {
-                        Module.UnstageFileToRemove(item.OldName);
-                    }
-                }
-                else
-                {
-                    files.Add(item);
-                }
-            }
-
-            Module.UnstageFiles(files);
+            Module.BatchUnstageFiles(DiffFiles.SelectedItems.Where(item => item.Staged == StagedStatus.Index));
             RefreshArtificial();
         }
 
@@ -609,6 +591,13 @@ namespace GitUI.CommandsDialogs
 
             foreach (var itemWithParent in DiffFiles.SelectedItemsWithParent)
             {
+                if (itemWithParent.ParentRevision.Guid == GitRevision.CombinedDiffGuid)
+                {
+                    // CombinedDiff cannot be viewed in a difftool
+                    // Disabled in menues but can be activated from shortcuts, just ignore
+                    continue;
+                }
+
                 var revs = new[] { DiffFiles.Revision, itemWithParent.ParentRevision };
                 UICommands.OpenWithDifftool(this, revs, itemWithParent.Item.Name, itemWithParent.Item.OldName, diffKind, itemWithParent.Item.IsTracked);
             }
@@ -652,7 +641,7 @@ namespace GitUI.CommandsDialogs
             var gitItemStatus = DiffFiles.SelectedItem;
             var revisionId = DiffFiles.Revision?.ObjectId;
 
-            if (gitItemStatus?.Name == null || revisionId == null)
+            if (gitItemStatus?.Name == null || revisionId == null || revisionId == ObjectId.CombinedDiffId)
             {
                 return;
             }
@@ -781,7 +770,7 @@ namespace GitUI.CommandsDialogs
                 {
                     InitialDirectory = Path.GetDirectoryName(fullName),
                     FileName = Path.GetFileName(fullName),
-                    DefaultExt = PathUtil.GetFileExtension(fullName),
+                    DefaultExt = Path.GetExtension(fullName),
                     AddExtension = true
                 })
             {
@@ -810,35 +799,24 @@ namespace GitUI.CommandsDialogs
                 }
 
                 var selectedItems = DiffFiles.SelectedItems;
-                if (DiffFiles.Revision.ObjectId == ObjectId.IndexId)
-                {
-                    var files = new List<GitItemStatus>();
-                    var stagedItems = selectedItems.Where(item => item.Staged == StagedStatus.Index);
-                    foreach (var item in stagedItems)
-                    {
-                        if (!item.IsNew)
-                        {
-                            Module.UnstageFileToRemove(item.Name);
 
-                            if (item.IsRenamed)
-                            {
-                                Module.UnstageFileToRemove(item.OldName);
-                            }
-                        }
-                        else
-                        {
-                            files.Add(item);
-                        }
-                    }
-
-                    Module.UnstageFiles(files);
-                }
+                // If any file is staged, it must be unstaged
+                Module.BatchUnstageFiles(selectedItems.Where(item => item.Staged == StagedStatus.Index));
 
                 DiffFiles.StoreNextIndexToSelect();
                 var items = DiffFiles.SelectedItems.Where(item => !item.IsSubmodule);
                 foreach (var item in items)
                 {
-                    File.Delete(_fullPathResolver.Resolve(item.Name));
+                    var path = _fullPathResolver.Resolve(item.Name);
+                    bool isDir = (File.GetAttributes(path) & FileAttributes.Directory) == FileAttributes.Directory;
+                    if (isDir)
+                    {
+                        Directory.Delete(path, true);
+                    }
+                    else
+                    {
+                        File.Delete(path);
+                    }
                 }
 
                 RefreshArtificial();

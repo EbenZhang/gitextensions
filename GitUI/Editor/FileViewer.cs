@@ -18,7 +18,6 @@ using GitUI.Hotkey;
 using GitUI.Properties;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
-using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
 namespace GitUI.Editor
@@ -31,6 +30,7 @@ namespace GitUI.Editor
         /// </summary>
         public event Action EscapePressed;
 
+        private readonly TranslationString _error = new TranslationString("Error");
         private readonly TranslationString _largeFileSizeWarning = new TranslationString("This file is {0:N1} MB. Showing large files can be slow. Click to show anyway.");
 
         public event EventHandler<SelectedLineEventArgs> SelectedLineChanged;
@@ -51,18 +51,26 @@ namespace GitUI.Editor
 
         [Description("Sets what kind of whitespace changes shall be ignored in diffs")]
         [DefaultValue(IgnoreWhitespaceKind.None)]
-        public IgnoreWhitespaceKind IgnoreWhitespace { get; set; }
+        private IgnoreWhitespaceKind IgnoreWhitespace { get; set; }
+
         [Description("Show diffs with <n> lines of context.")]
         [DefaultValue(3)]
-        public int NumberOfContextLines { get; set; }
+        private int NumberOfContextLines { get; set; }
+
         [Description("Show diffs with entire file.")]
         [DefaultValue(false)]
-        public bool ShowEntireFile { get; set; }
+        private bool ShowEntireFile { get; set; }
+
         [Description("Treat all files as text.")]
         [DefaultValue(false)]
-        public bool TreatAllFilesAsText { get; set; }
+        private bool TreatAllFilesAsText { get; set; }
+
         [Browsable(false)]
         public byte[] FilePreamble { get; private set; }
+
+        [Description("Show syntax highlighting in diffs.")]
+        [DefaultValue(true)]
+        private bool ShowSyntaxHighlightingInDiff { get; set; }
 
         public FileViewer()
         {
@@ -94,14 +102,15 @@ namespace GitUI.Editor
 
             IgnoreWhitespace = AppSettings.IgnoreWhitespaceKind;
             OnIgnoreWhitespaceChanged();
+            bool light = ColorHelper.IsLightTheme();
 
-            ignoreWhitespaceAtEol.Image = Images.WhitespaceIgnoreEol;
+            ignoreWhitespaceAtEol.Image = light ? Images.WhitespaceIgnoreEol : Images.WhitespaceIgnoreEol_inv;
             ignoreWhitespaceAtEolToolStripMenuItem.Image = ignoreWhitespaceAtEol.Image;
 
-            ignoreWhiteSpaces.Image = Images.WhitespaceIgnore;
+            ignoreWhiteSpaces.Image = light ? Images.WhitespaceIgnore : Images.WhitespaceIgnore_inv;
             ignoreWhitespaceChangesToolStripMenuItem.Image = ignoreWhiteSpaces.Image;
 
-            ignoreAllWhitespaces.Image = Images.WhitespaceIgnoreAll;
+            ignoreAllWhitespaces.Image = light ? Images.WhitespaceIgnoreAll : Images.WhitespaceIgnoreAll_inv;
             ignoreAllWhitespaceChangesToolStripMenuItem.Image = ignoreAllWhitespaces.Image;
 
             ShowEntireFile = AppSettings.ShowEntireFile;
@@ -109,9 +118,14 @@ namespace GitUI.Editor
             showEntireFileToolStripMenuItem.Checked = ShowEntireFile;
             SetStateOfContextLinesButtons();
 
+            showNonPrintChars.Image = light ? Images.ShowWhitespace : Images.ShowWhitespace_inv;
+            showNonprintableCharactersToolStripMenuItem.Image = showNonPrintChars.Image;
             showNonPrintChars.Checked = AppSettings.ShowNonPrintingChars;
             showNonprintableCharactersToolStripMenuItem.Checked = AppSettings.ShowNonPrintingChars;
             ToggleNonPrintingChars(AppSettings.ShowNonPrintingChars);
+
+            ShowSyntaxHighlightingInDiff = AppSettings.ShowSyntaxHighlightingInDiff;
+            showSyntaxHighlighting.Checked = ShowSyntaxHighlightingInDiff;
 
             IsReadOnly = true;
 
@@ -425,11 +439,18 @@ namespace GitUI.Editor
 
             long GetFileLength()
             {
-                var file = GetFileInfo(fileName);
-
-                if (file.Exists)
+                try
                 {
-                    return file.Length;
+                    var file = GetFileInfo(fileName);
+
+                    if (file.Exists)
+                    {
+                        return file.Length;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, $"{ex.Message}{Environment.NewLine}{fileName}", _error.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
 
                 // If the file does not exist, it doesn't matter what size we
@@ -477,11 +498,9 @@ namespace GitUI.Editor
             ViewCurrentChanges(item.Name, item.OldName, isStaged, item.IsSubmodule, item.GetSubmoduleStatusAsync, openWithDifftool);
         }
 
-        public void ViewCurrentChanges(string fileName, string oldFileName, bool staged,
+        private void ViewCurrentChanges(string fileName, string oldFileName, bool staged,
             bool isSubmodule, Func<Task<GitSubmoduleStatus>> getStatusAsync, [CanBeNull] Action openWithDifftool)
         {
-            // BUG why do we call getStatusAsync() twice
-
             ShowOrDeferAsync(
                 fileName,
                 async () =>
@@ -490,7 +509,7 @@ namespace GitUI.Editor
                     {
                         var patch = await Module.GetCurrentChangesAsync(
                             fileName, oldFileName, staged, GetExtraDiffArguments(), Encoding);
-                        ViewStagingPatch(patch, openWithDifftool);
+                        ViewStagingPatch(patch, openWithDifftool, fileName);
                     }
                     else
                     {
@@ -518,18 +537,18 @@ namespace GitUI.Editor
                 });
         }
 
-        public void ViewStagingPatch(Patch patch, [CanBeNull] Action openWithDifftool)
+        public void ViewStagingPatch(Patch patch, [CanBeNull] Action openWithDifftool, string filename)
         {
-            ViewPatch(patch, openWithDifftool);
+            ViewPatch(patch, openWithDifftool, filename);
             Reset(true, true, true);
         }
 
-        public void ViewPatch([CanBeNull] Patch patch, [CanBeNull] Action openWithDifftool = null)
+        public void ViewPatch([CanBeNull] Patch patch, [CanBeNull] Action openWithDifftool = null, string filename = null)
         {
-            ViewPatch(patch?.Text ?? "", openWithDifftool);
+            ViewPatch(patch?.Text ?? "", openWithDifftool, filename);
         }
 
-        public void ViewPatch([NotNull] string text, [CanBeNull] Action openWithDifftool)
+        public void ViewPatch([NotNull] string text, [CanBeNull] Action openWithDifftool, string filename = null)
         {
             ThreadHelper.JoinableTaskFactory.Run(
                 () => ShowOrDeferAsync(
@@ -537,25 +556,35 @@ namespace GitUI.Editor
                     () =>
                     {
                         ResetForDiff();
+
+                        if (ShowSyntaxHighlightingInDiff && filename != null)
+                        {
+                            internalFileViewer.SetHighlightingForFile(filename);
+                        }
+
                         internalFileViewer.SetText(text, openWithDifftool, isDiff: true);
                         TextLoaded?.Invoke(this, null);
                         return Task.CompletedTask;
                     }));
         }
 
-        public Task ViewPatchAsync(Func<(string text, Action openWithDifftool)> loadPatchText)
+        public Task ViewPatchAsync(Func<(string text, Action openWithDifftool, string filename)> loadPatchText)
         {
             return _async.LoadAsync(
                 loadPatchText,
-                patchText => ViewPatch(patchText.text, patchText.openWithDifftool));
+                patchText => ViewPatch(patchText.text, patchText.openWithDifftool, patchText.filename));
         }
 
-        public async Task ViewTextAsync([NotNull] string fileName, [NotNull] string text, [CanBeNull] Action openWithDifftool = null)
+        public async Task ViewTextAsync([NotNull] string fileName, [NotNull] string text, [CanBeNull] Action openWithDifftool = null, bool checkGitAttributes = false)
         {
             ResetForText(fileName);
 
-            // Check for binary file.
-            if (FileHelper.IsBinaryFileAccordingToContent(text))
+            // Check for binary file. Using gitattributes could be misleading for a changed file,
+            // but not much other can be done
+            bool isBinary = (checkGitAttributes && FileHelper.IsBinaryFileName(Module, fileName))
+                || FileHelper.IsBinaryFileAccordingToContent(text);
+
+            if (isBinary)
             {
                 try
                 {
@@ -603,9 +632,13 @@ namespace GitUI.Editor
                 return "";
             }
 
+            // Do not freeze GE when selecting large binary files
+            // Show only the header of the binary file to indicate contents and files incorrectly handled
+            // Use a dedicated editor to view the complete file
+            var limit = Math.Min(bytes.Length, columnWidth * columnCount * 256);
             var i = 0;
 
-            while (i < bytes.Length)
+            while (i < limit)
             {
                 var baseIndex = i;
 
@@ -667,27 +700,33 @@ namespace GitUI.Editor
                         i++;
                     }
                 }
+           }
+
+            if (bytes.Length > limit)
+            {
+                str.AppendLine();
+                str.Append("[Truncated]");
             }
 
             return str.ToString();
         }
 
-        public Task ViewGitItemRevisionAsync(string fileName, ObjectId objectId)
+        public Task ViewGitItemRevisionAsync(string fileName, ObjectId objectId, [CanBeNull] Action openWithDifftool = null)
         {
             if (objectId == ObjectId.WorkTreeId)
             {
                 // No blob exists for worktree, present contents from file system
-                return ViewFileAsync(fileName);
+                return ViewFileAsync(fileName, openWithDifftool);
             }
             else
             {
                 // Retrieve blob, same as GitItemStatus.TreeGuid
                 var blob = Module.GetFileBlobHash(fileName, objectId);
-                return ViewGitItemAsync(fileName, blob);
+                return ViewGitItemAsync(fileName, blob, openWithDifftool);
             }
         }
 
-        public Task ViewGitItemAsync(string fileName, [CanBeNull] ObjectId objectId)
+        public Task ViewGitItemAsync(string fileName, [CanBeNull] ObjectId objectId, [CanBeNull] Action openWithDifftool = null)
         {
             var sha = objectId?.ToString();
 
@@ -696,9 +735,14 @@ namespace GitUI.Editor
                 getImage: GetImage,
                 getFileText: GetFileTextIfBlobExists,
                 getSubmoduleText: () => LocalizationHelpers.GetSubmoduleText(Module, fileName.TrimEnd('/'), sha),
-                openWithDifftool: () => Module.OpenWithDifftool(fileName, firstRevision: sha));
+                openWithDifftool: openWithDifftool ?? OpenWithDifftool);
 
             string GetFileTextIfBlobExists() => objectId != null ? Module.GetFileText(objectId, Encoding) : "";
+
+            void OpenWithDifftool()
+            {
+                Module.OpenWithDifftool(fileName, firstRevision: sha);
+            }
 
             Image GetImage()
             {
@@ -759,18 +803,12 @@ namespace GitUI.Editor
                                 internalFileViewer.SetText("", openWithDifftool);
                             });
             }
-
-            // Check binary from extension/attributes (a secondary check for file contents before display)
-            else if (FileHelper.IsBinaryFileName(Module, fileName))
-            {
-                return ViewTextAsync(fileName, $"Binary file: {fileName}", openWithDifftool);
-            }
             else
             {
                 return _async.LoadAsync(
                     getFileText,
                     text => ThreadHelper.JoinableTaskFactory.Run(
-                        () => ViewTextAsync(fileName, text, openWithDifftool)));
+                        () => ViewTextAsync(fileName, text, openWithDifftool, checkGitAttributes: true)));
             }
         }
 
@@ -950,6 +988,14 @@ namespace GitUI.Editor
             }
 
             AppSettings.NumberOfContextLines = NumberOfContextLines;
+            OnExtraDiffArgumentsChanged();
+        }
+
+        private void ShowSyntaxHighlighting_Click(object sender, System.EventArgs e)
+        {
+            ShowSyntaxHighlightingInDiff = !ShowSyntaxHighlightingInDiff;
+            showSyntaxHighlighting.Checked = ShowSyntaxHighlightingInDiff;
+            AppSettings.ShowSyntaxHighlightingInDiff = ShowSyntaxHighlightingInDiff;
             OnExtraDiffArgumentsChanged();
         }
 
@@ -1214,7 +1260,9 @@ namespace GitUI.Editor
             ShowEntireFile = 4,
             TreatFileAsText = 5,
             NextChange = 6,
-            PreviousChange = 7
+            PreviousChange = 7,
+            NextOccurrence = 10,
+            PreviousOccurrence = 11
         }
 
         protected override CommandStatus ExecuteCommand(int cmd)
@@ -1233,6 +1281,8 @@ namespace GitUI.Editor
                 case Commands.TreatFileAsText: TreatAllFilesAsTextToolStripMenuItemClick(null, null); break;
                 case Commands.NextChange: NextChangeButtonClick(null, null); break;
                 case Commands.PreviousChange: PreviousChangeButtonClick(null, null); break;
+                case Commands.NextOccurrence: internalFileViewer.GoToNextOccurrence(); break;
+                case Commands.PreviousOccurrence: internalFileViewer.GoToPreviousOccurrence(); break;
                 default: return base.ExecuteCommand(cmd);
             }
 
@@ -1495,6 +1545,12 @@ namespace GitUI.Editor
             {
                 get => _fileViewer.IgnoreWhitespace;
                 set => _fileViewer.IgnoreWhitespace = value;
+            }
+
+            public bool ShowSyntaxHighlightingInDiff
+            {
+                get => _fileViewer.ShowSyntaxHighlightingInDiff;
+                set => _fileViewer.ShowSyntaxHighlightingInDiff = value;
             }
 
             internal void IgnoreWhitespaceAtEolToolStripMenuItem_Click(object sender, EventArgs e) => _fileViewer.IgnoreWhitespaceAtEolToolStripMenuItem_Click(sender, e);

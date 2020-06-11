@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using CommonTestUtils;
 using FluentAssertions;
 using GitUI;
 using GitUI.CommandsDialogs;
@@ -88,7 +89,10 @@ namespace GitUITests.CommandsDialogs.CommitDialog
             _referenceRepository.CheckoutMaster();
             RunFormTest(async form =>
             {
-                await ThreadHelper.JoinPendingOperationsAsync();
+                using (var cts = new CancellationTokenSource(AsyncTestHelper.UnexpectedTimeout))
+                {
+                    await ThreadHelper.JoinPendingOperationsAsync(cts.Token);
+                }
 
                 var currentBranchNameLabelStatus = form.GetTestAccessor().CurrentBranchNameLabelStatus;
                 var remoteNameLabelStatus = form.GetTestAccessor().RemoteNameLabelStatus;
@@ -104,7 +108,10 @@ namespace GitUITests.CommandsDialogs.CommitDialog
             _referenceRepository.CheckoutRevision();
             RunFormTest(async form =>
             {
-                await ThreadHelper.JoinPendingOperationsAsync();
+                using (var cts = new CancellationTokenSource(AsyncTestHelper.UnexpectedTimeout))
+                {
+                    await ThreadHelper.JoinPendingOperationsAsync(cts.Token);
+                }
 
                 var currentBranchNameLabelStatus = form.GetTestAccessor().CurrentBranchNameLabelStatus;
                 var remoteNameLabelStatus = form.GetTestAccessor().RemoteNameLabelStatus;
@@ -120,7 +127,10 @@ namespace GitUITests.CommandsDialogs.CommitDialog
             _referenceRepository.CreateRemoteForMasterBranch();
             RunFormTest(async form =>
             {
-                await ThreadHelper.JoinPendingOperationsAsync();
+                using (var cts = new CancellationTokenSource(AsyncTestHelper.UnexpectedTimeout))
+                {
+                    await ThreadHelper.JoinPendingOperationsAsync(cts.Token);
+                }
 
                 var currentBranchNameLabelStatus = form.GetTestAccessor().CurrentBranchNameLabelStatus;
                 var remoteNameLabelStatus = form.GetTestAccessor().RemoteNameLabelStatus;
@@ -185,6 +195,30 @@ namespace GitUITests.CommandsDialogs.CommitDialog
             });
         }
 
+        [Test]
+        public void Should_handle_well_commit_message_in_commit_message_menu()
+        {
+            _referenceRepository.CreateCommit("Only first line\n\nof a multi-line commit message\nmust be displayed in the menu");
+            _referenceRepository.CreateCommit("Too long commit message that should be shorten because first line of a commit message is only 50 chars long");
+            RunFormTest(form =>
+            {
+                var commitMessageToolStripMenuItem = form.GetTestAccessor().CommitMessageToolStripMenuItem;
+
+                // Verify the message appears correctly
+                commitMessageToolStripMenuItem.ShowDropDown();
+                Assert.AreEqual("Too long commit message that should be shorten because first line of ...", commitMessageToolStripMenuItem.DropDownItems[0].Text);
+                Assert.AreEqual("Only first line", commitMessageToolStripMenuItem.DropDownItems[1].Text);
+            });
+        }
+
+        [Test, TestCaseSource(typeof(FormatCommitMessageTestData), "TestCases")]
+        public void FormatCommitMessageFromTextBox(
+            string commitMessageText, bool usingCommitTemplate, bool ensureCommitMessageSecondLineEmpty, string expectedMessage)
+        {
+            FormCommit.TestAccessor.FormatCommitMessageFromTextBox(commitMessageText, usingCommitTemplate, ensureCommitMessageSecondLineEmpty)
+                .Should().Be(expectedMessage);
+        }
+
         [Test, TestCaseSource(typeof(CommitMessageTestData), "TestCases")]
         public void AddSelectionToCommitMessage_shall_be_ignored_unless_diff_is_focused(
             string message,
@@ -222,6 +256,25 @@ namespace GitUITests.CommandsDialogs.CommitDialog
             TestAddSelectionToCommitMessage(focusSelectedDiff: true, CommitMessageTestData.SelectedText,
                 message, selectionStart, selectionLength,
                 expectedResult: true, expectedMessage, expectedSelectionStart);
+        }
+
+        [Test]
+        public void editFileToolStripMenuItem_Click_no_selection_should_not_throw()
+        {
+            RunFormTest(async form =>
+            {
+                using (var cts = new CancellationTokenSource(AsyncTestHelper.UnexpectedTimeout))
+                {
+                    await ThreadHelper.JoinPendingOperationsAsync(cts.Token);
+                }
+
+                form.GetTestAccessor().UnstagedList.ClearSelected();
+
+                var editFileToolStripMenuItem = form.GetTestAccessor().EditFileToolStripMenuItem;
+
+                // asserting by the virtue of not crashing
+                editFileToolStripMenuItem.PerformClick();
+            });
         }
 
         private void TestAddSelectionToCommitMessage(
@@ -292,6 +345,46 @@ namespace GitUITests.CommandsDialogs.CommitDialog
                     }
                 },
                 testDriverAsync);
+        }
+    }
+
+    public class FormatCommitMessageTestData
+    {
+        private static readonly string NL = Environment.NewLine;
+
+        public static IEnumerable TestCases
+        {
+            get
+            {
+                // string commitMessageText, bool usingCommitTemplate, bool ensureCommitMessageSecondLineEmpty, string expectedMessage
+                yield return new TestCaseData(new object[] { null, false, false, "" });
+                yield return new TestCaseData(new object[] { null, true, false, "" });
+                yield return new TestCaseData(new object[] { null, false, true, "" });
+                yield return new TestCaseData(new object[] { null, true, true, "" });
+                yield return new TestCaseData(new object[] { "", false, false, NL });
+                yield return new TestCaseData(new object[] { "", true, false, NL });
+                yield return new TestCaseData(new object[] { "", false, true, NL });
+                yield return new TestCaseData(new object[] { "", true, true, NL });
+                yield return new TestCaseData(new object[] { "\n", false, false, NL + NL });
+                yield return new TestCaseData(new object[] { "\n", true, false, NL + NL });
+                yield return new TestCaseData(new object[] { "\n", false, true, NL + NL });
+                yield return new TestCaseData(new object[] { "\n", true, true, NL + NL });
+                yield return new TestCaseData(new object[] { "1", true, false, "1" + NL });
+                yield return new TestCaseData(new object[] { "#1", false, false, "#1" + NL });
+                yield return new TestCaseData(new object[] { "#1", true, false, "" });
+                yield return new TestCaseData(new object[] { "1\n\n3", false, false, "1" + NL + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "1\n\n3", false, true, "1" + NL + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "1\n2\n3", false, false, "1" + NL + "2" + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "1\n2\n3", false, true, "1" + NL + NL + "2" + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "#0\n1\n\n3", true, false, "1" + NL + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "#0\n1\n\n3", true, true, "1" + NL + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "#0\n1\n2\n3", true, false, "1" + NL + "2" + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "#0\n1\n2\n3", true, true, "1" + NL + NL + "2" + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "#0\n1\n#0\n2\n3", true, true, "1" + NL + NL + "2" + NL + "3" + NL });
+                yield return new TestCaseData(new object[] { "1\n2\n3\n4\n5\n\n7\n\n\n10", true, true, "1" + NL + NL + "2" + NL + "3" + NL + "4" + NL + "5" + NL + NL + "7" + NL + NL + NL + "10" + NL });
+                yield return new TestCaseData(new object[] { "1\n2\n3\n4\n5\n\n7\n\n\n10", false, true, "1" + NL + NL + "2" + NL + "3" + NL + "4" + NL + "5" + NL + NL + "7" + NL + NL + NL + "10" + NL });
+                yield return new TestCaseData(new object[] { "1\n2\n3\n4\n5\n\n7\n\n\n10\n", false, true, "1" + NL + NL + "2" + NL + "3" + NL + "4" + NL + "5" + NL + NL + "7" + NL + NL + NL + "10" + NL + NL });
+            }
         }
     }
 

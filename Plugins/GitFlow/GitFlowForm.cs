@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using GitCommands;
+using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitFlow.Properties;
 using GitUIPluginInterfaces;
@@ -94,6 +95,10 @@ namespace GitFlow
 
                 cbBasedOn.Checked = false;
                 cbBaseBranch.Enabled = false;
+
+                cbPushAfterFinish.Enabled = false;
+                cbSquash.Enabled = false;
+
                 LoadBaseBranches();
 
                 DisplayHead();
@@ -170,6 +175,7 @@ namespace GitFlow
 
             btnFinish.Enabled = isThereABranch && (branchType != Branch.support.ToString("G"));
             cbPushAfterFinish.Enabled = isThereABranch && (branchType == Branch.hotfix.ToString("G") || branchType == Branch.release.ToString("G"));
+            cbSquash.Enabled = isThereABranch && branchType != Branch.support.ToString("G");
             btnPublish.Enabled = isThereABranch && (branchType != Branch.support.ToString("G"));
             btnPull.Enabled = isThereABranch && (branchType != Branch.support.ToString("G"));
             pnlPull.Enabled = branchType != Branch.support.ToString("G");
@@ -288,6 +294,7 @@ namespace GitFlow
                 cbManageType.SelectedValue.ToString(),
                 "finish",
                 { cbPushAfterFinish.Checked, "-p" },
+                { cbSquash.Checked, "-S" },
                 cbBranches.SelectedValue.ToString()
             };
             RunCommand(args);

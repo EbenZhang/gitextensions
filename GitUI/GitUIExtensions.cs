@@ -98,12 +98,13 @@ namespace GitUI
             [NotNull] string defaultText,
             [CanBeNull] Action openWithDifftool)
         {
-            if (firstRevision == null)
+            if (firstRevision == null || FileHelper.IsImage(file.Name))
             {
                 // The previous commit does not exist, nothing to compare with
-                if (file.TreeGuid == null)
+                if (file.TreeGuid != null)
                 {
-                    return diffViewer.ViewGitItemAsync(file.Name, file.TreeGuid);
+                    // blob guid exists
+                    return diffViewer.ViewGitItemAsync(file.Name, file.TreeGuid, openWithDifftool);
                 }
 
                 if (secondRevision == null)
@@ -111,7 +112,8 @@ namespace GitUI
                     throw new ArgumentNullException(nameof(secondRevision));
                 }
 
-                return diffViewer.ViewGitItemRevisionAsync(file.Name, secondRevision);
+                // Get blob guid from revision
+                return diffViewer.ViewGitItemRevisionAsync(file.Name, secondRevision, openWithDifftool);
             }
 
             return diffViewer.ViewPatchAsync(() =>
@@ -119,11 +121,11 @@ namespace GitUI
                 string selectedPatch = diffViewer.GetSelectedPatch(firstRevision, secondRevision, file);
                 if (selectedPatch == null)
                 {
-                    return (text: defaultText, openWithDifftool: null /* not applicable */);
+                    return (text: defaultText, openWithDifftool: null /* not applicable */, file.Name);
                 }
 
                 return (text: selectedPatch,
-                    openWithDifftool: openWithDifftool ?? OpenWithDifftool);
+                    openWithDifftool: openWithDifftool ?? OpenWithDifftool, file.Name);
 
                 void OpenWithDifftool()
                 {
@@ -213,32 +215,6 @@ namespace GitUI
         {
             await control.SwitchToMainThreadAsync(token);
             action(state);
-        }
-
-#pragma warning disable VSTHRD100 // Avoid async void methods
-        /// <summary>
-        /// Use <see cref="InvokeAsync(Control, Action, CancellationToken)"/> instead. If the result of
-        /// <see cref="InvokeAsync(Control, Action, CancellationToken)"/> is not awaited, use
-        /// <see cref="ThreadHelper.FileAndForget(Task, Func{Exception, bool})"/> to ignore it.
-        /// </summary>
-        public static async void InvokeAsyncDoNotUseInNewCode(this Control control, Action action)
-#pragma warning restore VSTHRD100 // Avoid async void methods
-        {
-            if (ThreadHelper.JoinableTaskContext.IsOnMainThread)
-            {
-                await Task.Yield();
-            }
-            else
-            {
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            }
-
-            if (control.IsDisposed)
-            {
-                return;
-            }
-
-            action();
         }
 
         public static void InvokeSync(this Control control, Action action)

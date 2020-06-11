@@ -14,11 +14,24 @@ namespace ResourceManager
         public string Name { get; protected set; }
         public Image Icon { get; protected set; }
 
+        protected GitPluginBase(bool hasSettings)
+        {
+            HasSettings = hasSettings;
+        }
+
+        // required for the TranslationApp to work
+        protected GitPluginBase()
+            : this(false)
+        {
+        }
+
         protected void SetNameAndDescription(string name)
         {
             Name = name;
             Description = name;
         }
+
+        public bool HasSettings { get; }
 
         // Store settings to use later
         public ISettingsSource Settings => SettingsContainer.GetSettingsSource();
@@ -40,6 +53,12 @@ namespace ResourceManager
             SettingsContainer.SetSettingsSource(null);
         }
 
+        /// <summary>
+        /// Run the plugin Execute method
+        /// </summary>
+        /// <param name="args">arguments from the UI</param>
+        /// <returns>true, if the revision grid need a refresh
+        /// false, otherwise </returns>
         public abstract bool Execute(GitUIEventArgs args);
 
         protected void Translate()

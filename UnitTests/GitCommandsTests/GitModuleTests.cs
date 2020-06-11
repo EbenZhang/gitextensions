@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using CommonTestUtils;
 using FluentAssertions;
 using GitCommands;
 using GitCommands.Git;
+using GitExtUtils;
 using GitUI;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
-using NSubstitute;
 using NUnit.Framework;
 
 namespace GitCommandsTests
@@ -112,6 +112,24 @@ namespace GitCommandsTests
             const string s = "Hello, World!";
 
             Assert.AreSame(s, GitModule.UnescapeOctalCodePoints(s));
+        }
+
+        [TestCase(null, null)]
+        [TestCase("", "")]
+        [TestCase(" ", " ")]
+        [TestCase("Hello, World!", "Hello, World!")]
+        [TestCase("두다.txt", @"\353\221\220\353\213\244.txt")] // escaped octal code points (Korean Hangul in this case)
+        [TestCase(@"Привет, World!", @"\320\237\321\200\320\270\320\262\320\265\321\202, World!")] // escaped and not escaped in the same string
+        public void EscapeOctalCodePoints_handles_text(string input, string expected)
+        {
+            Assert.AreEqual(expected, GitModule.EscapeOctalCodePoints(input));
+        }
+
+        [TestCase("Hello, World!")]
+        [TestCase("두다.txt")]
+        public void UnescapeOctalCodePoints_reverses_EscapeOctalCodePoints(string input)
+        {
+            Assert.AreEqual(input, GitModule.UnescapeOctalCodePoints(GitModule.EscapeOctalCodePoints(input)));
         }
 
         [Test]
@@ -317,6 +335,48 @@ namespace GitCommandsTests
             Assert.AreSame(_gitModule, refs[3].Module);
         }
 
+        [TestCase("branch -a --contains",
+            true,
+            true,
+            "  aaa\n* current\n+ feature/worktree\n  feature/zzz_another\n  remotes/origin/master\n  remotes/origin/current\n  remotes/upstream/master\n",
+            new string[] { "aaa", "current", "feature/worktree", "feature/zzz_another", "remotes/origin/master", "remotes/origin/current", "remotes/upstream/master" })]
+        [TestCase("branch --contains",
+            true,
+            false,
+            "  aaa\n* current\n+ feature/worktree\n  feature/zzz_another\n",
+            new string[] { "aaa", "current", "feature/worktree", "feature/zzz_another" })]
+        [TestCase("branch -r --contains",
+            false,
+            true,
+            "remotes/origin/master\n  remotes/origin/current\n  remotes/upstream/master\n",
+            new string[] { "remotes/origin/master", "remotes/origin/current", "remotes/upstream/master" })]
+        public void GetAllBranchesWhichContainGivenCommit_wellformed(
+            string cmd,
+            bool getLocal,
+            bool getRemote,
+            string output,
+            string[] expected)
+        {
+            using (_executable.StageOutput(cmd + " " + Sha1.ToString(), output))
+            {
+                var result = _gitModule.GetAllBranchesWhichContainGivenCommit(Sha1, getLocal, getRemote);
+                Assert.AreEqual(result, expected);
+            }
+        }
+
+        [TestCase(
+            false,
+            false,
+            new string[] { })]
+        public void GetAllBranchesWhichContainGivenCommit_empty(
+            bool getLocal,
+            bool getRemote,
+            string[] expected)
+        {
+            var result = _gitModule.GetAllBranchesWhichContainGivenCommit(Sha1, getLocal, getRemote);
+            Assert.AreEqual(result, expected);
+        }
+
         [TestCase(null)]
         [TestCase("")]
         [TestCase("\t")]
@@ -359,31 +419,6 @@ namespace GitCommandsTests
             }
         }
 
-        [TestCase("fatal: not a git repository (or any of the parent directories): .git")] // git version 2.20.1 (Apple Git-117)
-        [TestCase("fatal: Not a git repository (or any of the parent directories): .git")] // git version 2.16.1.windows.4
-        public void GetRemotes_should_return_empty_list_not_inside_git_repo(string warning)
-        {
-            ThreadHelper.JoinableTaskFactory.Run(async () =>
-            {
-                using (_executable.StageOutput("remote -v", warning))
-                {
-                    var remotes = await _gitModule.GetRemotesAsync();
-
-                    remotes.Should().BeEmpty();
-                }
-            });
-        }
-
-        [TestCase("fatal: not a git repository (or any of the parent directories): .git")] // git version 2.20.1 (Apple Git-117)
-        [TestCase("fatal: Not a git repository (or any of the parent directories): .git")] // git version 2.16.1.windows.4
-        public void GetRemotes_should_not_throw_if_not_inside_git_repo(string warning)
-        {
-            using (_executable.StageOutput("remote -v", warning))
-            {
-                Assert.DoesNotThrowAsync(async () => await _gitModule.GetRemotesAsync());
-            }
-        }
-
         [TestCase("fatal: not a git repository:")]
         [TestCase("error: something went wrong")]
         [TestCase("HEAD")]
@@ -410,6 +445,41 @@ namespace GitCommandsTests
             Assert.AreEqual(headId, objectId.ToString());
         }
 
+        [TestCase("fatal: not a git repository (or any of the parent directories): .git")] // git version 2.20.1 (Apple Git-117)
+        [TestCase("fatal: Not a git repository (or any of the parent directories): .git")] // git version 2.16.1.windows.4
+        public void GetRemotes_should_return_empty_list_not_inside_git_repo(string warning)
+        {
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                using (_executable.StageOutput("remote -v", warning))
+                {
+                    var remotes = await _gitModule.GetRemotesAsync();
+
+                    remotes.Should().BeEmpty();
+                }
+            });
+        }
+
+        [TestCase("fatal: not a git repository (or any of the parent directories): .git")] // git version 2.20.1 (Apple Git-117)
+        [TestCase("fatal: Not a git repository (or any of the parent directories): .git")] // git version 2.16.1.windows.4
+        public void GetRemotes_should_not_throw_if_not_inside_git_repo(string warning)
+        {
+            using (_executable.StageOutput("remote -v", warning))
+            {
+                Assert.DoesNotThrowAsync(async () => await _gitModule.GetRemotesAsync());
+            }
+        }
+
+        [TestCase("ignorenopush\tgit@github.com:drewnoakes/gitextensions.git (fetch)")]
+        [TestCase("ignorenopull\tgit@github.com:drewnoakes/gitextensions.git (push)")]
+        public void GetRemotes_should_throw_if_not_pairs(string line)
+        {
+            using (_executable.StageOutput("remote -v", line))
+            {
+                Assert.ThrowsAsync<System.Exception>(async () => await _gitModule.GetRemotesAsync());
+            }
+        }
+
         [Test]
         public void GetRemotes_should_parse_correctly_configured_remotes()
         {
@@ -426,34 +496,55 @@ namespace GitCommandsTests
                     "asymmetrical\thttps://github.com/gitextensions/fetch.git (fetch)",
                     "asymmetrical\thttps://github.com/gitextensions/push.git (push)",
                     "with-space\tc:\\Bare Repo (fetch)",
-                    "with-space\tc:\\Bare Repo (push)"
+                    "with-space\tc:\\Bare Repo (push)",
+
+                    // A remote may have multiple push URLs, but only a single fetch URL
+                    "multi\tgit@github.com:drewnoakes/gitextensions.git (fetch)",
+                    "multi\tgit@github.com:drewnoakes/gitextensions.git (push)",
+                    "multi\tgit@gitlab.com:drewnoakes/gitextensions.git (push)",
+
+                    "ignoreunknown\tgit@github.com:drewnoakes/gitextensions.git (unknownType)",
+                    "ignorenotab git@github.com:drewnoakes/gitextensions.git (fetch)",
+                    "ignoremissingtype\tgit@gitlab.com:drewnoakes/gitextensions.git",
+                    "git@gitlab.com:drewnoakes/gitextensions.git"
                 };
 
                 using (_executable.StageOutput("remote -v", string.Join("\n", lines)))
                 {
                     var remotes = await _gitModule.GetRemotesAsync();
 
-                    Assert.AreEqual(5, remotes.Count);
+                    Assert.AreEqual(6, remotes.Count);
 
                     Assert.AreEqual("RussKie", remotes[0].Name);
                     Assert.AreEqual("git://github.com/RussKie/gitextensions.git", remotes[0].FetchUrl);
-                    Assert.AreEqual("git://github.com/RussKie/gitextensions.git", remotes[0].PushUrl);
+                    Assert.AreEqual(1, remotes[0].PushUrls.Count);
+                    Assert.AreEqual("git://github.com/RussKie/gitextensions.git", remotes[0].PushUrls[0]);
 
                     Assert.AreEqual("origin", remotes[1].Name);
                     Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[1].FetchUrl);
-                    Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[1].PushUrl);
+                    Assert.AreEqual(1, remotes[1].PushUrls.Count);
+                    Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[1].PushUrls[0]);
 
                     Assert.AreEqual("upstream", remotes[2].Name);
                     Assert.AreEqual("git@github.com:gitextensions/gitextensions.git", remotes[2].FetchUrl);
-                    Assert.AreEqual("git@github.com:gitextensions/gitextensions.git", remotes[2].PushUrl);
+                    Assert.AreEqual(1, remotes[2].PushUrls.Count);
+                    Assert.AreEqual("git@github.com:gitextensions/gitextensions.git", remotes[2].PushUrls[0]);
 
                     Assert.AreEqual("asymmetrical", remotes[3].Name);
                     Assert.AreEqual("https://github.com/gitextensions/fetch.git", remotes[3].FetchUrl);
-                    Assert.AreEqual("https://github.com/gitextensions/push.git", remotes[3].PushUrl);
+                    Assert.AreEqual(1, remotes[3].PushUrls.Count);
+                    Assert.AreEqual("https://github.com/gitextensions/push.git", remotes[3].PushUrls[0]);
 
                     Assert.AreEqual("with-space", remotes[4].Name);
                     Assert.AreEqual("c:\\Bare Repo", remotes[4].FetchUrl);
-                    Assert.AreEqual("c:\\Bare Repo", remotes[4].PushUrl);
+                    Assert.AreEqual(1, remotes[4].PushUrls.Count);
+                    Assert.AreEqual("c:\\Bare Repo", remotes[4].PushUrls[0]);
+
+                    Assert.AreEqual("multi", remotes[5].Name);
+                    Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[5].FetchUrl);
+                    Assert.AreEqual(2, remotes[5].PushUrls.Count);
+                    Assert.AreEqual("git@github.com:drewnoakes/gitextensions.git", remotes[5].PushUrls[0]);
+                    Assert.AreEqual("git@gitlab.com:drewnoakes/gitextensions.git", remotes[5].PushUrls[1]);
                 }
             });
         }
@@ -668,21 +759,6 @@ namespace GitCommandsTests
             Assert.AreEqual(expected, _gitModule.GetSortedRefsCommand(noLocks).ToString());
         }
 
-        [Test]
-        public void GetSortedRefs_should_throw_on_git_warning()
-        {
-            GitModule module = GetGitModuleWithMockedResultOfGitCommand("refs/heads/master\nwarning: message");
-            ((Action)(() => module.GetSortedRefs())).Should().Throw<RefsWarningException>();
-        }
-
-        [Test]
-        public void GetSortedRefs_should_split_output_if_no_warning()
-        {
-            string output = "refs/remotes/origin/master\nrefs/heads/master\nrefs/heads/warning"; // does not contain "warning:"
-            GitModule module = GetGitModuleWithMockedResultOfGitCommand(output);
-            module.GetSortedRefs().Should().BeEquivalentTo(output.Split());
-        }
-
         [TestCase(@"show-ref --dereference", true, true, false)]
         [TestCase(@"show-ref --tags", true, false, false)]
         [TestCase(@"for-each-ref --sort=-committerdate refs/heads/ --format=""%(objectname) %(refname)""", false, true, false)]
@@ -722,12 +798,72 @@ namespace GitCommandsTests
             _gitModule.FormatPatch(from, to, outputFile, start).Should().Be(dummyCommandOutput);
         }
 
-        private GitModule GetGitModuleWithMockedResultOfGitCommand(string result)
+        [TestCase(null, "")]
+        [TestCase(new string[] { }, "")]
+        public void ResetFiles_should_handle_empty_list(string[] files, string expectedOutput)
         {
-            var executable = Substitute.For<IExecutable>();
-            executable.GetOutput(Arg.Any<ArgumentString>()).Returns(x => result);
-            return GetGitModuleWithExecutable(executable: executable);
+            Assert.AreEqual(expectedOutput, _gitModule.ResetFiles(files?.ToList()));
         }
+
+        [TestCase(new string[] { "abc", "def" }, "checkout-index --index --force -- \"abc\" \"def\"")]
+        public void ResetFiles_should_work_as_expected(string[] files, string args)
+        {
+            // Real GitModule is need to access AppSettings.GitCommand static property, avoid exception with dummy GitModule
+            using (var moduleTestHelper = new GitModuleTestHelper())
+            {
+                var gitModule = GetGitModuleWithExecutable(_executable, module: moduleTestHelper.Module);
+                string dummyCommandOutput = "The answer is 42. Just check that the Git arguments are as expected.";
+                _executable.StageOutput(args, dummyCommandOutput);
+                var result = gitModule.ResetFiles(files.ToList());
+                Assert.AreEqual(dummyCommandOutput, result);
+            }
+        }
+
+        [TestCaseSource(nameof(BatchUnstageFilesTestCases))]
+        public void BatchUnstageFiles_should_work_as_expected(GitItemStatus[] files, string[] args, bool expectedResult)
+        {
+            // Real GitModule is need to access AppSettings.GitCommand static property, avoid exception with dummy GitModule
+            using (var moduleTestHelper = new GitModuleTestHelper())
+            {
+                var gitModule = GetGitModuleWithExecutable(_executable, module: moduleTestHelper.Module);
+
+                foreach (var arg in args)
+                {
+                    _executable.StageCommand(arg);
+                }
+
+                var result = gitModule.BatchUnstageFiles(files);
+                Assert.AreEqual(expectedResult, result);
+            }
+        }
+
+        private static TestCaseData[] BatchUnstageFilesTestCases { get; set; } =
+        {
+            new TestCaseData(new GitItemStatus[]
+            {
+                new GitItemStatus { Name = "abc2", IsNew = true },
+                new GitItemStatus { Name = "abc2", IsNew = true, IsDeleted = true },
+                new GitItemStatus { Name = "abc2", IsNew = false },
+                new GitItemStatus { Name = "abc3", IsNew = false, IsRenamed = true, OldName = "def" }
+            },
+            new string[]
+            {
+                "reset \"HEAD\" -- abc2 abc3 def",
+                "update-index --info-only --index-info",
+                "update-index --force-remove --stdin"
+            },
+            false),
+            new TestCaseData(new GitItemStatus[]
+            {
+                new GitItemStatus { Name = "abc2", IsNew = false },
+                new GitItemStatus { Name = "abc3", IsNew = false, IsDeleted = true }
+            },
+            new string[]
+            {
+                "reset \"HEAD\" -- abc2 abc3",
+            },
+            true)
+        };
 
         /// <summary>
         /// Create a GitModule with mockable GitExecutable
@@ -735,9 +871,13 @@ namespace GitCommandsTests
         /// <param name="path">Path to the module</param>
         /// <param name="executable">The mock executable</param>
         /// <returns>The GitModule</returns>
-        private GitModule GetGitModuleWithExecutable(IExecutable executable, string path = "")
+        private GitModule GetGitModuleWithExecutable(IExecutable executable, string path = "", GitModule module = null)
         {
-            var module = new GitModule(path);
+            if (module == null)
+            {
+                module = new GitModule(path);
+            }
+
             typeof(GitModule).GetField("_gitExecutable", BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(module, executable);
             var cmdRunner = new GitCommandRunner(executable, () => GitModule.SystemEncoding);
