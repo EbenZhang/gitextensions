@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using GitCommands;
+using GitCommands.Git;
 using GitUIPluginInterfaces;
 
 namespace ResourceManager.CommitDataRenders
@@ -21,7 +22,7 @@ namespace ResourceManager.CommitDataRenders
         /// <summary>
         /// Generate header.
         /// </summary>
-        string Render(CommitData commitData, bool showRevisionsAsLinks);
+        string Render(CommitData commitData, bool showRevisionsAsLinks, IGitRevisionProvider revisionProvider);
 
         /// <summary>
         /// Generate header.
@@ -60,7 +61,8 @@ namespace ResourceManager.CommitDataRenders
         /// <summary>
         /// Generate header.
         /// </summary>
-        public string Render(CommitData commitData, bool showRevisionsAsLinks)
+        public string Render(CommitData commitData, bool showRevisionsAsLinks,
+            IGitRevisionProvider revisionProvider)
         {
             if (commitData == null)
             {
@@ -99,13 +101,15 @@ namespace ResourceManager.CommitDataRenders
 
             if (commitData.ChildIds != null && commitData.ChildIds.Count != 0)
             {
-                header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetChildren(commitData.ChildIds.Count), padding) + RenderObjectIds(commitData.ChildIds, showRevisionsAsLinks));
+                header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetChildren(commitData.ChildIds.Count), padding) +
+                                  RenderObjectIds(commitData.ChildIds, showRevisionsAsLinks, revisionProvider, padding));
             }
 
             var parentIds = commitData.ParentIds;
             if (parentIds.Count != 0)
             {
-                header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetParents(parentIds.Count), padding) + RenderObjectIds(parentIds, showRevisionsAsLinks));
+                header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetParents(parentIds.Count), padding) +
+                                  RenderObjectIds(parentIds, showRevisionsAsLinks, revisionProvider, padding));
             }
 
             // remove the trailing newline character
@@ -163,11 +167,23 @@ namespace ResourceManager.CommitDataRenders
             return author.Substring(ind, author.LastIndexOf(">", StringComparison.Ordinal) - ind);
         }
 
-        private string RenderObjectIds(IEnumerable<ObjectId> objectIds, bool showRevisionsAsLinks)
+        private string RenderObjectIds(IEnumerable<ObjectId> objectIds, bool showRevisionsAsLinks,
+            IGitRevisionProvider revisionProvider, int padding)
         {
             return showRevisionsAsLinks
-                ? objectIds.Select(id => _linkFactory.CreateCommitLink(id)).Join(" ")
-                : objectIds.Select(id => id.ToShortString()).Join(" ");
+                ? objectIds
+                    .Select(id => _linkFactory.CreateCommitLink(id) + " " + GetCommitSubject(id, revisionProvider))
+                    .Join(Environment.NewLine + _labelFormatter.FormatLabel("", padding, appendColon: false))
+                : objectIds
+                    .Select(id => id.ToShortString() + " " + GetCommitSubject(id, revisionProvider))
+                    .Join(Environment.NewLine + _labelFormatter.FormatLabel("", padding, appendColon: false));
+        }
+
+        private static string GetCommitSubject(ObjectId id, IGitRevisionProvider module)
+        {
+            return id.IsArtificial
+                ? ""
+                : module.GetRevision(id, shortFormat: true).Subject;
         }
     }
 }

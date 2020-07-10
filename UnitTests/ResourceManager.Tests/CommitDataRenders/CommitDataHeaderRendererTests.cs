@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using FluentAssertions;
 using GitCommands;
+using GitCommands.Git;
 using GitUIPluginInterfaces;
 using NSubstitute;
 using NUnit.Framework;
@@ -21,7 +22,7 @@ namespace ResourceManagerTests.CommitDataRenders
         private ILinkFactory _linkFactory;
         private IDateFormatter _dateFormatter;
         private CommitDataHeaderRenderer _renderer;
-
+        private IGitRevisionProvider _revisionProvider;
         private readonly IReadOnlyList<ObjectId> _childrenHashes = new[]
         {
             ObjectId.Parse("3b6ce324e30ed7fda24483fd56a180c34a262202"),
@@ -34,6 +35,20 @@ namespace ResourceManagerTests.CommitDataRenders
             ObjectId.Parse("5542334ab518b329426783d74c8f4204c2d75a43"),
             ObjectId.Parse("92bc4ad5e509f7dbe87dc4e679fcb879c3235788"),
             ObjectId.Parse("bc911920838c15bcf86808904ecb897595b9ef5f")
+        };
+
+        private readonly IReadOnlyList<string> _childrenSubjects = new[]
+        {
+            "Child1",
+            "Child2",
+            "Child3"
+        };
+
+        private readonly IReadOnlyList<string> _parentSubjects = new[]
+        {
+            "Parent1",
+            "Parent2",
+            "Parent3"
         };
 
         [SetUp]
@@ -50,6 +65,18 @@ namespace ResourceManagerTests.CommitDataRenders
             _labelFormatter.FormatLabel(ResourceManager.Strings.GetParents(Arg.Any<int>()), Arg.Any<int>()).Returns(x => "Parents:       ");
             _labelFormatter.FormatLabel(ResourceManager.Strings.GetChildren(1), Arg.Any<int>()).Returns(x => "Child:         ");
             _labelFormatter.FormatLabel(ResourceManager.Strings.GetChildren(Arg.Any<int>()), Arg.Any<int>()).Returns(x => "Children:      ");
+            _revisionProvider = Substitute.For<IGitRevisionProvider>();
+            for (int i = 0; i < _childrenHashes.Count; ++i)
+            {
+                var gitRevision = new GitRevision(_childrenHashes[i]) { Subject = _childrenSubjects[i] };
+                _revisionProvider.GetRevision(_childrenHashes[i], Arg.Any<bool>()).Returns(gitRevision);
+            }
+
+            for (int i = 0; i < _parentSubjects.Count; ++i)
+            {
+                var gitRevision = new GitRevision(_parentHashes[i]) { Subject = _parentSubjects[i] };
+                _revisionProvider.GetRevision(_parentHashes[i], Arg.Any<bool>()).Returns(gitRevision);
+            }
 
             _headerRendererStyleProvider = Substitute.For<IHeaderRenderStyleProvider>();
             _linkFactory = Substitute.For<ILinkFactory>();
@@ -83,7 +110,7 @@ namespace ResourceManagerTests.CommitDataRenders
         [Test]
         public void Render_should_throw_if_data_null()
         {
-            ((Action)(() => _renderer.Render(null, true))).Should().Throw<ArgumentNullException>();
+            ((Action)(() => _renderer.Render(null, true, _revisionProvider))).Should().Throw<ArgumentNullException>();
         }
 
         [Test]
@@ -103,7 +130,7 @@ namespace ResourceManagerTests.CommitDataRenders
             _linkFactory.CreateLink(author, Arg.Any<string>()).Returns(x => author);
             _dateFormatter.FormatDateAsRelativeLocal(authorDate).Returns("6 months ago (06/17/2017 23:38:40)");
 
-            var result = _renderer.Render(data, false);
+            var result = _renderer.Render(data, false, _revisionProvider);
 
             result.Should().Be($"Author:        John Doe (Acme Inc) <John.Doe@test.com>{Environment.NewLine}Date:          6 months ago (06/17/2017 23:38:40){Environment.NewLine}Commit hash:   7fa3109989e0523aeacb178995a2a3aa6c302a2c");
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Author, Arg.Any<int>());
@@ -132,7 +159,7 @@ namespace ResourceManagerTests.CommitDataRenders
             _linkFactory.CreateLink(committer, Arg.Any<string>()).Returns(x => committer);
             _dateFormatter.FormatDateAsRelativeLocal(authorDate).Returns("6 months ago (06/17/2017 23:38:40)");
 
-            var result = _renderer.Render(data, false);
+            var result = _renderer.Render(data, false, _revisionProvider);
 
             result.Should().Be($"Author:        John Doe (Acme Inc) <John.Doe@test.com>{Environment.NewLine}Date:          6 months ago (06/17/2017 23:38:40){Environment.NewLine}Committer:     John Doe <John.Doe@test.com>{Environment.NewLine}Commit hash:   7fa3109989e0523aeacb178995a2a3aa6c302a2c");
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Author, Arg.Any<int>());
@@ -161,7 +188,7 @@ namespace ResourceManagerTests.CommitDataRenders
             _dateFormatter.FormatDateAsRelativeLocal(authorDate).Returns("6 months ago (06/17/2017 23:38:40)");
             _dateFormatter.FormatDateAsRelativeLocal(commitDate).Returns("2 months ago (10/23/2017 12:17:11)");
 
-            var result = _renderer.Render(data, false);
+            var result = _renderer.Render(data, false, _revisionProvider);
 
             result.Should().Be($"Author:        John Doe (Acme Inc) <John.Doe@test.com>{Environment.NewLine}Author date:   6 months ago (06/17/2017 23:38:40){Environment.NewLine}Commit date:   2 months ago (10/23/2017 12:17:11){Environment.NewLine}Commit hash:   7fa3109989e0523aeacb178995a2a3aa6c302a2c");
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Author, Arg.Any<int>());
@@ -190,12 +217,12 @@ namespace ResourceManagerTests.CommitDataRenders
             _linkFactory.CreateLink(author, Arg.Any<string>()).Returns(x => author);
             _dateFormatter.FormatDateAsRelativeLocal(authorDate).Returns("6 months ago (06/17/2017 23:38:40)");
 
-            var result = _renderer.Render(data, false);
+            var result = _renderer.Render(data, false, _revisionProvider);
 
             result.Should().Be($"Author:        John Doe (Acme Inc) <John.Doe@test.com>{Environment.NewLine}Date:          6 months ago (06/17/2017 23:38:40){Environment.NewLine}Commit hash:   7fa3109989e0523aeacb178995a2a3aa6c302a2c{Environment.NewLine}" +
-                $"Children:      {_childrenHashes[0].ToShortString()} " +
-                $"{_childrenHashes[1].ToShortString()} " +
-                $"{_childrenHashes[2].ToShortString()}");
+                $"Children:      {_childrenHashes[0].ToShortString()} {_childrenSubjects[0]}{Environment.NewLine}" +
+                $"{_childrenHashes[1].ToShortString()} {_childrenSubjects[1]}{Environment.NewLine}" +
+                $"{_childrenHashes[2].ToShortString()} {_childrenSubjects[2]}");
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Author, Arg.Any<int>());
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Date, Arg.Any<int>());
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.CommitHash, Arg.Any<int>());
@@ -221,10 +248,13 @@ namespace ResourceManagerTests.CommitDataRenders
             _linkFactory.CreateLink(author, Arg.Any<string>()).Returns(x => author);
             _dateFormatter.FormatDateAsRelativeLocal(authorDate).Returns("6 months ago (06/17/2017 23:38:40)");
 
-            var result = _renderer.Render(data, false);
+            var result = _renderer.Render(data, false, _revisionProvider);
 
-            result.Should().Be($"Author:        John Doe (Acme Inc) <John.Doe@test.com>{Environment.NewLine}Date:          6 months ago (06/17/2017 23:38:40){Environment.NewLine}Commit hash:   7fa3109989e0523aeacb178995a2a3aa6c302a2c{Environment.NewLine}" +
-                $"Parents:       {_parentHashes[0].ToShortString()} {_parentHashes[1].ToShortString()} {_parentHashes[2].ToShortString()}");
+            result.Should().Be(
+                $"Author:        John Doe (Acme Inc) <John.Doe@test.com>{Environment.NewLine}Date:          6 months ago (06/17/2017 23:38:40){Environment.NewLine}Commit hash:   7fa3109989e0523aeacb178995a2a3aa6c302a2c{Environment.NewLine}" +
+                $"Parents:       {_parentHashes[0].ToShortString()} {_parentSubjects[0]}{Environment.NewLine}" +
+                $"{_parentHashes[1].ToShortString()} {_parentSubjects[1]}{Environment.NewLine}" +
+                $"{_parentHashes[2].ToShortString()} {_parentSubjects[2]}");
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Author, Arg.Any<int>());
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Date, Arg.Any<int>());
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.CommitHash, Arg.Any<int>());
@@ -250,10 +280,12 @@ namespace ResourceManagerTests.CommitDataRenders
 
             _linkFactory.CreateLink(author, Arg.Any<string>()).Returns(x => author);
 
-            var result = _renderer.Render(data, false);
+            var result = _renderer.Render(data, false, _revisionProvider);
 
             result.Should().Be($"Author:        John Doe (Acme Inc) <John.Doe@test.com>{Environment.NewLine}" +
-                               $"Parents:       {_parentHashes[0].ToShortString()} {_parentHashes[1].ToShortString()} {_parentHashes[2].ToShortString()}");
+                               $"Parents:       {_parentHashes[0].ToShortString()} {_parentSubjects[0]}{Environment.NewLine}" +
+                               $"{_parentHashes[1].ToShortString()} {_parentSubjects[1]}{Environment.NewLine}" +
+                               $"{_parentHashes[2].ToShortString()} {_parentSubjects[2]}");
             _labelFormatter.Received(1).FormatLabel(ResourceManager.Strings.Author, Arg.Any<int>());
             _labelFormatter.DidNotReceive().FormatLabel(ResourceManager.Strings.Date, Arg.Any<int>());
             _labelFormatter.DidNotReceive().FormatLabel(ResourceManager.Strings.CommitHash, Arg.Any<int>());

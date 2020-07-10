@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
@@ -26,7 +27,7 @@ namespace GitCommands
     /// <summary>Provides manipulation with git module.
     /// <remarks>Several instances may be created for submodules.</remarks></summary>
     [DebuggerDisplay("GitModule ( {" + nameof(WorkingDir) + "} )")]
-    public sealed class GitModule : IGitModule
+    public sealed class GitModule : IGitModule, IGitRevisionProvider
     {
         private const string GitError = "Git Error";
         private static readonly Regex CpEncodingPattern = new Regex("cp\\d+", RegexOptions.Compiled);

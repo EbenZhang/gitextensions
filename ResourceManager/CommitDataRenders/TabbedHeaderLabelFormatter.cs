@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 
 namespace ResourceManager.CommitDataRenders
@@ -7,9 +8,9 @@ namespace ResourceManager.CommitDataRenders
     /// </summary>
     public sealed class TabbedHeaderLabelFormatter : IHeaderLabelFormatter
     {
-        public string FormatLabel(string label, int desiredLength)
+        public string FormatLabel(string label, int desiredLength, bool appendColon = true)
         {
-            return FillToLength(WebUtility.HtmlEncode(label) + ":");
+            return FillToLength(appendColon ? WebUtility.HtmlEncode(label) + ":" : WebUtility.HtmlEncode(label));
 
             string FillToLength(string input)
             {

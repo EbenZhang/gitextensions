@@ -7,9 +7,9 @@ namespace ResourceManager.CommitDataRenders
     /// </summary>
     public sealed class MonospacedHeaderLabelFormatter : IHeaderLabelFormatter
     {
-        public string FormatLabel(string label, int desiredLength)
+        public string FormatLabel(string label, int desiredLength, bool appendColon = true)
         {
-            return (WebUtility.HtmlEncode(label) + ":").PadRight(desiredLength);
+            return (appendColon ? (WebUtility.HtmlEncode(label) + ":") : label).PadRight(desiredLength);
         }
     }
 }
