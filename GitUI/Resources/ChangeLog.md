@@ -1,6 +1,67 @@
 Changelog
 =========
 
+### Version 3.4.3 (25 Jul 2020)
+
+#### Changes:
+* [#8329] ConEmu 20.07.13
+* [#8323] Dark silver theme
+* [#8319] Resize also the backup/default avatar image
+* [#8318] FormCommit: No summary  for deleted submodules
+* [#8296] Disable Finish button while loading branches in GitFlow form.
+* [#8287] Restore FileStatusList focus after GoToChild/Parent
+* [#8277] Track theme colors via Telemetry
+* [#8274] Avoid console printouts when submodule updates are throttled
+* [#8266] Fix ssh not found
+* [#8250] Fix "selection only" text search on Diff view (#7784)
+* [#8212] Recover lost object: Add a file preview
+
+
+[8333]:https://github.com/gitextensions/gitextensions/pull/8333
+[8331]:https://github.com/gitextensions/gitextensions/pull/8331
+[8329]:https://github.com/gitextensions/gitextensions/pull/8329
+[8323]:https://github.com/gitextensions/gitextensions/pull/8323
+[8319]:https://github.com/gitextensions/gitextensions/pull/8319
+[8318]:https://github.com/gitextensions/gitextensions/pull/8318
+[8296]:https://github.com/gitextensions/gitextensions/pull/8296
+[8287]:https://github.com/gitextensions/gitextensions/pull/8287
+[8277]:https://github.com/gitextensions/gitextensions/pull/8277
+[8274]:https://github.com/gitextensions/gitextensions/pull/8274
+[8266]:https://github.com/gitextensions/gitextensions/pull/8266
+[8250]:https://github.com/gitextensions/gitextensions/pull/8250
+[8212]:https://github.com/gitextensions/gitextensions/pull/8212
+
+
+### Version 3.4.2 (21 June 2020)
+
+#### Changes:
+* [#8255] [NBug] Invalid diff/merge tool requestedParameter name: toolName
+* [#8252] Draw current commit message bold in detached-head mode
+* [#8246] Disable context menu items rather than hiding them
+* [#8240] Make WindowsJumpListManager calls safer
+* [#8238] Display 'Plugin Manager" next to "Plugin settings" in the menu
+* [#8237] ResetAnotherBranch: Quote path arguments
+* [#8231] Centrally handle user script errors
+
+
+[8255]:https://github.com/gitextensions/gitextensions/pull/8255
+[8252]:https://github.com/gitextensions/gitextensions/pull/8252
+[8246]:https://github.com/gitextensions/gitextensions/pull/8246
+[8240]:https://github.com/gitextensions/gitextensions/pull/8240
+[8238]:https://github.com/gitextensions/gitextensions/pull/8238
+[8237]:https://github.com/gitextensions/gitextensions/pull/8237
+[8231]:https://github.com/gitextensions/gitextensions/pull/8231
+
+
+
+### Version 3.4.1 (14 June 2020)
+
+#### Changes:
+* [#8208] Restore missing app.manifest
+
+[8182]:https://github.com/gitextensions/gitextensions/pull/8182
+
+
 ### Version 3.4 (6 June 2020)
 
 #### Changes:
