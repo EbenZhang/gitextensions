@@ -64,7 +64,7 @@ namespace ResourceManager.CommitDataRenders
         public string Render(CommitData commitData, bool showRevisionsAsLinks,
             IGitRevisionProvider revisionProvider)
         {
-            if (commitData == null)
+            if (commitData is null)
             {
                 throw new ArgumentNullException(nameof(commitData));
             }
@@ -99,7 +99,7 @@ namespace ResourceManager.CommitDataRenders
                 header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.CommitHash, padding) + WebUtility.HtmlEncode(commitData.ObjectId.ToString()));
             }
 
-            if (commitData.ChildIds != null && commitData.ChildIds.Count != 0)
+            if (commitData.ChildIds is not null && commitData.ChildIds.Count != 0)
             {
                 header.AppendLine(_labelFormatter.FormatLabel(ResourceManager.Strings.GetChildren(commitData.ChildIds.Count), padding) +
                                   RenderObjectIds(commitData.ChildIds, showRevisionsAsLinks, revisionProvider, padding));
@@ -123,7 +123,7 @@ namespace ResourceManager.CommitDataRenders
         /// </summary>
         public string RenderPlain(CommitData commitData)
         {
-            if (commitData == null)
+            if (commitData is null)
             {
                 throw new ArgumentNullException(nameof(commitData));
             }

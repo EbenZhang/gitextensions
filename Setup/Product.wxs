@@ -158,9 +158,6 @@
       <Component Id="Git.hub.dll" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\Git.hub.dll" />
       </Component>
-      <Component Id="PSTaskDialog.dll" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\PSTaskDialog.dll" />
-      </Component>
       <Component Id="RestSharp.dll" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\RestSharp.dll" />
       </Component>
@@ -518,6 +515,9 @@
       <Component Id="System.Xml.XPath.XDocument.dll" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\System.Xml.XPath.XDocument.dll" />
       </Component>
+      <Component Id="ExCSS.dll" Guid="*">
+        <File Source="$(var.ArtifactsPublishPath)\ExCSS.dll" />
+      </Component>
       <!-- Remove unused dll, installed in versions <= 2.31 -->
       <Component Id="GithubSharp.Core.dll" Guid="08F2D539-54CE-4895-ACA5-A7FBA73CA172">
         <RemoveFile Name="GithubSharp.Core.dll" Id="GithubSharp.Core.dll" On="both" />
@@ -589,14 +589,20 @@
       </Component>
     </DirectoryRef>
     <DirectoryRef Id="ThemesDir">
-      <Component Id="win10default.css" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Themes\win10default.css" />
+      <Component Id="Themes.README.md" Guid="*">
+        <File Source="$(var.ArtifactsPublishPath)\Themes\README.md" />
       </Component>
-      <Component Id="dark.css" Guid="*">
+      <Component Id="Themes.invariant.css" Guid="*">
+        <File Source="$(var.ArtifactsPublishPath)\Themes\invariant.css" />
+      </Component>
+      <Component Id="Themes.dark.css" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\Themes\dark.css" />
       </Component>
-      <Component Id="darksilver.css" Guid="*">
+      <Component Id="Themes.darksilver.css" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\Themes\darksilver.css" />
+      </Component>
+      <Component Id="Themes.bright.css" Guid="*">
+        <File Source="$(var.ArtifactsPublishPath)\Themes\bright.css" />
       </Component>
     </DirectoryRef>
     <DirectoryRef Id="PluginsDir">
@@ -784,15 +790,6 @@
       <Component Id="English.Plugins.xlf" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\Translation\English.Plugins.xlf" />
       </Component>
-      <Component Id="French.gif" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\French.gif" />
-      </Component>
-      <Component Id="French.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\French.xlf" />
-      </Component>
-      <Component Id="French.Plugins.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\French.Plugins.xlf" />
-      </Component>
       <Component Id="German.gif" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\Translation\German.gif" />
       </Component>
@@ -811,41 +808,14 @@
       <Component Id="Japanese.Plugins.xlf" Guid="*">
         <File Source="$(var.ArtifactsPublishPath)\Translation\Japanese.Plugins.xlf" />
       </Component>
-      <Component Id="Polish.gif" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Polish.gif" />
+      <Component Id="Korean.gif" Guid="*">
+        <File Source="$(var.ArtifactsPublishPath)\Translation\Korean.gif" />
       </Component>
-      <Component Id="Polish.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Polish.xlf" />
+      <Component Id="Korean.xlf" Guid="*">
+        <File Source="$(var.ArtifactsPublishPath)\Translation\Korean.xlf" />
       </Component>
-      <Component Id="Polish.Plugins.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Polish.Plugins.xlf" />
-      </Component>
-      <Component Id="Russian.gif" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Russian.gif" />
-      </Component>
-      <Component Id="Russian.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Russian.xlf" />
-      </Component>
-      <Component Id="Russian.Plugins.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Russian.Plugins.xlf" />
-      </Component>
-      <Component Id="SimplifiedChinese.gif" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Simplified Chinese.gif" />
-      </Component>
-      <Component Id="SimplifiedChinese.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Simplified Chinese.xlf" />
-      </Component>
-      <Component Id="SimplifiedChinese.Plugins.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Simplified Chinese.Plugins.xlf" />
-      </Component>
-      <Component Id="Spanish.gif" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Spanish.gif" />
-      </Component>
-      <Component Id="Spanish.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Spanish.xlf" />
-      </Component>
-      <Component Id="Spanish.Plugins.xlf" Guid="*">
-        <File Source="$(var.ArtifactsPublishPath)\Translation\Spanish.Plugins.xlf" />
+      <Component Id="Korean.Plugins.xlf" Guid="*">
+        <File Source="$(var.ArtifactsPublishPath)\Translation\Korean.Plugins.xlf" />
       </Component>
     </DirectoryRef>
     <DirectoryRef Id="PuttyDir">
@@ -1517,7 +1487,6 @@
       <ComponentRef Id="AdysTech.CredentialManager.dll" />
       <ComponentRef Id="GitUI.dll" />
       <ComponentRef Id="ConEmu.WinForms.dll" />
-      <ComponentRef Id="PSTaskDialog.dll" />
       <ComponentRef Id="AppInsights.WindowsDesktop.dll" />
       <ComponentRef Id="Microsoft.ApplicationInsights.dll" />
       <ComponentRef Id="Microsoft.WindowsAPICodePack.dll" />
@@ -1532,6 +1501,7 @@
       <ComponentRef Id="NetSpell.SpellChecker.dll" />
       <ComponentRef Id="ResourceManager.dll" />
       <ComponentRef Id="GitUIPluginInterfaces.dll" />
+      <ComponentRef Id="ExCSS.dll" />
       <ComponentRef Id="checksettings.reg" />
       <ComponentRef Id="InstallDir.reg" />
       <ComponentRef Id="gitssh_openssh.reg" />
@@ -1561,9 +1531,11 @@
       <ComponentRef Id="EasyHook.dll" />
       <ComponentRef Id="EasyHook32.dll" />
       <ComponentRef Id="EasyHook64.dll" />
-      <ComponentRef Id="win10default.css" />
-      <ComponentRef Id="dark.css" />
-      <ComponentRef Id="darksilver.css" />
+      <ComponentRef Id="Themes.README.md" />
+      <ComponentRef Id="Themes.invariant.css" />
+      <ComponentRef Id="Themes.dark.css" />
+      <ComponentRef Id="Themes.darksilver.css" />
+      <ComponentRef Id="Themes.bright.css" />
       <!-- Remove unused dll, installed in versions <= 2.31 -->
       <ComponentRef Id="GithubSharp.Core.dll" />
       <!-- Remove unused dll, installed in versions <= 2.31 -->
@@ -1704,11 +1676,6 @@
         </Feature>
       </Feature>
       <Feature Id="Translation" Title="Translations" Level="1">
-        <Feature Id="French" Title="French" Level="1">
-          <ComponentRef Id="French.xlf" />
-          <ComponentRef Id="French.Plugins.xlf" />
-          <ComponentRef Id="French.gif" />
-        </Feature>
         <Feature Id="German" Title="German" Level="1">
           <ComponentRef Id="German.xlf" />
           <ComponentRef Id="German.Plugins.xlf" />
@@ -1719,25 +1686,10 @@
           <ComponentRef Id="Japanese.Plugins.xlf" />
           <ComponentRef Id="Japanese.gif" />
         </Feature>
-        <Feature Id="Polish" Title="Polish" Level="1">
-          <ComponentRef Id="Polish.xlf" />
-          <ComponentRef Id="Polish.Plugins.xlf" />
-          <ComponentRef Id="Polish.gif" />
-        </Feature>
-        <Feature Id="Russian" Title="Russian" Level="1">
-          <ComponentRef Id="Russian.xlf" />
-          <ComponentRef Id="Russian.Plugins.xlf" />
-          <ComponentRef Id="Russian.gif" />
-        </Feature>
-        <Feature Id="SimplifiedChinese" Title="Simplified Chinese" Level="1">
-          <ComponentRef Id="SimplifiedChinese.xlf" />
-          <ComponentRef Id="SimplifiedChinese.Plugins.xlf" />
-          <ComponentRef Id="SimplifiedChinese.gif" />
-        </Feature>
-        <Feature Id="Spanish" Title="Spanish" Level="1">
-          <ComponentRef Id="Spanish.xlf" />
-          <ComponentRef Id="Spanish.Plugins.xlf" />
-          <ComponentRef Id="Spanish.gif" />
+        <Feature Id="Korean" Title="Korean" Level="1">
+          <ComponentRef Id="Korean.xlf" />
+          <ComponentRef Id="Korean.Plugins.xlf" />
+          <ComponentRef Id="Korean.gif" />
         </Feature>
       </Feature>
       <Feature Id="ShellExtension" Title="Windows Explorer integration" Level="1">

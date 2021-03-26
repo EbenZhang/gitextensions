@@ -1,47 +1,449 @@
 Changelog
 =========
 
-### Version 3.4.3 (25 Jul 2020)
+
+### Version 3.5-RC1 (21 March 2021)
 
 #### Changes:
-* [#8329] ConEmu 20.07.13
-* [#8323] Dark silver theme
-* [#8319] Resize also the backup/default avatar image
-* [#8318] FormCommit: No summary  for deleted submodules
-* [#8296] Disable Finish button while loading branches in GitFlow form.
-* [#8287] Restore FileStatusList focus after GoToChild/Parent
-* [#8277] Track theme colors via Telemetry
-* [#8274] Avoid console printouts when submodule updates are throttled
-* [#8266] Fix ssh not found
-* [#8250] Fix "selection only" text search on Diff view (#7784)
-* [#8212] Recover lost object: Add a file preview
+* [9017] Push from empty FormCommit
+* [9012] #8684 Avatars are misaligned in blame form
+* [9006] Avoid invalid line number in DiffHighlightService
+* [9003] FileSettingsCache: No exception if Git config is inaccessible
+* [9001] Check BeforeCommit script failure to abort commit
+* [8992] Include spelling dictionaries
+* [8991] Inject current branch slug into the documentation link
+* [8988] Improve display of exceptions 3.5
+* [8987] #8684 Avatars are misaligned in blame form
+* [8979] GitStatusMonitor increase minimum time between updates 3.5
+* [8978] Submodule: Recreate tree only at structure changes 3.5
+* [8953] RevDiff: Show worktree/index changes similar to FormCommit
+* [8908] RevDiff: Request GitStatus updates at file manipulations 3.5
+* [8893] Remove /en/latest from Doc links 3.5
+* [8892] Submodule status updated too often 3.5
+* [8874] Left panel: Make "Expand all" and "Collapse all" based on selected node
+* [8861] Fix ownership of FormUpdates
+* [8856] 3.5 AppVeyor: Handle v2 tokens
+* [8849] Add borders in Commit Form and set splitter width like in VS
+* [8845] Notify of repo changes when unused branches were deleted
+* [8840] Check if path exists before creating FileInfo
+* [8833] Jenkins: requery new running jobs
+* [8826] Restore/expose IGitUICommands.StartRemotesDialog
+* [8824] Reset Another branch: prevent special characters in path to fail command
+* [8821] Incorrect colors for left panel icons
+* [8820] Fix dark theme visually corrupt after dpi change
+* [8815] Fix tab control border in high dpi
+* [8812] Prioritize main as master in CommitInfo
+* [8807] Fix toolbar order (revisited)
+* [8806] ImageView: View failures as dump
+* [8805] Increase the number of commit templates
+* [8801] Fix filter by branch with globbing characters *?[]
+* [8786] Update open directory
+* [8775] Pass 'skip' parameter
+* [8763] Review feedback on PR #8731 (StageAll,UnstageAll)
+* [8761] Change TextImageRelation For "Reset All" Button
+* [8756] Translate ToolTips
+* [8754] FileViewer: Return inapplicable hotkeys as unhandled
+* [8751] Show both bisect and git operation notifications
+* [8748] fix: Select diff when there are staged and unstaged files
+* [8738] Use Executable for launching new GE instances
+* [8736] fix crash on refresh when submodule nodes selected
+* [8731] StageAll and UnstageAll improvement when Filter active #8596
+* [8727] ResolveConflicts: Incorrect evaluation of mergetool path
+* [8726] Sidepanel submodule improvements
+* [8725] Verb "open" for ShellExecute
+* [8721] Process.Start with ExternalOperationException
+* [8719] Revert ability for move and show/hide toolbars
+* [8718] Handle external I/O exceptions that user can fix
+* [8716] Fix high CPU usage of TeamCityAdapter
+* [8713] TranslationApp: Include "AccessibleName"
+* [8708] FileViewer: Consistently use Stage/Reset  Lines
+* [8703]  Submodule browse: Select both first/second commits
+* [8697] Handle multi-part names for author initials
+* [8690] FormResolveConflict: Allow open without cmd/path
+* [8687] GitStatusMonitor: Display when inactive
+* [8682] A variety of accessibility-related fixes for the contents of the main pane on the Config page 
+* [8679] Don't persist or restore the state of the main menu
+* [8678] Improve handling of Drag and drop
+* [8667] Left panel enhancement
+* [8661] Remove support for UTF-7
+* [8660] Custom mergetool
+* [8659] Render tabs in the text viewer
+* [8648] Interactive rebase: Highlight 4 byte sha
+* [8646] Submodule context menus: Only show if dir exists
+* [8644] Default debug startup arguments
+* [8639] FormResetAnotherBranch: display local tracking branches first
+* [8638] Fix rebase status displayed during a rebase
+* [8631] Fix #8630: better handle "forbidden" filename
+* [8628] RangeDiff: Commit count in name
+* [8627] FileHistory: Git command log
+* [8626] Blame: Spinner not dismissed for empty files and errors
+* [8622] Prefer correct local and remote branches sort to tags
+* [8619] Fix left panel broken sort and filtering
+* [8616] Exception closing GE when shutting down Windows
+* [8615] diffmerge updates
+* [8604] RevDiff context menu for cherry-pick
+* [8601] Fix Open with Diff Tool does not work with staged renamed file in FormCommit dialog
+* [8594] FormPush: fix tracked branches selection
+* [8593] FormGoToCommit: set focus on commit textbox when no control has focus
+* [8587] Do not  throw if Git is upgraded  while GE is started
+* [8576] fix background / foreground contrast for gray text
+* [8575] FullPathResolver: Avoid exception for illegal characters
+* [8573] FormPush show ahead/behind for  multiple branches
+* [8572] Break the toolstrip
+* [8568] Reduced the number of draw calls on the commit info panel.
+* [8564] Implement custom avatar providers and refactor avatar handling.
+* [8563] Draw a separator line at the top of the footer panel, similar to what Task Dialog does
+* [8562] Ahead/behind show up-to-date and gone
+* [8559] Add dialog help that navigates to the docs
+* [8557] Add paddings and borders for panels
+* [8556] Fixes #7557 - Dashboard: GitHub clone shortcut missing at initial load
+* [8555] update button mnemonic for Reset button on Reset Form to "E"
+* [8550] gray additional commit lines in revision grid
+* [8549] FormPush multiple: force-with-lease if rejected
+* [8543] Add ability to show "Add submodule" Dialog on taskbar.
+* [8541] Fixes #8327 push commit does clear commit message
+* [8537] Fixes #8146 "Keyboard navigation : Enter Key should open a recent repository"
+* [8534] RevisionGrid: Prevent inopportune crash
+* [8533] BackgroundFetch & push --force-with-lease : add a warning message
+* [8532] Detect when Azure DevOps token is invalid/expired
+* [8529] Fix #8188: cannot force push tags
+* [8528] Use SelectedNode property to track target for context menu
+* [8527] updated removeFiles to use GetBatchOutput and added unit tests
+* [8525] Submodules window now keeps the splitter position
+* [8524] Ensure focus is on cancel button for Reset Form
+* [8523] [#5499] Fix invisible row selection in the file status list control.
+* [8520] FormPush: Add context menu to easily manage multiple push selection
+* [8516] range-diff presentation
+* [8515] Push multiple: Set default push to false
+* [8511] Don't refresh revision grid invoking toolstrip actions
+* [8510] Update layout
+* [8509] Longer GPG key input box (8 chars -> 16 chars)
+* [8506] FormEditor SaveCanges Changes
+* [8504] Parallelized Repo Validity Checks during Startup
+* [8503] Correct Sort context menu placement
+* [8502] Add a button to be able to open Application and User theme folders
+* [8501] Apply action to all selected files in solve merge conflict
+* [8499] Fix JumpList being created too soon
+* [8496] FileViewer: ViewMode to track what is currently displayed
+* [8494] fix: Write and read enum setting as string not number
+* [8491] Improve `FormCreateBranch` information
+* [8490] Dialogs layout alignment - `FormCreateBranch`
+* [8489] Reset filter when switch repos
+* [8488] Add script options {sSubject} and {cSubject}
+* [8487] fix: Resolve script "c"-variables
+* [8485] fix: Branch filter isn't truly reset
+* [8482] Show empty diffs as patch, not text
+* [8471] support for range-diff
+* [8469] Add tests for AppSettings
+* [8465] Prevent adding "--prune --prune-tags" when run from toolbar
+* [8458] Don't use "AddSettingBinding" in "FormBrowseRepoSettingsPage"
+* [8456] Settings [cleanup]
+* [8454] Fix 8351 - "Araxis does not show up in Mergetool/Difftool dropdown box"
+* [8451] Settings updated event [cleanup]
+* [8450] AppSettings Updated event
+* [8449] Don't expand branches node on refresh
+* [8444] Jenkins: Present most recent interesting build info
+* [8435] Dark titlebar when using a dark theme on a recent Win10
+* [8434] Cleanup `GitCommandHelpers`
+* [8433] Add checkbox to prune tags
+* [8427] Fix 6310 Provide ability to sort/order branches and tags
+* [8426] Colorblind syntax colors
+* [8424] .css inheritance in themes
+* [8414] Filter out hidden branches
+* [8413] Dont refresh after `FormInit` cancels
+* [8409] Ensure consistent margins
+* [8408] Theme variations for colorblindness
+* [8405] Add 'Run script' command to branches pane context menu
+* [8385] Fix up splitter positions
+* [8384] Fixes #8348. Allow to create patch for the root commit.
+* [8372] Optimise `FormSettings` load
+* [8371] Added support for showing multi-line commit messages in the revision graph
+* [8362] Update instructions for portable in README.md
+* [8359] Dialogs layout alignment `FormCheckoutBranch`
+* [8358] Better exception presentation
+* [8357] fix test: SaveImpl_should_throw_if_invalid_path
+* [8341] Constrain child windows to monitor bounds
+* [8336] Avoid round brackets in testcase argument strings
+* [8335] DiffTools: add 'tortoisediff' as a tool alias
+* [8334] SubmoduleTests: Setup repos once for all tests
+* [8322] Fix Gource avatar feature
+* [8313] Add missing early return from OnRebaseInteractivelyClicked
+* [8311] Clean up of status reporting of failed operations
+* [8308] Avoid IEnumerable<> in test case signature
+* [8307] Introduce a new console styles settings page under Appearance
+* [8305] Refactor to replace magic hash string with variable
+* [8303] Rework FormStatus, FormProgress and FormRemoteProgress
+* [8298] Customise GitHub issue templates
+* [8295] Refactor MessageBoxes
+* [8294] Improve CommandLog
+* [8292] Dialogs layout alignment
+* [8291] Use TaskDialog from Microsoft.WindowsAPICodePack
+* [8289] Add "Ignore Date" and "Committer Date Is Author Date" options to rebase dialog
+* [8275] RevFile: Diff any two files
+* [8273] Add a hint regarding updates of portable builds
+* [8254] RevDiff: Remove parent diff
+* [8239] RevDiff: Add hotkeys to stage/unstage/reset
+* [8216] fix ignoring app.manifest
+* [8215] Apply also font size setting to the ConEmu popup
+* [8213] FormBrowse: Add all supported shells to the toolbar
+* [8200] Use DataGridViewCellMouseEventArgs.RowIndex
+* [8195] Do not use Cursor.Position in Mouse event handlers
+* [8194] RevDiff custom difftool
+* [8193] RevDiff: compare any two files
+* [8157] Tooltip for merged branches
+* [8130] Support 0 options in ScriptOptionsParser.AskToSpecify
+* [8124] Restore splitter positions
+* [8119] Submodule status: Throttle instead of drop frequent updates
+* [8117] Submodule status: Present dirty submodules
+* [8116] Bugfix/i8115 submodule gitstatus
+* [8111] Fix/script without icon
+* [8101] Limit number of diff revisions
+* [8086] RevDiff: FirstRevision is null for the initial commit
+* [8084] Improve "Limit number of commits" option
+* [8078] Improve tooltip for diff selection
+* [8076] Run FormFileHistory in a separate GE instance
+* [8075] Catch all types of exception thrown by ReadAllText
+* [8067] Fix 8055 add sign-off to FormApplyPatch 
+* [8065] Align folder/copy for submodule
+* [8049] Fix 7097 crash invalid escape character in .gitmodule
+* [8038] Fix for #8030 URL in "Edit Remote Details"is case insensitive
+* [8035] Indicate merged branches in left panel
+* [7825] RevisionDiff: Stage/Unstage selected lines
+* [6339] Add ability to Copy to Clipboard, similar to commit context menu from left panel
 
 
-[8333]:https://github.com/gitextensions/gitextensions/pull/8333
-[8331]:https://github.com/gitextensions/gitextensions/pull/8331
-[8329]:https://github.com/gitextensions/gitextensions/pull/8329
-[8323]:https://github.com/gitextensions/gitextensions/pull/8323
-[8319]:https://github.com/gitextensions/gitextensions/pull/8319
-[8318]:https://github.com/gitextensions/gitextensions/pull/8318
-[8296]:https://github.com/gitextensions/gitextensions/pull/8296
-[8287]:https://github.com/gitextensions/gitextensions/pull/8287
-[8277]:https://github.com/gitextensions/gitextensions/pull/8277
-[8274]:https://github.com/gitextensions/gitextensions/pull/8274
-[8266]:https://github.com/gitextensions/gitextensions/pull/8266
-[8250]:https://github.com/gitextensions/gitextensions/pull/8250
-[8212]:https://github.com/gitextensions/gitextensions/pull/8212
+[9017]:https://github.com/gitextensions/gitextensions/pull/9017
+[9012]:https://github.com/gitextensions/gitextensions/pull/9012
+[9006]:https://github.com/gitextensions/gitextensions/pull/9006
+[9003]:https://github.com/gitextensions/gitextensions/pull/9003
+[9001]:https://github.com/gitextensions/gitextensions/pull/9001
+[8992]:https://github.com/gitextensions/gitextensions/pull/8992
+[8991]:https://github.com/gitextensions/gitextensions/pull/8991
+[8988]:https://github.com/gitextensions/gitextensions/pull/8988
+[8987]:https://github.com/gitextensions/gitextensions/pull/8987
+[8979]:https://github.com/gitextensions/gitextensions/pull/8979
+[8978]:https://github.com/gitextensions/gitextensions/pull/8978
+[8953]:https://github.com/gitextensions/gitextensions/pull/8953
+[8908]:https://github.com/gitextensions/gitextensions/pull/8908
+[8893]:https://github.com/gitextensions/gitextensions/pull/8893
+[8892]:https://github.com/gitextensions/gitextensions/pull/8892
+[8874]:https://github.com/gitextensions/gitextensions/pull/8874
+[8861]:https://github.com/gitextensions/gitextensions/pull/8861
+[8856]:https://github.com/gitextensions/gitextensions/pull/8856
+[8849]:https://github.com/gitextensions/gitextensions/pull/8849
+[8845]:https://github.com/gitextensions/gitextensions/pull/8845
+[8840]:https://github.com/gitextensions/gitextensions/pull/8840
+[8833]:https://github.com/gitextensions/gitextensions/pull/8833
+[8826]:https://github.com/gitextensions/gitextensions/pull/8826
+[8824]:https://github.com/gitextensions/gitextensions/pull/8824
+[8821]:https://github.com/gitextensions/gitextensions/pull/8821
+[8820]:https://github.com/gitextensions/gitextensions/pull/8820
+[8815]:https://github.com/gitextensions/gitextensions/pull/8815
+[8812]:https://github.com/gitextensions/gitextensions/pull/8812
+[8807]:https://github.com/gitextensions/gitextensions/pull/8807
+[8806]:https://github.com/gitextensions/gitextensions/pull/8806
+[8805]:https://github.com/gitextensions/gitextensions/pull/8805
+[8801]:https://github.com/gitextensions/gitextensions/pull/8801
+[8786]:https://github.com/gitextensions/gitextensions/pull/8786
+[8775]:https://github.com/gitextensions/gitextensions/pull/8775
+[8763]:https://github.com/gitextensions/gitextensions/pull/8763
+[8761]:https://github.com/gitextensions/gitextensions/pull/8761
+[8756]:https://github.com/gitextensions/gitextensions/pull/8756
+[8754]:https://github.com/gitextensions/gitextensions/pull/8754
+[8751]:https://github.com/gitextensions/gitextensions/pull/8751
+[8748]:https://github.com/gitextensions/gitextensions/pull/8748
+[8738]:https://github.com/gitextensions/gitextensions/pull/8738
+[8736]:https://github.com/gitextensions/gitextensions/pull/8736
+[8731]:https://github.com/gitextensions/gitextensions/pull/8731
+[8727]:https://github.com/gitextensions/gitextensions/pull/8727
+[8726]:https://github.com/gitextensions/gitextensions/pull/8726
+[8725]:https://github.com/gitextensions/gitextensions/pull/8725
+[8721]:https://github.com/gitextensions/gitextensions/pull/8721
+[8719]:https://github.com/gitextensions/gitextensions/pull/8719
+[8718]:https://github.com/gitextensions/gitextensions/pull/8718
+[8716]:https://github.com/gitextensions/gitextensions/pull/8716
+[8713]:https://github.com/gitextensions/gitextensions/pull/8713
+[8708]:https://github.com/gitextensions/gitextensions/pull/8708
+[8703]:https://github.com/gitextensions/gitextensions/pull/8703
+[8697]:https://github.com/gitextensions/gitextensions/pull/8697
+[8690]:https://github.com/gitextensions/gitextensions/pull/8690
+[8687]:https://github.com/gitextensions/gitextensions/pull/8687
+[8682]:https://github.com/gitextensions/gitextensions/pull/8682
+[8679]:https://github.com/gitextensions/gitextensions/pull/8679
+[8678]:https://github.com/gitextensions/gitextensions/pull/8678
+[8667]:https://github.com/gitextensions/gitextensions/pull/8667
+[8661]:https://github.com/gitextensions/gitextensions/pull/8661
+[8660]:https://github.com/gitextensions/gitextensions/pull/8660
+[8659]:https://github.com/gitextensions/gitextensions/pull/8659
+[8648]:https://github.com/gitextensions/gitextensions/pull/8648
+[8646]:https://github.com/gitextensions/gitextensions/pull/8646
+[8644]:https://github.com/gitextensions/gitextensions/pull/8644
+[8639]:https://github.com/gitextensions/gitextensions/pull/8639
+[8638]:https://github.com/gitextensions/gitextensions/pull/8638
+[8631]:https://github.com/gitextensions/gitextensions/pull/8631
+[8628]:https://github.com/gitextensions/gitextensions/pull/8628
+[8627]:https://github.com/gitextensions/gitextensions/pull/8627
+[8626]:https://github.com/gitextensions/gitextensions/pull/8626
+[8622]:https://github.com/gitextensions/gitextensions/pull/8622
+[8619]:https://github.com/gitextensions/gitextensions/pull/8619
+[8616]:https://github.com/gitextensions/gitextensions/pull/8616
+[8615]:https://github.com/gitextensions/gitextensions/pull/8615
+[8604]:https://github.com/gitextensions/gitextensions/pull/8604
+[8601]:https://github.com/gitextensions/gitextensions/pull/8601
+[8594]:https://github.com/gitextensions/gitextensions/pull/8594
+[8593]:https://github.com/gitextensions/gitextensions/pull/8593
+[8587]:https://github.com/gitextensions/gitextensions/pull/8587
+[8576]:https://github.com/gitextensions/gitextensions/pull/8576
+[8575]:https://github.com/gitextensions/gitextensions/pull/8575
+[8573]:https://github.com/gitextensions/gitextensions/pull/8573
+[8572]:https://github.com/gitextensions/gitextensions/pull/8572
+[8568]:https://github.com/gitextensions/gitextensions/pull/8568
+[8564]:https://github.com/gitextensions/gitextensions/pull/8564
+[8563]:https://github.com/gitextensions/gitextensions/pull/8563
+[8562]:https://github.com/gitextensions/gitextensions/pull/8562
+[8559]:https://github.com/gitextensions/gitextensions/pull/8559
+[8557]:https://github.com/gitextensions/gitextensions/pull/8557
+[8556]:https://github.com/gitextensions/gitextensions/pull/8556
+[8555]:https://github.com/gitextensions/gitextensions/pull/8555
+[8550]:https://github.com/gitextensions/gitextensions/pull/8550
+[8549]:https://github.com/gitextensions/gitextensions/pull/8549
+[8543]:https://github.com/gitextensions/gitextensions/pull/8543
+[8541]:https://github.com/gitextensions/gitextensions/pull/8541
+[8537]:https://github.com/gitextensions/gitextensions/pull/8537
+[8534]:https://github.com/gitextensions/gitextensions/pull/8534
+[8533]:https://github.com/gitextensions/gitextensions/pull/8533
+[8532]:https://github.com/gitextensions/gitextensions/pull/8532
+[8529]:https://github.com/gitextensions/gitextensions/pull/8529
+[8528]:https://github.com/gitextensions/gitextensions/pull/8528
+[8527]:https://github.com/gitextensions/gitextensions/pull/8527
+[8525]:https://github.com/gitextensions/gitextensions/pull/8525
+[8524]:https://github.com/gitextensions/gitextensions/pull/8524
+[8523]:https://github.com/gitextensions/gitextensions/pull/8523
+[8520]:https://github.com/gitextensions/gitextensions/pull/8520
+[8516]:https://github.com/gitextensions/gitextensions/pull/8516
+[8515]:https://github.com/gitextensions/gitextensions/pull/8515
+[8511]:https://github.com/gitextensions/gitextensions/pull/8511
+[8510]:https://github.com/gitextensions/gitextensions/pull/8510
+[8509]:https://github.com/gitextensions/gitextensions/pull/8509
+[8506]:https://github.com/gitextensions/gitextensions/pull/8506
+[8504]:https://github.com/gitextensions/gitextensions/pull/8504
+[8503]:https://github.com/gitextensions/gitextensions/pull/8503
+[8502]:https://github.com/gitextensions/gitextensions/pull/8502
+[8501]:https://github.com/gitextensions/gitextensions/pull/8501
+[8499]:https://github.com/gitextensions/gitextensions/pull/8499
+[8496]:https://github.com/gitextensions/gitextensions/pull/8496
+[8494]:https://github.com/gitextensions/gitextensions/pull/8494
+[8491]:https://github.com/gitextensions/gitextensions/pull/8491
+[8490]:https://github.com/gitextensions/gitextensions/pull/8490
+[8489]:https://github.com/gitextensions/gitextensions/pull/8489
+[8488]:https://github.com/gitextensions/gitextensions/pull/8488
+[8487]:https://github.com/gitextensions/gitextensions/pull/8487
+[8485]:https://github.com/gitextensions/gitextensions/pull/8485
+[8482]:https://github.com/gitextensions/gitextensions/pull/8482
+[8471]:https://github.com/gitextensions/gitextensions/pull/8471
+[8469]:https://github.com/gitextensions/gitextensions/pull/8469
+[8465]:https://github.com/gitextensions/gitextensions/pull/8465
+[8458]:https://github.com/gitextensions/gitextensions/pull/8458
+[8456]:https://github.com/gitextensions/gitextensions/pull/8456
+[8454]:https://github.com/gitextensions/gitextensions/pull/8454
+[8451]:https://github.com/gitextensions/gitextensions/pull/8451
+[8450]:https://github.com/gitextensions/gitextensions/pull/8450
+[8449]:https://github.com/gitextensions/gitextensions/pull/8449
+[8444]:https://github.com/gitextensions/gitextensions/pull/8444
+[8435]:https://github.com/gitextensions/gitextensions/pull/8435
+[8434]:https://github.com/gitextensions/gitextensions/pull/8434
+[8433]:https://github.com/gitextensions/gitextensions/pull/8433
+[8427]:https://github.com/gitextensions/gitextensions/pull/8427
+[8426]:https://github.com/gitextensions/gitextensions/pull/8426
+[8424]:https://github.com/gitextensions/gitextensions/pull/8424
+[8414]:https://github.com/gitextensions/gitextensions/pull/8414
+[8413]:https://github.com/gitextensions/gitextensions/pull/8413
+[8409]:https://github.com/gitextensions/gitextensions/pull/8409
+[8408]:https://github.com/gitextensions/gitextensions/pull/8408
+[8405]:https://github.com/gitextensions/gitextensions/pull/8405
+[8385]:https://github.com/gitextensions/gitextensions/pull/8385
+[8384]:https://github.com/gitextensions/gitextensions/pull/8384
+[8372]:https://github.com/gitextensions/gitextensions/pull/8372
+[8371]:https://github.com/gitextensions/gitextensions/pull/8371
+[8362]:https://github.com/gitextensions/gitextensions/pull/8362
+[8359]:https://github.com/gitextensions/gitextensions/pull/8359
+[8358]:https://github.com/gitextensions/gitextensions/pull/8358
+[8357]:https://github.com/gitextensions/gitextensions/pull/8357
+[8341]:https://github.com/gitextensions/gitextensions/pull/8341
+[8336]:https://github.com/gitextensions/gitextensions/pull/8336
+[8335]:https://github.com/gitextensions/gitextensions/pull/8335
+[8334]:https://github.com/gitextensions/gitextensions/pull/8334
+[8322]:https://github.com/gitextensions/gitextensions/pull/8322
+[8313]:https://github.com/gitextensions/gitextensions/pull/8313
+[8311]:https://github.com/gitextensions/gitextensions/pull/8311
+[8308]:https://github.com/gitextensions/gitextensions/pull/8308
+[8307]:https://github.com/gitextensions/gitextensions/pull/8307
+[8305]:https://github.com/gitextensions/gitextensions/pull/8305
+[8303]:https://github.com/gitextensions/gitextensions/pull/8303
+[8298]:https://github.com/gitextensions/gitextensions/pull/8298
+[8295]:https://github.com/gitextensions/gitextensions/pull/8295
+[8294]:https://github.com/gitextensions/gitextensions/pull/8294
+[8292]:https://github.com/gitextensions/gitextensions/pull/8292
+[8291]:https://github.com/gitextensions/gitextensions/pull/8291
+[8289]:https://github.com/gitextensions/gitextensions/pull/8289
+[8275]:https://github.com/gitextensions/gitextensions/pull/8275
+[8273]:https://github.com/gitextensions/gitextensions/pull/8273
+[8254]:https://github.com/gitextensions/gitextensions/pull/8254
+[8239]:https://github.com/gitextensions/gitextensions/pull/8239
+[8216]:https://github.com/gitextensions/gitextensions/pull/8216
+[8215]:https://github.com/gitextensions/gitextensions/pull/8215
+[8213]:https://github.com/gitextensions/gitextensions/pull/8213
+[8200]:https://github.com/gitextensions/gitextensions/pull/8200
+[8195]:https://github.com/gitextensions/gitextensions/pull/8195
+[8194]:https://github.com/gitextensions/gitextensions/pull/8194
+[8193]:https://github.com/gitextensions/gitextensions/pull/8193
+[8157]:https://github.com/gitextensions/gitextensions/pull/8157
+[8130]:https://github.com/gitextensions/gitextensions/pull/8130
+[8124]:https://github.com/gitextensions/gitextensions/pull/8124
+[8119]:https://github.com/gitextensions/gitextensions/pull/8119
+[8117]:https://github.com/gitextensions/gitextensions/pull/8117
+[8116]:https://github.com/gitextensions/gitextensions/pull/8116
+[8111]:https://github.com/gitextensions/gitextensions/pull/8111
+[8101]:https://github.com/gitextensions/gitextensions/pull/8101
+[8086]:https://github.com/gitextensions/gitextensions/pull/8086
+[8084]:https://github.com/gitextensions/gitextensions/pull/8084
+[8078]:https://github.com/gitextensions/gitextensions/pull/8078
+[8076]:https://github.com/gitextensions/gitextensions/pull/8076
+[8075]:https://github.com/gitextensions/gitextensions/pull/8075
+[8067]:https://github.com/gitextensions/gitextensions/pull/8067
+[8065]:https://github.com/gitextensions/gitextensions/pull/8065
+[8049]:https://github.com/gitextensions/gitextensions/pull/8049
+[8038]:https://github.com/gitextensions/gitextensions/pull/8038
+[8035]:https://github.com/gitextensions/gitextensions/pull/8035
+[7825]:https://github.com/gitextensions/gitextensions/pull/7825
+[6339]:https://github.com/gitextensions/gitextensions/pull/6339
 
+
+### Version 3.4.3 (23 July 2020)
+
+#### Changes:
+* [8329](https://github.com/gitextensions/gitextensions/pull/8329) ConEmu 20.07.13
+* [8323](https://github.com/gitextensions/gitextensions/pull/8323) Dark silver theme
+* [8319](https://github.com/gitextensions/gitextensions/pull/8319) Resize also the backup/default avatar image
+* [8318](https://github.com/gitextensions/gitextensions/pull/8318) FormCommit: No summary  for deleted submodules
+* [8296](https://github.com/gitextensions/gitextensions/pull/8296) Disable Finish button while loading branches in GitFlow form.
+* [8287](https://github.com/gitextensions/gitextensions/pull/8287) Restore FileStatusList focus after GoToChild/Parent
+* [8277](https://github.com/gitextensions/gitextensions/pull/8277) Track theme colors via Telemetry
+* [8274](https://github.com/gitextensions/gitextensions/pull/8274) Avoid console printouts when submodule updates are throttled
+* [8266](https://github.com/gitextensions/gitextensions/pull/8266) Fix ssh not found
+* [8250](https://github.com/gitextensions/gitextensions/pull/8250) Fix "selection only" text search on Diff view (#7784)
+* [8212](https://github.com/gitextensions/gitextensions/pull/8212) Recover lost object: Add a file preview
 
 ### Version 3.4.2 (21 June 2020)
 
 #### Changes:
-* [#8255] [NBug] Invalid diff/merge tool requestedParameter name: toolName
-* [#8252] Draw current commit message bold in detached-head mode
-* [#8246] Disable context menu items rather than hiding them
-* [#8240] Make WindowsJumpListManager calls safer
-* [#8238] Display 'Plugin Manager" next to "Plugin settings" in the menu
-* [#8237] ResetAnotherBranch: Quote path arguments
-* [#8231] Centrally handle user script errors
+* [8255] [NBug] Invalid diff/merge tool requestedParameter name: toolName
+* [8252] Draw current commit message bold in detached-head mode
+* [8246] Disable context menu items rather than hiding them
+* [8240] Make WindowsJumpListManager calls safer
+* [8238] Display 'Plugin Manager" next to "Plugin settings" in the menu
+* [8237] ResetAnotherBranch: Quote path arguments
+* [8231] Centrally handle user script errors
 
 
 [8255]:https://github.com/gitextensions/gitextensions/pull/8255
@@ -57,183 +459,183 @@ Changelog
 ### Version 3.4.1 (14 June 2020)
 
 #### Changes:
-* [#8208] Restore missing app.manifest
+* [8218] Restore missing app.manifest
 
-[8182]:https://github.com/gitextensions/gitextensions/pull/8182
+[8218]:https://github.com/gitextensions/gitextensions/pull/8218
 
 
 ### Version 3.4 (6 June 2020)
 
 #### Changes:
-* [#8182] Make scripts execution safer
-* [#8178] AppVeyor Exception at init
-* [#8177] Prevent NRE when getting AppVeyor build duration
-* [#8175] FileStatusList context menu order
-* [#8164] Link to read-the-docs for release version
-* [#8163] Shell extension icons
-* [#8155] Fix up splitter positions
-* [#8152] Improve display of merged branches
-* [#8144] Fix up restoring the selection of revisions on reload
-* [#8140] Add 'Reset another branch to here' feature
-* [#8138] Hide extra separator in context menu for folder item
-* [#8137] Fix `FormCommit` context menu issues
-* [#8133] fix: New remotes not saved, if exceed limit
-* [#8123] Fix 8122 Update Atlassian.SDK package to latest version
-* [#8122] Jira Commit Hint throws exception for some Jira issues
-* [#8118] Fix up user scripts without icon
-* [#8114] Limit number of diff revisions
-* [#8093] Add information icon to checkboxes in Settings window
-* [#8089] [NBug] Could not load file or assembly 'RestSharp, Version=106.1.0...
-* [#8068] Portable build doesn't contain PluginManager
-* [#8059] Correct filemode for source files
-* [#8058] Ignore inaccessible file in GetSelectedBranchFast
-* [#8056] Select multiple revisions using Left Panel
-* [#8051] git-diff override  diff.mnemonicprefix=true
-* [#8050] Unneeded rev-list for submodule status
-* [#8043] Ignore GitHub API rate limit induced errors when search for app updates
-* [#8042] Fix 3954 quotes in merge commit message
-* [#8041] Restore broken AutoCRLF tests
-* [#8040] Ignore Microsoft.WindowsAPICodePack.Shell.ShellException
-* [#8034] Cleanup git status before calling TranslationApp
-* [#8031] Fix compatibility with WSL (\\wsl$\) network resource
-* [#8020] Update artificial commit diff
-* [#8016] Prevent an ArgumentOutOfRangeException
-* [#8012] RevDiff, Commit: Delete untracked directories
-* [#8008] Fix #7937 Reflog form : index was out of range.
-* [#7999] Fix up double plural in ResourceManager.Strings
-* [#7993] Fix up show all branches / tags in history
-* [#7986] fix: Error while executing user script from RevisionGrid
-* [#7984] Deleted files presented as Unkown
-* [#7981] Redesign script config
-* [#7976] GitStatusMonitor: Avoid background updates if GUI is not visible
-* [#7974] Centralise removal of invalid repositories
-* [#7972] Unify the use of "Git Extensions"
-* [#7970] Revision Links: Detect GH issues like ".../i1111"
-* [#7968] Fix branch rendering
-* [#7962] Avoid invalid path exception on invalidated Module.WorkingDir
-* [#7961] Align context menu order for FileStatusList
-* [#7959] Fix rename file icon size
-* [#7958] [NBug] The path has an invalid format.
-* [#7955] Fix error during Publish build.
-* [#7951] Merge combined conflict set to IsConflict
-* [#7950] Uplift script handling
-* [#7948] fix: Locate diff tools in C:\Program Files\ folder
-* [#7942] LeftPanel: Fix size of the GitHub remote icon
-* [#7941] Windows TaskBar JumpList was not initiated
-* [#7938] formstash improvements
-* [#7932] Fix/7931
-* [#7929] Break the build if there are any errors in publish tasks
-* [#7928] Improve blame gutter display
-* [#7927] Move settings page titles from designer files
-* [#7926] Use ViewChangesAsync consistently for changes
-* [#7924] Align recent branch names
-* [#7923] RevDiff: Show common/unique files for BASE->selected(B)
-* [#7922] FileStatus icon: submodule before status updated
-* [#7921] Fix 3 not reproduced exceptions
-* [#7919] Settings: Color title label missing
-* [#7918] [NBug] Attempted to perform an unauthorized operation.
-* [#7917] Settings > Appearance > Colors has no title
-* [#7916] Prepopulate branch name in FormCreateBranch
-* [#7915] Ignore Git error messages in parsing
-* [#7914] Separate staged status from GetDiff
-* [#7913] git-status:  use config to set ignoreSubmodules
-* [#7912] RevDiff: follow selection only in first list group
-* [#7908] Bugfix/i7898 nre no parent
-* [#7904] Add root description to Git node in settings tree view
-* [#7903] Make DropDownWidth in BranchSelector adjust to longest item
-* [#7900] Simulate continuous scroll to display revision diff
-* [#7899] RevDiff: Show common files for BASE->A
-* [#7895] Remove Gerrit plugin
-* [#7893] Share common GitUI.Strings.Error
-* [#7891] FormCommit: F3 to diff large files
-* [#7888] Add hotkey for switching between artificial commits
-* [#7886] Bring into view already selected branch on ROT click
-* [#7884] UX: Swap OK and Cancel button Recent Repo Settings UI
-* [#7883] Add setting to show branch name in recent repos drop down
-* [#7881] BitBucket plugin update of RestSharp
-* [#7878] Centralise reference version management
-* [#7877] fix: Translation update issues
-* [#7876] More complete CanBeGitURL
-* [#7875] Tab "Diff" is not updated at changes for artificial commits
-* [#7872] Fixup translation (last master merge)
-* [#7869] submodules IsDirty item status
-* [#7868] Display text if an image cannot be displayed
-* [#7853] Handle gracefully a NRE on body message
-* [#7850] Fix slow plugins loading
-* [#7842] Plugins are extremely slow to load
-* [#7832] Files starting with space incorrectly handled
-* [#7831] Show new files as file, not diff 
-* [#7824] revdiff: Show new file in worktree as file, not diff
-* [#7820] Surround access to plugin collection with a `lock()`
-* [#7800] Stash: Form fail to load
-* [#7798] RevisionDiff: Try retain the file selection when switching commits
-* [#7797] Convert theme file to css palette
-* [#7781] Support merge.guitool
-* [#7779] SidePanel Submodules: Status for top module
-* [#7775] Fix incomplete reset in ReferenceRepository
-* [#7770] Adapt submodule button to context
-* [#7753] Avoid deleting test directories while operations may be in progress
-* [#7752] Avoid a 200ms delay when RunBackgroundAsync is cancelled
-* [#7750] Avoid attempting to update non-existent UI
-* [#7739] FormCommit: Unaccessible COMMITMESSAGE
-* [#7732] AzureDevOps CI: Fix and improvements
-* [#7720] improve file status list presentation
-* [#7719] Refactor: Compare with ObjectId rather than Guid
-* [#7715] removed TopMost attribute from the FormUpdates dialog
-* [#7714] GE should not crash when no email applications are available and user…
-* [#7711] gitex.cmd: handle quotes in commands
-* [#7694] Delete multiple files at a same time with popup menu
-* [#7690] FileViewer: Do not access the file system for git blobs
-* [#7687] RevisionGrid: Directory Diff HotKey
-* [#7686] Do not deregister from Application.ThreadException between tests
-* [#7685] Make folder removal safer
-* [#7678] Add pwsh as a choice of shell in Console tab
-* [#7677] bugfix: ignore specific ActiveDocument exception
-* [#7667] ObjectId ShortString: set default to 8 chars
-* [#7666] Add A/B to RevisionDiff revision descriptions #7626
-* [#7657] Keep Syntax Highlight Rules Synced With Resources
-* [#7655] merge conflict: Do not require .cmd or .path
-* [#7651] ls-tree: Use -- to escape files starting with "-"
-* [#7647] Improve [Form]CommitInfoTests
-* [#7641] NRE when GitHub token is invalid
-* [#7633] Check if path is valid before Path.Combine
-* [#7624] FileViewer context menu fixes
-* [#7619] Improve closing of FormCommit
-* [#7615] Convert and quote file names for BatchUnstageFiles
-* [#7612] Improve speed of directory change in console tab
-* [#7603] Merge branch dialog: Make form border style fixed and align checkboxes
-* [#7597] Improve restoring of the commit dialog geometry (Fixes #7588)
-* [#7596] Disable maximising/minimising of update form
-* [#7591] Improve determination of the GitExt directory (fix of issue #7587)
-* [#7585] Make message textbox bounds clear
-* [#7584] Prevent NRE in designers that use EditNetSpell
-* [#7567] Add feature to open repo in a new window
-* [#7562] Color scheme followup #2
-* [#7561] RevisionDiff: Show BASE diff
-* [#7560] RevisionDiff: Limit parents
-* [#7559] Gerrit: fix server version parsing
-* [#7558] RevisionDiff: No reset to CombinedDiff
-* [#7551] Remove obsolete 2-way merge tool names
-* [#7548] kdiff3: Incorrect merge cmd
-* [#7547] gitex: If no argument start browse in current workdir
-* [#7540] Color scheme followup
-* [#7516] Open repo directly on confirmation of folder dialog
-* [#7515] Reduce clipping in FormSettings
-* [#7496] Filter staged files
-* [#7490] OpenRemoteUrlInBrowser: Issue (#7439)
-* [#7489] Install with AppGet (https://appget.net/)
-* [#7485] BuildServerIntegration: Fix freeze due to polling interval adjustment
-* [#7482] ResetCurrentBranch: Correct tab order
-* [#7477] Azure devops ci: reduce calls to api when revision grid is refreshed 
-* [#7457] Add warning header
-* [#7452] BuildServerIntegration: Adjust polling interval for running builds
-* [#7445] Remove background thread from RevisionDataGridView
-* [#7413] NullReferenceException during update check
-* [#7406] Add view blame in GitHub
-* [#7334] Add icon to all MessageBox that don't have one
-* [#7329] Improve revisiongrid tooltips
-* [#7213] Dark theme
-* [#7044] Add and refactor diffmerge tools
+* [8182] Make scripts execution safer
+* [8178] AppVeyor Exception at init
+* [8177] Prevent NRE when getting AppVeyor build duration
+* [8175] FileStatusList context menu order
+* [8164] Link to read-the-docs for release version
+* [8163] Shell extension icons
+* [8155] Fix up splitter positions
+* [8152] Improve display of merged branches
+* [8144] Fix up restoring the selection of revisions on reload
+* [8140] Add 'Reset another branch to here' feature
+* [8138] Hide extra separator in context menu for folder item
+* [8137] Fix `FormCommit` context menu issues
+* [8133] fix: New remotes not saved, if exceed limit
+* [8123] Fix 8122 Update Atlassian.SDK package to latest version
+* [8122] Jira Commit Hint throws exception for some Jira issues
+* [8118] Fix up user scripts without icon
+* [8114] Limit number of diff revisions
+* [8093] Add information icon to checkboxes in Settings window
+* [8089] [NBug] Could not load file or assembly 'RestSharp, Version=106.1.0...
+* [8068] Portable build doesn't contain PluginManager
+* [8059] Correct filemode for source files
+* [8058] Ignore inaccessible file in GetSelectedBranchFast
+* [8056] Select multiple revisions using Left Panel
+* [8051] git-diff override  diff.mnemonicprefix=true
+* [8050] Unneeded rev-list for submodule status
+* [8043] Ignore GitHub API rate limit induced errors when search for app updates
+* [8042] Fix 3954 quotes in merge commit message
+* [8041] Restore broken AutoCRLF tests
+* [8040] Ignore Microsoft.WindowsAPICodePack.Shell.ShellException
+* [8034] Cleanup git status before calling TranslationApp
+* [8031] Fix compatibility with WSL (\\wsl$\) network resource
+* [8020] Update artificial commit diff
+* [8016] Prevent an ArgumentOutOfRangeException
+* [8012] RevDiff, Commit: Delete untracked directories
+* [8008] Fix #7937 Reflog form : index was out of range.
+* [7999] Fix up double plural in ResourceManager.Strings
+* [7993] Fix up show all branches / tags in history
+* [7986] fix: Error while executing user script from RevisionGrid
+* [7984] Deleted files presented as Unkown
+* [7981] Redesign script config
+* [7976] GitStatusMonitor: Avoid background updates if GUI is not visible
+* [7974] Centralise removal of invalid repositories
+* [7972] Unify the use of "Git Extensions"
+* [7970] Revision Links: Detect GH issues like ".../i1111"
+* [7968] Fix branch rendering
+* [7962] Avoid invalid path exception on invalidated Module.WorkingDir
+* [7961] Align context menu order for FileStatusList
+* [7959] Fix rename file icon size
+* [7958] [NBug] The path has an invalid format.
+* [7955] Fix error during Publish build.
+* [7951] Merge combined conflict set to IsConflict
+* [7950] Uplift script handling
+* [7948] fix: Locate diff tools in C:\Program Files\ folder
+* [7942] LeftPanel: Fix size of the GitHub remote icon
+* [7941] Windows TaskBar JumpList was not initiated
+* [7938] formstash improvements
+* [7932] Fix/7931
+* [7929] Break the build if there are any errors in publish tasks
+* [7928] Improve blame gutter display
+* [7927] Move settings page titles from designer files
+* [7926] Use ViewChangesAsync consistently for changes
+* [7924] Align recent branch names
+* [7923] RevDiff: Show common/unique files for BASE->selected(B)
+* [7922] FileStatus icon: submodule before status updated
+* [7921] Fix 3 not reproduced exceptions
+* [7919] Settings: Color title label missing
+* [7918] [NBug] Attempted to perform an unauthorized operation.
+* [7917] Settings > Appearance > Colors has no title
+* [7916] Prepopulate branch name in FormCreateBranch
+* [7915] Ignore Git error messages in parsing
+* [7914] Separate staged status from GetDiff
+* [7913] git-status:  use config to set ignoreSubmodules
+* [7912] RevDiff: follow selection only in first list group
+* [7908] Bugfix/i7898 nre no parent
+* [7904] Add root description to Git node in settings tree view
+* [7903] Make DropDownWidth in BranchSelector adjust to longest item
+* [7900] Simulate continuous scroll to display revision diff
+* [7899] RevDiff: Show common files for BASE->A
+* [7895] Remove Gerrit plugin
+* [7893] Share common GitUI.Strings.Error
+* [7891] FormCommit: F3 to diff large files
+* [7888] Add hotkey for switching between artificial commits
+* [7886] Bring into view already selected branch on ROT click
+* [7884] UX: Swap OK and Cancel button Recent Repo Settings UI
+* [7883] Add setting to show branch name in recent repos drop down
+* [7881] BitBucket plugin update of RestSharp
+* [7878] Centralise reference version management
+* [7877] fix: Translation update issues
+* [7876] More complete CanBeGitURL
+* [7875] Tab "Diff" is not updated at changes for artificial commits
+* [7872] Fixup translation (last master merge)
+* [7869] submodules IsDirty item status
+* [7868] Display text if an image cannot be displayed
+* [7853] Handle gracefully a NRE on body message
+* [7850] Fix slow plugins loading
+* [7842] Plugins are extremely slow to load
+* [7832] Files starting with space incorrectly handled
+* [7831] Show new files as file, not diff 
+* [7824] revdiff: Show new file in worktree as file, not diff
+* [7820] Surround access to plugin collection with a `lock()`
+* [7800] Stash: Form fail to load
+* [7798] RevisionDiff: Try retain the file selection when switching commits
+* [7797] Convert theme file to css palette
+* [7781] Support merge.guitool
+* [7779] SidePanel Submodules: Status for top module
+* [7775] Fix incomplete reset in ReferenceRepository
+* [7770] Adapt submodule button to context
+* [7753] Avoid deleting test directories while operations may be in progress
+* [7752] Avoid a 200ms delay when RunBackgroundAsync is cancelled
+* [7750] Avoid attempting to update non-existent UI
+* [7739] FormCommit: Unaccessible COMMITMESSAGE
+* [7732] AzureDevOps CI: Fix and improvements
+* [7720] improve file status list presentation
+* [7719] Refactor: Compare with ObjectId rather than Guid
+* [7715] removed TopMost attribute from the FormUpdates dialog
+* [7714] GE should not crash when no email applications are available and user…
+* [7711] gitex.cmd: handle quotes in commands
+* [7694] Delete multiple files at a same time with popup menu
+* [7690] FileViewer: Do not access the file system for git blobs
+* [7687] RevisionGrid: Directory Diff HotKey
+* [7686] Do not deregister from Application.ThreadException between tests
+* [7685] Make folder removal safer
+* [7678] Add pwsh as a choice of shell in Console tab
+* [7677] bugfix: ignore specific ActiveDocument exception
+* [7667] ObjectId ShortString: set default to 8 chars
+* [7666] Add A/B to RevisionDiff revision descriptions #7626
+* [7657] Keep Syntax Highlight Rules Synced With Resources
+* [7655] merge conflict: Do not require .cmd or .path
+* [7651] ls-tree: Use -- to escape files starting with "-"
+* [7647] Improve [Form]CommitInfoTests
+* [7641] NRE when GitHub token is invalid
+* [7633] Check if path is valid before Path.Combine
+* [7624] FileViewer context menu fixes
+* [7619] Improve closing of FormCommit
+* [7615] Convert and quote file names for BatchUnstageFiles
+* [7612] Improve speed of directory change in console tab
+* [7603] Merge branch dialog: Make form border style fixed and align checkboxes
+* [7597] Improve restoring of the commit dialog geometry (Fixes #7588)
+* [7596] Disable maximising/minimising of update form
+* [7591] Improve determination of the GitExt directory (fix of issue #7587)
+* [7585] Make message textbox bounds clear
+* [7584] Prevent NRE in designers that use EditNetSpell
+* [7567] Add feature to open repo in a new window
+* [7562] Color scheme followup #2
+* [7561] RevisionDiff: Show BASE diff
+* [7560] RevisionDiff: Limit parents
+* [7559] Gerrit: fix server version parsing
+* [7558] RevisionDiff: No reset to CombinedDiff
+* [7551] Remove obsolete 2-way merge tool names
+* [7548] kdiff3: Incorrect merge cmd
+* [7547] gitex: If no argument start browse in current workdir
+* [7540] Color scheme followup
+* [7516] Open repo directly on confirmation of folder dialog
+* [7515] Reduce clipping in FormSettings
+* [7496] Filter staged files
+* [7490] OpenRemoteUrlInBrowser: Issue (#7439)
+* [7489] Install with AppGet (https://appget.net/)
+* [7485] BuildServerIntegration: Fix freeze due to polling interval adjustment
+* [7482] ResetCurrentBranch: Correct tab order
+* [7477] Azure devops ci: reduce calls to api when revision grid is refreshed 
+* [7457] Add warning header
+* [7452] BuildServerIntegration: Adjust polling interval for running builds
+* [7445] Remove background thread from RevisionDataGridView
+* [7413] NullReferenceException during update check
+* [7406] Add view blame in GitHub
+* [7334] Add icon to all MessageBox that don't have one
+* [7329] Improve revisiongrid tooltips
+* [7213] Dark theme
+* [7044] Add and refactor diffmerge tools
 
 
 [8182]:https://github.com/gitextensions/gitextensions/pull/8182

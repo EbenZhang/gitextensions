@@ -6,9 +6,9 @@ using System.Linq;
 namespace GitExtUtils.GitUI.Theming
 {
     /// <summary>
-    /// A set of values for .Net system colors and GitExtensions app-specific colors
+    /// A set of values for .Net system colors and GitExtensions app-specific colors.
     /// </summary>
-    public class Theme
+    public class Theme : IThemeSerializationData
     {
         private static readonly IReadOnlyDictionary<KnownColor, KnownColor> Duplicates =
             new Dictionary<KnownColor, KnownColor>
@@ -18,12 +18,15 @@ namespace GitExtUtils.GitUI.Theming
                 [KnownColor.ButtonHighlight] = KnownColor.ControlLight
             };
 
-        private static Theme _default;
-        public IReadOnlyDictionary<AppColor, Color> AppColorValues { get; }
-        public IReadOnlyDictionary<KnownColor, Color> SysColorValues { get; }
+        private static Theme? _default;
 
-        public static Theme Default =>
-            _default ?? (_default = CreateDefaultTheme());
+        private readonly IReadOnlyDictionary<AppColor, Color> _appColorValues;
+        private readonly IReadOnlyDictionary<KnownColor, Color> _sysColorValues;
+
+        IReadOnlyDictionary<AppColor, Color> IThemeSerializationData.AppColorValues => _appColorValues;
+        IReadOnlyDictionary<KnownColor, Color> IThemeSerializationData.SysColorValues => _sysColorValues;
+
+        public static Theme Default => _default ??= CreateDefaultTheme();
 
         public Theme(
             IReadOnlyDictionary<AppColor, Color> appColors,
@@ -31,37 +34,37 @@ namespace GitExtUtils.GitUI.Theming
             ThemeId id)
         {
             Id = id;
-            AppColorValues = appColors;
-            SysColorValues = sysColors;
+            _appColorValues = appColors;
+            _sysColorValues = sysColors;
         }
 
         public ThemeId Id { get; }
 
         /// <summary>
         /// Get GitExtensions app-specific color value as defined by this instance. If not defined,
-        /// returns <see cref="Color.Empty"/>
+        /// returns <see cref="Color.Empty"/>.
         /// </summary>
         public Color GetColor(AppColor name) =>
-            AppColorValues.TryGetValue(name, out var result)
+            _appColorValues.TryGetValue(name, out var result)
                 ? result
                 : Color.Empty;
 
         /// <summary>
-        /// Get .Net system color value as defined by this instance
+        /// Get .Net system color value as defined by this instance.
         /// </summary>
         private Color GetSysColor(KnownColor name) =>
-            SysColorValues.TryGetValue(name, out var result)
+            _sysColorValues.TryGetValue(name, out var result)
                 ? result
                 : Color.Empty;
 
         /// <summary>
-        /// GitExtension app-specific color identifiers
+        /// GitExtension app-specific color identifiers.
         /// </summary>
         public static IReadOnlyCollection<AppColor> AppColorNames { get; } =
             new HashSet<AppColor>(Enum.GetValues(typeof(AppColor)).Cast<AppColor>());
 
         /// <summary>
-        /// .Net system color identifiers
+        /// .Net system color identifiers.
         /// </summary>
         private static IReadOnlyCollection<KnownColor> SysColorNames { get; } =
             new HashSet<KnownColor>(
@@ -71,7 +74,7 @@ namespace GitExtUtils.GitUI.Theming
 
         /// <summary>
         /// Get .Net system color value as defined by this instance. If not defined, returns
-        /// <see cref="Color.Empty"/>
+        /// <see cref="Color.Empty"/>.
         /// </summary>
         public Color GetColor(KnownColor name)
         {
@@ -89,7 +92,7 @@ namespace GitExtUtils.GitUI.Theming
 
         /// <summary>
         /// Get .Net system color value as defined by this instance. If not defined, returns
-        /// actual .Net <see cref="SystemColors"/> color
+        /// actual .Net <see cref="SystemColors"/> color.
         /// </summary>
         public Color GetNonEmptyColor(KnownColor name)
         {
@@ -126,9 +129,15 @@ namespace GitExtUtils.GitUI.Theming
         /// <summary>
         /// Whether <see cref="KnownColor"/> represents Windows theme - defined color,
         /// produces same result as <see cref="Color.IsSystemColor"/> without the need to
-        /// create <see cref="Color"/> instance
+        /// create <see cref="Color"/> instance.
         /// </summary>
         private static bool IsSystemColor(KnownColor name) =>
-            name < KnownColor.Transparent || name > KnownColor.YellowGreen;
+            name is (< KnownColor.Transparent or > KnownColor.YellowGreen);
+
+        internal static class TestAccessor
+        {
+            public static IReadOnlyCollection<KnownColor> SysColorNames =>
+                Theme.SysColorNames;
+        }
     }
 }

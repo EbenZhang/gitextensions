@@ -15,7 +15,6 @@ namespace GitUI.Editor
     {
         private static readonly int AgeBucketMarkerWidth = Convert.ToInt32(4 * DpiUtil.ScaleX);
         private List<Image> _avatars;
-        private readonly int _lineHeight;
         private readonly Color _backgroundColor;
         private List<GitBlameEntry> _blameLines;
         private readonly Dictionary<int, SolidBrush> _brushs = new Dictionary<int, SolidBrush>();
@@ -23,22 +22,13 @@ namespace GitUI.Editor
 
         public BlameAuthorMargin(TextArea textArea) : base(textArea)
         {
-            _lineHeight = GetFontHeight(textArea.Font);
             _backgroundColor = SystemColors.Window;
-            Width = _lineHeight + AgeBucketMarkerWidth + DpiUtil.Scale(2);
         }
 
-        public override int Width { get; }
+        public int LineHeight => textArea.TextView.FontHeight;
+        public override int Width => LineHeight + AgeBucketMarkerWidth + DpiUtil.Scale(2);
+
         public override bool IsVisible => _isVisible;
-
-        private static int GetFontHeight(Font font)
-        {
-            var max = Math.Max(
-                TextRenderer.MeasureText("_", font).Height,
-                (int)Math.Ceiling(font.GetHeight()));
-
-            return max + 1;
-        }
 
         public void Initialize(IEnumerable<GitBlameEntry> blameLines)
         {
@@ -71,22 +61,22 @@ namespace GitUI.Editor
 
         public override void Paint(Graphics g, Rectangle rect)
         {
-            if (rect.Width <= 0 || rect.Height <= 0 || _blameLines == null || _blameLines.Count == 0)
+            if (rect.Width <= 0 || rect.Height <= 0 || _blameLines is null || _blameLines.Count == 0)
             {
                 return;
             }
 
             g.Clear(_backgroundColor);
 
-            if (_avatars == null || _avatars.Count == 0)
+            if (_avatars is null || _avatars.Count == 0)
             {
                 return;
             }
 
             var verticalOffset = textArea.VirtualTop.Y;
-            var lineStart = verticalOffset / _lineHeight;
-            var negativeOffset = (lineStart * _lineHeight) - verticalOffset;
-            var lineCount = (int)Math.Ceiling((double)(rect.Height - negativeOffset) / _lineHeight);
+            var lineStart = verticalOffset / LineHeight;
+            var negativeOffset = (lineStart * LineHeight) - verticalOffset;
+            var lineCount = (int)Math.Ceiling((double)(rect.Height - negativeOffset) / LineHeight);
 
             for (int i = 0; i < lineCount; i++)
             {
@@ -95,10 +85,10 @@ namespace GitUI.Editor
                     break;
                 }
 
-                int y = negativeOffset + (i * _lineHeight);
-                g.FillRectangle(_brushs[_blameLines[lineStart + i].AgeBucketIndex], 0, y, AgeBucketMarkerWidth, _lineHeight);
+                int y = negativeOffset + (i * LineHeight);
+                g.FillRectangle(_brushs[_blameLines[lineStart + i].AgeBucketIndex], 0, y, AgeBucketMarkerWidth, LineHeight);
 
-                if (_avatars[lineStart + i] != null)
+                if (_avatars[lineStart + i] is not null)
                 {
                     g.DrawImage(_avatars[lineStart + i], new Point(AgeBucketMarkerWidth, y));
                 }

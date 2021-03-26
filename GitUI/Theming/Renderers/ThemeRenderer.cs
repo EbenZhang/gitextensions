@@ -25,11 +25,6 @@ namespace GitUI.Theming
 
         private readonly HashSet<IntPtr> _themeDataHandles = new HashSet<IntPtr>();
 
-        protected ThemeRenderer()
-        {
-            AddThemeData(IntPtr.Zero);
-        }
-
         protected abstract string Clsid { get; }
 
         public virtual bool ForceUseRenderTextEx => false;
@@ -112,7 +107,7 @@ namespace GitUI.Theming
             {
                 var graphics = Graphics.FromHdcInternal(_hdc);
                 _originalClip = graphics.Clip;
-                if (_clip != null)
+                if (_clip is not null)
                 {
                     graphics.SetClip((Rectangle)_clip);
                     _clipChanged = true;

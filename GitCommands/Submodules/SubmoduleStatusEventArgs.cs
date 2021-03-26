@@ -1,21 +1,24 @@
 ﻿using System;
 using System.Threading;
-using JetBrains.Annotations;
 
 namespace GitCommands.Submodules
 {
     public class SubmoduleStatusEventArgs : EventArgs
     {
-        [NotNull]
         public SubmoduleInfoResult Info { get; }
 
-        [NotNull]
+        /// <summary>
+        /// First update of the submodule structure. Status of the submodule will be updated asynchronously.
+        /// </summary>
+        public bool StructureUpdated { get; }
+
         public CancellationToken Token { get; }
 
-        public SubmoduleStatusEventArgs(SubmoduleInfoResult info, CancellationToken token)
+        public SubmoduleStatusEventArgs(SubmoduleInfoResult info, bool structureUpdated, CancellationToken token)
         {
             Info = info;
             Token = token;
+            StructureUpdated = structureUpdated;
         }
     }
 }

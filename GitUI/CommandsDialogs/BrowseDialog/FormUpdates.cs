@@ -20,11 +20,11 @@ namespace GitUI.CommandsDialogs.BrowseDialog
     public partial class FormUpdates : GitExtensionsForm
     {
         #region Translation
-        private readonly TranslationString _newVersionAvailable = new TranslationString("There is a new version {0} of Git Extensions available");
-        private readonly TranslationString _noUpdatesFound = new TranslationString("No updates found");
-        private readonly TranslationString _downloadingUpdate = new TranslationString("Downloading update...");
-        private readonly TranslationString _errorHeading = new TranslationString("Download Failed");
-        private readonly TranslationString _errorMessage = new TranslationString("Failed to download an update.");
+        private readonly TranslationString _newVersionAvailable = new("There is a new version {0} of Git Extensions available");
+        private readonly TranslationString _noUpdatesFound = new("No updates found");
+        private readonly TranslationString _downloadingUpdate = new("Downloading update...");
+        private readonly TranslationString _errorHeading = new("Download Failed");
+        private readonly TranslationString _errorMessage = new("Failed to download an update.");
         #endregion
 
         public IWin32Window OwnerWindow;
@@ -92,13 +92,13 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             {
                 var github = new Client();
                 Repository gitExtRepo = github.getRepository("EbenZhang", "gitextensions");
-                if (gitExtRepo == null)
+                if (gitExtRepo is null)
                 {
                     return;
                 }
 
                 var configData = GetLatestGitExtensionsRelease();
-                if (configData == null)
+                if (configData is null)
                 {
                     return;
                 }
@@ -142,7 +142,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
                 // ignored
             }
 
-            if (newVersion == null)
+            if (newVersion is null)
             {
                 UpdateFound = false;
             }
@@ -262,10 +262,10 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             switch (launchType)
             {
                 case LaunchType.ChangeLog:
-                    Process.Start("https://github.com/gitextensions/gitextensions/blob/master/GitUI/Resources/ChangeLog.md");
+                    OsShellUtil.OpenUrlInDefaultBrowser(@"https://github.com/gitextensions/gitextensions/blob/master/GitUI/Resources/ChangeLog.md");
                     break;
                 case LaunchType.DirectDownload:
-                    Process.Start(UpdateUrl);
+                    OsShellUtil.OpenUrlInDefaultBrowser(UpdateUrl);
                     break;
             }
         }
@@ -344,7 +344,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             var sections = cfg.GetConfigSections("Version");
             sections = sections.Concat(cfg.GetConfigSections("RCVersion"));
 
-            return sections.Select(FromSection).Where(version => version != null);
+            return sections.Select(FromSection).Where(version => version is not null);
         }
 
         public static IEnumerable<ReleaseVersion> GetNewerVersions(

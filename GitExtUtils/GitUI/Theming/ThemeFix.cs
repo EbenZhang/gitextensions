@@ -57,11 +57,11 @@ namespace GitExtUtils.GitUI.Theming
             return c.FindDescendantsOfType<Control>()
                 .Where(control => TryAddToWeakTable(control, AlreadyFixedContextMenuOwners))
                 .Select(_ => _.ContextMenuStrip)
-                .Where(_ => _ != null);
+                .Where(_ => _ is not null);
         }
 
         private static bool SkipThemeAware(Control c) =>
-            c.GetType().GetCustomAttribute<ThemeAwareAttribute>() != null;
+            c.GetType().GetCustomAttribute<ThemeAwareAttribute>() is not null;
 
         private static void SetupTextBoxBase(TextBoxBase textBox)
         {
@@ -74,14 +74,15 @@ namespace GitExtUtils.GitUI.Theming
 
         private static void SetupToolStrip(ToolStrip strip)
         {
-            strip.Renderer = new ThemeAwareToolStripRenderer();
+            strip.EnableTheming(enable: true);
+
             strip.Items.OfType<ToolStripLabel>()
                 .ForEach(SetupToolStripLabel);
         }
 
         private static void SetupContextMenu(ContextMenuStrip strip)
         {
-            strip.Renderer = new ThemeAwareToolStripRenderer();
+            strip.EnableTheming(enable: true);
         }
 
         private static void SetupToolStripLabel(ToolStripLabel label)
@@ -105,7 +106,6 @@ namespace GitExtUtils.GitUI.Theming
 
         private static void SetupTabControl(TabControl tabControl)
         {
-            new TabControlRenderer(tabControl).Setup();
             tabControl.TabPages.OfType<TabPage>()
                 .ForEach(SetupTabPage);
         }

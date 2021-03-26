@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using EasyHook;
 using GitExtUtils.GitUI.Theming;
 using GitUI.UserControls;
@@ -40,6 +40,11 @@ namespace GitUI.Theming
         internal static ThemeSettings ThemeSettings { private get; set; } = ThemeSettings.Default;
 
         private static readonly HashSet<NativeListView> InitializingListViews = new HashSet<NativeListView>();
+        private static ScrollBarRenderer _scrollBarRenderer;
+        private static ListViewRenderer _listViewRenderer;
+        private static HeaderRenderer _headerRenderer;
+        private static TreeViewRenderer _treeViewRenderer;
+        private static TabRenderer _tabRenderer;
 
         private static bool BypassThemeRenderers =>
             ThemeSettings.UseSystemVisualStyle || BypassAnyHook;
@@ -106,17 +111,13 @@ namespace GitUI.Theming
 
         private static void CreateRenderers()
         {
-            ScrollBarRenderer scrollBarRenderer;
-            ListViewRenderer listViewRenderer;
-            HeaderRenderer headerRenderer;
-            TreeViewRenderer treeViewRenderer;
-
             _renderers = new ThemeRenderer[]
             {
-                scrollBarRenderer = new ScrollBarRenderer(),
-                listViewRenderer = new ListViewRenderer(),
-                headerRenderer = new HeaderRenderer(),
-                treeViewRenderer = new TreeViewRenderer(),
+                _scrollBarRenderer = new ScrollBarRenderer(),
+                _listViewRenderer = new ListViewRenderer(),
+                _headerRenderer = new HeaderRenderer(),
+                _treeViewRenderer = new TreeViewRenderer(),
+                _tabRenderer = new TabRenderer(),
                 new EditRenderer(),
                 new SpinRenderer(),
                 new ComboBoxRenderer(),
@@ -124,14 +125,25 @@ namespace GitUI.Theming
                 new TooltipRenderer(),
             };
 
+            LoadThemeData();
+        }
+
+        public static void LoadThemeData()
+        {
+            foreach (ThemeRenderer renderer in _renderers)
+            {
+                renderer.AddThemeData(IntPtr.Zero);
+            }
+
             var editorHandle = new ICSharpCode.TextEditor.TextEditorControl().Handle;
             var listViewHandle = new NativeListView().Handle;
             var treeViewHandle = new NativeTreeView().Handle;
-            scrollBarRenderer.AddThemeData(editorHandle);
-            scrollBarRenderer.AddThemeData(listViewHandle);
-            headerRenderer.AddThemeData(listViewHandle);
-            listViewRenderer.AddThemeData(listViewHandle);
-            treeViewRenderer.AddThemeData(treeViewHandle);
+            _scrollBarRenderer.AddThemeData(editorHandle);
+            _scrollBarRenderer.AddThemeData(listViewHandle);
+            _headerRenderer.AddThemeData(listViewHandle);
+            _listViewRenderer.AddThemeData(listViewHandle);
+            _treeViewRenderer.AddThemeData(treeViewHandle);
+            _tabRenderer.AddThemeData(new TabControl().Handle);
         }
 
         public static void Uninstall()
@@ -145,7 +157,7 @@ namespace GitUI.Theming
             _drawThemeTextExHook?.Dispose();
             _createWindowExHook?.Dispose();
 
-            if (_renderers != null)
+            if (_renderers is not null)
             {
                 foreach (var renderer in _renderers)
                 {
@@ -237,7 +249,7 @@ namespace GitUI.Theming
             if (!BypassThemeRenderers)
             {
                 var renderer = _renderers.FirstOrDefault(_ => _.Supports(htheme));
-                if (renderer == null && InitializingListViews.Any(_ => _.CheckBoxes))
+                if (renderer is null && InitializingListViews.Any(_ => _.CheckBoxes))
                 {
                     renderer = _renderers.OfType<ListViewRenderer>().SingleOrDefault();
                 }
@@ -257,7 +269,7 @@ namespace GitUI.Theming
             if (!BypassThemeRenderers)
             {
                 var renderer = _renderers.FirstOrDefault(_ => _.Supports(htheme));
-                if (renderer != null && renderer.GetThemeColor(ipartid, istateid, ipropid, out pcolor) == ThemeRenderer.Handled)
+                if (renderer is not null && renderer.GetThemeColor(ipartid, istateid, ipropid, out pcolor) == ThemeRenderer.Handled)
                 {
                     return ThemeRenderer.Handled;
                 }
@@ -275,7 +287,7 @@ namespace GitUI.Theming
             if (!BypassThemeRenderers)
             {
                 var renderer = _renderers.FirstOrDefault(_ => _.Supports(htheme));
-                if (renderer != null && renderer.ForceUseRenderTextEx)
+                if (renderer is not null && renderer.ForceUseRenderTextEx)
                 {
                     NativeMethods.DTTOPTS poptions = new NativeMethods.DTTOPTS
                     {
@@ -307,7 +319,7 @@ namespace GitUI.Theming
             if (!BypassThemeRenderers)
             {
                 var renderer = _renderers.FirstOrDefault(_ => _.Supports(htheme));
-                if (renderer != null && renderer.RenderTextEx(
+                if (renderer is not null && renderer.RenderTextEx(
                     htheme, hdc,
                     partid, stateid,
                     psztext, cchtext,
