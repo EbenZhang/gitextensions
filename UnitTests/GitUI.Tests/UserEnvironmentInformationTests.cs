@@ -1,4 +1,5 @@
-﻿using GitCommands;
+﻿using BugReporter;
+using GitCommands;
 using GitUI;
 using NUnit.Framework;
 

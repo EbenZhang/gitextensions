@@ -2,6 +2,24 @@ Changelog
 =========
 
 
+### Version 3.5 (25 April 2021)
+
+#### Changes:
+* [9103] GitHub token: Add a link to let the user generate its Personal Access Token 
+* [9102] Restore splitter persistence
+* [9094] Handle more exceptions as failed external operation
+* [9083] Report bugs in a separate process
+* [9018] Ignore git clone prefix when checking clipboard for source URL
+* [8971] Support Bitbucket repos with dots in the name
+
+[9103]:https://github.com/gitextensions/gitextensions/pull/9103
+[9102]:https://github.com/gitextensions/gitextensions/pull/9102
+[9094]:https://github.com/gitextensions/gitextensions/pull/9094
+[9083]:https://github.com/gitextensions/gitextensions/pull/9083
+[9018]:https://github.com/gitextensions/gitextensions/pull/9018
+[8971]:https://github.com/gitextensions/gitextensions/pull/8971
+
+
 ### Version 3.5-RC1 (21 March 2021)
 
 #### Changes:

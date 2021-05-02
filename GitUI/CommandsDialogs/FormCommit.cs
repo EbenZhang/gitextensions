@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -299,11 +299,6 @@ namespace GitUI.CommandsDialogs
             selectionFilter.Size = DpiUtil.Scale(selectionFilter.Size);
             toolStripStatusBranchIcon.Width = DpiUtil.Scale(toolStripStatusBranchIcon.Width);
 
-            _splitterManager.AddSplitter(splitMain, "splitMain");
-            _splitterManager.AddSplitter(splitRight, "splitRight");
-            _splitterManager.AddSplitter(splitLeft, "splitLeft");
-            _splitterManager.RestoreSplitters();
-
             SetVisibilityOfSelectionFilter(AppSettings.CommitDialogSelectionFilter);
             Reset.Visible = AppSettings.ShowResetAllChanges;
             ResetUnStaged.Visible = AppSettings.ShowResetWorkTreeChanges;
@@ -472,7 +467,20 @@ namespace GitUI.CommandsDialogs
             showUntrackedFilesToolStripMenuItem.Checked = Module.EffectiveConfigFile.GetValue("status.showUntrackedFiles") != "no";
             MinimizeBox = Owner is null;
             LoadCustomDifftools();
+
             base.OnLoad(e);
+
+            _splitterManager.AddSplitter(splitMain, nameof(splitMain));
+            _splitterManager.AddSplitter(splitRight, nameof(splitRight));
+            _splitterManager.AddSplitter(splitLeft, nameof(splitLeft));
+            _splitterManager.RestoreSplitters();
+
+            // Since #8849 and #8557 we have a geometry bug, which pushes the splitter up by 6px.
+            // Account for this shift. This is a workaround at best.
+            //
+            // The problem is likely caused by 'splitRight.FixedPanel = FixedPanel.Panel2' fact, but other forms
+            // have the same setting, and don't appear to suffer from the same bug.
+            splitRight.SplitterDistance -= 6;
         }
 
         protected override void OnShown(EventArgs e)
@@ -1024,9 +1032,9 @@ namespace GitUI.CommandsDialogs
             LoadingStaged.Visible = false;
             Commit.Enabled = true;
             CommitAndPush.Enabled = true;
-            CommitAndPush.Text = doChangesExist ? _commitAndPush.Text : Strings.ButtonPush;
             Amend.Enabled = true;
             Reset.Enabled = doChangesExist;
+            SetCommitAndPushText();
 
             EnableStageButtons(true);
             workingToolStripMenuItem.Enabled = true;
@@ -3190,6 +3198,8 @@ namespace GitUI.CommandsDialogs
 
                 CommitAndPush.SetForeColorForBackColor();
             }
+
+            SetCommitAndPushText();
         }
 
         private void StageInSuperproject_CheckedChanged(object sender, EventArgs e)
@@ -3254,6 +3264,11 @@ namespace GitUI.CommandsDialogs
             {
                 MessageBox.Show(string.Format(_stopTrackingFail.Text, filename), Strings.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void SetCommitAndPushText()
+        {
+            CommitAndPush.Text = Reset.Enabled || Amend.Checked ? _commitAndPush.Text : Strings.ButtonPush;
         }
 
         internal TestAccessor GetTestAccessor()

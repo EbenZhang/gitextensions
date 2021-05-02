@@ -2587,10 +2587,12 @@ compare with first:</source>
       </trans-unit>
       <trans-unit id="Bad.Text">
         <source>Mark current revision &amp;bad</source>
+        <target>現在のリビジョンは問題あり(&amp;B)</target>
         
       </trans-unit>
       <trans-unit id="Good.Text">
         <source>Mark current revision &amp;good</source>
+        <target>現在のリビジョンは問題なし(&amp;G)</target>
         
       </trans-unit>
       <trans-unit id="Start.Text">
@@ -2610,6 +2612,7 @@ compare with first:</source>
       </trans-unit>
       <trans-unit id="btnSkip.Text">
         <source>&amp;Skip current revision</source>
+        <target>現在のリビジョンをスキップ(&amp;S)</target>
         
       </trans-unit>
     </body>
@@ -12026,6 +12029,7 @@ Select this commit to populate the full message.</source>
       </trans-unit>
       <trans-unit id="_buttonViewDetails.Text">
         <source>View details</source>
+        <target>詳細を表示</target>
         
       </trans-unit>
       <trans-unit id="_cancelText.Text">
